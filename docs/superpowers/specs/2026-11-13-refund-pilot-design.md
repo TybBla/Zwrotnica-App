@@ -18,13 +18,14 @@ Pasażer pociągu dalekobieżnego z dużym opóźnieniem zwykle nie wie, że prz
 - Uczciwy werdykt: **Należy się / Nie należy się / Do sprawdzenia**, z krótkim uzasadnieniem (np. pociąg regionalny = poza systemem).
 - Pismo reklamacyjne: temat e-maila + treść do wklejenia **lub** pobierany PDF.
 - Lista spraw (CRUD), statusy Nowa → Wysłana → Wypłacona/Odrzucona, licznik odzyskanych kwot, **odliczanie terminu odpowiedzi przewoźnika** (1 miesiąc od wysłania) i po terminie podpowiedź eskalacji do UTK.
-- Opcjonalny profil użytkownika (imię, adres, konto, ostatnio wybrana forma wypłaty) tylko w przeglądarce. Profil jest przypisany do przeglądarki/urządzenia (brak kont i synchronizacji między urządzeniami); opcjonalny eksport/import profilu do pliku JSON.
-- **Forma wypłaty do wyboru przez użytkownika: gotówka lub bon.** Ostatni wybór jest zapamiętywany w profilu i zaznaczany domyślnie.
-- **Mobile-first:** pełna wygoda na telefonie (aparat jako źródło zdjęcia biletu, duże cele dotykowe, przyklejony przycisk akcji).
+- **Konta użytkowników** (rejestracja e-mail + hasło, logowanie, wylogowanie). Profil konta: imię i nazwisko, adres, numer rachunku, preferowana forma wypłaty; dostępny z każdego urządzenia. Sprawy należą do konta (użytkownik widzi tylko swoje).
+- **Tryb gościa:** kreator (odczyt biletu, werdykt, kwota) działa bez logowania; zapis sprawy i pobranie pisma wymagają konta – przy "Zapisz sprawę" pojawia się logowanie/rejestracja w miejscu, bez utraty wpisanych danych. Konto demo w seedzie (dane w README).
+- **Forma wypłaty do wyboru przez użytkownika: przelew (gotówka) lub bon.** Ostatni wybór zapisywany w profilu konta i zaznaczany domyślnie.
+- **Mobile-first:** pełna wygoda na telefonie: bilet z **aparatu lub z galerii**; na komputerze wgranie zdjęcia lub pliku biletu (także PDF e-biletu); duże cele dotykowe, przyklejony przycisk akcji.
 - Dwa motywy: jasny fintech i ciemny szklany, z przełącznikiem.
 - Działa bez klucza AI (ścieżka ręczna, pismo z szablonu).
 
-**Nie-cele (MVP):** autobusy, komunikacja miejska, loty; logowanie i konta; wysyłka reklamacji przez serwer; przechowywanie zdjęć; upload dowodu opóźnienia (użytkownik wpisuje liczbę minut); mailto.
+**Nie-cele (MVP):** autobusy, komunikacja miejska, loty; logowanie przez Google/Facebook, reset hasła e-mailem i weryfikacja e-maila; wysyłka reklamacji przez serwer; przechowywanie zdjęć; upload dowodu opóźnienia (użytkownik wpisuje liczbę minut); mailto.
 
 **Antycele:** AI liczy kwoty lub zgaduje brakujące dane; obiecywanie pieniędzy, które się nie należą; reviewer nie uruchomi projektu w kilka minut; UI wygląda jak szablon z doklejonym chatbotem; dane osobowe wysyłane do AI.
 
@@ -32,7 +33,7 @@ Pasażer pociągu dalekobieżnego z dużym opóźnieniem zwykle nie wie, że prz
 
 - SQLite (plik lokalny) – brak zewnętrznych baz; darmowe AI, klucz opcjonalny (`GEMINI_API_KEY`).
 - Zasady z `instructions.md` (chude kontrolery, serwisy, DTO, brak zapytań w pętlach, transakcje).
-- Zdjęcia biletu nie są zapisywane. Profil użytkownika nie jest zapisywany na serwerze ani wysyłany do AI.
+- Zdjęcia biletu nie są zapisywane. Dane profilu konta są w bazie (SQLite), **nigdy nie trafiają do AI**; hasła hashowane przez ASP.NET Core Identity. W README: produkcyjnie szyfrowanie danych wrażliwych (IBAN) i HTTPS.
 - Demo używa darmowego Gemini (treści z darmowego poziomu mogą służyć do ulepszania produktów Google). W README zaznaczone, że produkcyjnie użyty byłby model komercyjny z właściwą konfiguracją prywatności; w UI tylko krótka wzmianka.
 - Dane w seedach i demo wyłącznie fikcyjne.
 
@@ -52,7 +53,7 @@ Pasażer pociągu dalekobieżnego z dużym opóźnieniem zwykle nie wie, że prz
 - **Bilet okresowy** (checkbox przy ręcznym wpisie): kwota liczona inaczej niż dla biletu jednorazowego, więc werdykt "Do sprawdzenia", bez wyliczonej kwoty.
 - Poza MVP (do wspomnienia w README): prawo do pomocy (posiłki, nocleg) niezależne od odszkodowania, zwrot ceny biletu, przekierowanie.
 - **Termin odpowiedzi:** `ResponseDueDate = FiledAt + 1 miesiąc` ustawiany przy zmianie statusu na Wysłana.
-- Pismo żąda wypłaty w formie wybranej przez użytkownika (gotówka przelewem lub bon); przy gotówce wprost zaznacza, że nie zgadza się na bon. Powołuje art. 19 rozp. 2021/782, zawiera pola z unijnego wspólnego formularza (dane przejazdu, numer biletu, czy już składano wniosek).
+- Pismo wskazuje **preferowaną** przez użytkownika formę wypłaty (przelew na podany rachunek lub bon), nie wykluczając innych. Powołuje art. 19 rozp. 2021/782, zawiera pola z unijnego wspólnego formularza (dane przejazdu, numer biletu, czy już składano wniosek).
 - Termin składania wniosku jest w źródłach niejednoznaczny: UI mówi ostrożnie "złóż jak najszybciej" i kieruje do przewoźnika.
 
 ## 6. Decyzje techniczne
@@ -61,22 +62,26 @@ Pasażer pociągu dalekobieżnego z dużym opóźnieniem zwykle nie wie, że prz
 
 **AI:** Gemini `generateContent` (REST przez `HttpClient`) z `inlineData` i `responseMimeType=application/json` + `responseJsonSchema`; model z konfiguracji, domyślnie `gemini-3.5-flash-lite` (weryfikacja przy budowie). Za interfejsem `IAiClient`. Nieczytelne/niepewne pola → `null` → kreator prosi o uzupełnienie. 429/5xx/zły JSON → komunikat po polsku i przejście na wpisywanie ręczne. Bez klucza: ścieżka ręczna, pismo z szablonu, upload biletu wyłączony z komunikatem.
 
-**Pismo:** AI dostaje wyłącznie fakty sprawy (bez danych osobowych) i zwraca temat + treść z tokenami `{{FULL_NAME}}`, `{{ADDRESS}}`, `{{IBAN}}`; serwer podstawia je z profilu przekazanego w żądaniu (nie zapisuje), a gdy brak profilu zostawia czytelne `[imię i nazwisko]`.
+**Pismo:** AI dostaje wyłącznie fakty sprawy (bez danych osobowych) i zwraca temat + treść z tokenami `{{FULL_NAME}}`, `{{ADDRESS}}`, `{{IBAN}}`; serwer podstawia je z profilu konta zalogowanego użytkownika, a puste pola profilu zostawia jako czytelne `[imię i nazwisko]`.
 
-**Model danych (`Cases`):** Id, Carrier, TrainCategory, FromStation, ToStation, TicketNumber, TravelDate, TicketPrice, IncidentType, DelayMinutes, DelayCause?, IsSeasonTicket, Verdict, RefusalRisk, CompensationAmount, PayoutPreference, Status, FiledAt?, ResponseDueDate?, Notes, CreatedAt.
+**Konta:** ASP.NET Core Identity (`AddIdentityApiEndpoints` + EF Core SQLite, uwierzytelnianie cookie – frontend i API na tym samym originie przez proxy Vite). API zwraca 401 (bez przekierowań). Profil w `AppUser` (Infrastructure), do Application przez interfejs zwracający rekord domenowy.
+
+**Model danych:** `Users` (Identity + FullName, Address, Iban, PreferredPayout). `Cases`: Id, UserId, Carrier, TrainCategory, FromStation, ToStation, TicketNumber, TravelDate, TicketPrice, IncidentType, DelayMinutes, DelayCause?, IsSeasonTicket, Verdict, RefusalRisk, CompensationAmount, PayoutPreference, Status, FiledAt?, ResponseDueDate?, Notes, CreatedAt.
 
 **API (`/api`):**
-- `POST /extractions` (multipart: 1–4 zdjęcia/PDF-obraz biletu, ≤5 MB) → `ExtractionDto`
+- `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/manage/info` (Identity API), `GET/PUT /profile`
+- `POST /extractions` (multipart: 1–4 pliki biletu – JPEG/PNG/WebP/HEIC lub PDF, ≤5 MB; dostępne bez logowania) → `ExtractionDto`
 - `POST /assessments` (dane przejazdu + minuty) → werdykt, kwota, uzasadnienie (bez zapisu)
 - `GET/POST /cases`, `GET/PUT/DELETE /cases/{id}`, `PATCH /cases/{id}/status`
-- `POST /cases/{id}/complaint` (body: opcjonalny profil) → `{subject, body}`; `POST /cases/{id}/complaint/pdf` → plik PDF
+- `/cases*` i `/profile` wymagają zalogowania; użytkownik widzi wyłącznie swoje sprawy (cudza sprawa → 404).
+- `POST /cases/{id}/complaint` (body: preferowana forma wypłaty) → `{subject, body}`; `POST /cases/{id}/complaint/pdf` → plik PDF
 - `GET /stats` → odzyskane, oczekujące, liczba spraw
 - Swagger, ProblemDetails, CORS dla `http://localhost:5173`.
 
 **Frontend:**
 - Kreator: pasek postępu, duża strefa upuszczania biletu, formularz z walidacją i podświetleniem brakujących pól, wynik z animowaną kwotą i werdyktem, wybór formatu pisma (tekst / PDF).
 - Pole przyczyny z ikonką ⓘ: opis po najechaniu, fokusie klawiatury i tapnięciu (dostępny, nie stale widoczny).
-- Profil użytkownika w localStorage (mały panel), przełącznik motywu, lista spraw z odliczaniem terminu, puste/ładujące/błędne stany, responsywność.
+- Ekrany logowania/rejestracji (też jako panel w kreatorze przy zapisie), strona profilu konta, przełącznik motywu, lista spraw z odliczaniem terminu, puste/ładujące/błędne stany, responsywność.
 - Skille w `.agents/skills` (apple-design, emil-design-eng, animate, choreograph, break-ui) prowadzą dopracowanie.
 
 **Struktura repo:** `backend/` (Domain, Application, Infrastructure, Api, Tests), `frontend/`, `docs/`, `README.md`, `instructions.md`, `.env.example`; `.agents/`, `skills-lock.json` poza repo.

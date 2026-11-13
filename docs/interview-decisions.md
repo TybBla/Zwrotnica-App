@@ -12,4 +12,7 @@
 11. **Forma wypłaty:** wybór gotówka/bon przez użytkownika, zapamiętywany w profilu (przeglądarka) i zaznaczany domyślnie; pismo dopasowane do wyboru.
 12. **Przyczyna a odszkodowanie:** nie zmienia kwoty, ale ustawia ostrzeżenie o ryzyku odmowy (pogoda, osoby na torach); bilet okresowy → "Do sprawdzenia".
 13. **Mobile-first:** pełna wygoda na telefonie jako wymóg projektowy.
+14. **ZMIANA (zastępuje 4 i część 11):** prawdziwe konta użytkowników zamiast profilu w przeglądarce; bez eksportu/importu JSON. Profil konta (imię, adres, rachunek, preferowana forma wypłaty) dostępny z każdego urządzenia. Moja decyzja: kreator działa też jako gość, zapis sprawy i pismo wymagają konta; konto demo w seedzie.
+15. **ZMIANA:** pismo wskazuje preferowaną formę wypłaty, nie wyklucza innych.
+16. **Źródło biletu:** telefon – aparat lub galeria; komputer – zdjęcie lub plik (także PDF e-biletu).
 3. **Prywatność AI:** demo/MVP używa darmowego Gemini; w README zaznaczyć, że w produkcji użyty byłby model klasy komercyjnej z odpowiednią konfiguracją prywatności. W UI tylko krótka, nienachalna wzmianka (bez dużych ostrzeżeń).
