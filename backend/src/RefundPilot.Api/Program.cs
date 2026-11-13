@@ -12,6 +12,10 @@ using RefundPilot.Infrastructure;
 
 const string FrontendCorsPolicy = "Frontend";
 
+// Development only, and before configuration is built, so GEMINI_API_KEY from the repo-root .env is picked up.
+if (string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase))
+    DotEnv.Load(Directory.GetCurrentDirectory());
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()

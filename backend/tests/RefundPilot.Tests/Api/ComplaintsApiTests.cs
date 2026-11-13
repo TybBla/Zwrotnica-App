@@ -21,14 +21,26 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
         public Task<string> GenerateTextAsync(string p, CancellationToken ct) => throw new AiUnavailableException("off");
     }
 
+    private sealed class CountingAi : IAiClient
+    {
+        public int Calls { get; private set; }
+        public bool IsConfigured => true;
+        public Task<string> GenerateJsonAsync(string p, IReadOnlyList<AiFile> f, string s, CancellationToken ct)
+        {
+            Calls++;
+            throw new AiUnavailableException("counted");
+        }
+        public Task<string> GenerateTextAsync(string p, CancellationToken ct) => throw new AiUnavailableException("counted");
+    }
+
     private readonly TestApiFactory _factory;
 
     public ComplaintsApiTests(TestApiFactory factory) => _factory = factory;
 
-    private async Task<HttpClient> LoggedInClientAsync(string email)
+    private async Task<HttpClient> LoggedInClientAsync(string email, IAiClient? ai = null)
     {
         var client = _factory
-            .WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddSingleton<IAiClient>(new OfflineAi())))
+            .WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddSingleton<IAiClient>(ai ?? new OfflineAi())))
             .CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true, AllowAutoRedirect = false });
         await AuthApiTests.RegisterAndLoginAsync(client, email);
         return client;
@@ -108,12 +120,15 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
     }
 
     [Fact]
-    public async Task Pdf_ReturnsAttachment()
+    public async Task Pdf_RendersPostedTextVerbatimWithoutAiOrWrites()
     {
-        var client = await LoggedInClientAsync("pdf@test.pl");
+        var ai = new CountingAi();
+        var client = await LoggedInClientAsync("pdf@test.pl", ai);
         var id = await CreateCaseAsync(client);
+        var callsBefore = ai.Calls;
 
-        var response = await client.PostAsJsonAsync($"/api/cases/{id}/complaint/pdf", new { payout = "OriginalPayment" });
+        var response = await client.PostAsJsonAsync($"/api/cases/{id}/complaint/pdf",
+            new { subject = "Temat ąęś", body = "Treść pisma\n\nz akapitami" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/pdf", response.Content.Headers.ContentType!.MediaType);
@@ -121,19 +136,51 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
         Assert.Equal($"reklamacja-{id}.pdf", response.Content.Headers.ContentDisposition.FileName);
         var bytes = await response.Content.ReadAsByteArrayAsync();
         Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
+        Assert.Equal(callsBefore, ai.Calls);
+
+        // No payout / profile side effects.
+        var profile = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("OriginalPayment", profile.GetProperty("preferredPayout").GetString());
     }
 
     [Fact]
-    public async Task OtherUsersCase_Returns404ForLetterAndPdf()
+    public async Task Pdf_OtherUsersCaseOrInvalidBody()
     {
         var owner = await LoggedInClientAsync("owner7@test.pl");
         var id = await CreateCaseAsync(owner);
         var intruder = await LoggedInClientAsync("intruder7@test.pl");
+        var ok = new { subject = "S", body = "B" };
 
         Assert.Equal(HttpStatusCode.NotFound,
-            (await intruder.PostAsJsonAsync($"/api/cases/{id}/complaint", new { payout = "Voucher" })).StatusCode);
+            (await intruder.PostAsJsonAsync($"/api/cases/{id}/complaint/pdf", ok)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound,
-            (await intruder.PostAsJsonAsync($"/api/cases/{id}/complaint/pdf", new { payout = "Voucher" })).StatusCode);
+            (await intruder.PostAsJsonAsync($"/api/cases/{id}/complaint", new { payout = "Voucher" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await owner.PostAsJsonAsync($"/api/cases/{id}/complaint/pdf", new { subject = "", body = "B" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await owner.PostAsJsonAsync($"/api/cases/{id}/complaint/pdf", new { subject = "S", body = new string('x', 6001) })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await owner.PostAsJsonAsync($"/api/cases/{id}/complaint/pdf", new { subject = new string('x', 201), body = "B" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task NotEligibleCase_Returns409ProblemAndKeepsPayout()
+    {
+        var client = await LoggedInClientAsync("noelig@test.pl");
+        var created = await client.PostAsJsonAsync("/api/cases", new
+        {
+            carrier = "Nieznany Przewoźnik", trainCategory = "X", fromStation = "A", toStation = "B",
+            travelDate = "2026-11-01", ticketPrice = 40m, incidentType = "Delay", delayMinutes = 70,
+            isSeasonTicket = false,
+        });
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var response = await client.PostAsJsonAsync($"/api/cases/{id}/complaint", new { payout = "Voucher" });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains("nie kwalifikuje się do odszkodowania", await response.Content.ReadAsStringAsync());
+        var profile = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("OriginalPayment", profile.GetProperty("preferredPayout").GetString());
     }
 
     [Fact]

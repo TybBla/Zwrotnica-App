@@ -13,13 +13,24 @@ public sealed class ComplaintsController(IComplaintService complaints, IComplain
 {
     /// <summary>Generates the complaint letter text for one of the user's cases.</summary>
     [HttpPost]
-    public async Task<ActionResult<ComplaintDto>> Generate(int id, ComplaintRequest request, CancellationToken ct) =>
-        await complaints.GenerateAsync(id, request, ct) is { } letter ? Ok(letter) : NotFound();
+    public async Task<ActionResult<ComplaintDto>> Generate(int id, ComplaintRequest request, CancellationToken ct)
+    {
+        var result = await complaints.GenerateAsync(id, request, ct);
+        return result.Status switch
+        {
+            ComplaintStatus.Generated => Ok(result.Letter),
+            ComplaintStatus.NotEligible => Problem(
+                "Ta sprawa nie kwalifikuje się do odszkodowania – nie można wygenerować pisma.",
+                statusCode: StatusCodes.Status409Conflict),
+            _ => NotFound(),
+        };
+    }
 
-    /// <summary>Generates the same letter and returns it as a PDF download.</summary>
+    /// <summary>Renders the posted letter text as a PDF download (ownership checked; no AI call, no writes).</summary>
     [HttpPost("pdf")]
-    public async Task<IActionResult> GeneratePdf(int id, ComplaintRequest request, CancellationToken ct) =>
-        await complaints.GenerateAsync(id, request, ct) is { } letter
-            ? File(pdf.Render(letter), "application/pdf", $"reklamacja-{id}.pdf")
+    public async Task<IActionResult> RenderPdf(int id, ComplaintPdfRequest request) =>
+        await complaints.CaseExistsAsync(id)
+            ? File(pdf.Render(new ComplaintDto(request.Subject, request.Body, UsedAi: false, [])),
+                "application/pdf", $"reklamacja-{id}.pdf")
             : NotFound();
 }

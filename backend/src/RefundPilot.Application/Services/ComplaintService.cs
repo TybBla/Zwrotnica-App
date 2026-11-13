@@ -6,10 +6,17 @@ using RefundPilot.Domain;
 
 namespace RefundPilot.Application.Services;
 
+public enum ComplaintStatus { Generated, NotFound, NotEligible }
+
+public sealed record ComplaintResult(ComplaintStatus Status, ComplaintDto? Letter);
+
 public interface IComplaintService
 {
-    /// <summary>Builds the letter for an owned case; null when the case does not exist or belongs to someone else.</summary>
-    Task<ComplaintDto?> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct);
+    /// <summary>NotFound when the case does not exist or belongs to someone else; NotEligible when no compensation is due.</summary>
+    Task<ComplaintResult> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct);
+
+    /// <summary>True when the case exists and belongs to the current user.</summary>
+    Task<bool> CaseExistsAsync(int caseId);
 }
 
 /// <summary>
@@ -37,10 +44,17 @@ public sealed partial class ComplaintService(
     private const string PayoutTransfer = "Proszę o wypłatę odszkodowania przelewem na rachunek nr {{IBAN}}.";
     private const string PayoutVoucher = "Proszę o wypłatę odszkodowania w formie bonu.";
 
-    public async Task<ComplaintDto?> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct)
+    public async Task<bool> CaseExistsAsync(int caseId) =>
+        currentUser.UserId is { } id && await cases.GetAsync(caseId, id) is not null;
+
+    public async Task<ComplaintResult> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct)
     {
         if (currentUser.UserId is not { } userId || await cases.GetAsync(caseId, userId) is not { } refundCase)
-            return null;
+            return new(ComplaintStatus.NotFound, null);
+
+        // A formal demand makes no sense without compensation due; nothing is written in that case.
+        if (refundCase.Verdict != Verdict.Eligible || refundCase.CompensationAmount <= 0)
+            return new(ComplaintStatus.NotEligible, null);
 
         var profile = await profiles.GetAsync(userId) ?? new UserProfile(null, null, null, request.Payout);
         var oneTimeIban = Sanitize(request.OneTimeIban, MaxIban);
@@ -62,7 +76,7 @@ public sealed partial class ComplaintService(
             await profiles.UpdateAsync(userId, profile with { Iban = savedIban, PreferredPayout = request.Payout });
         }, ct);
 
-        return new ComplaintDto(subject, finalBody, UsedAi: draft is not null, missing);
+        return new(ComplaintStatus.Generated, new ComplaintDto(subject, finalBody, UsedAi: draft is not null, missing));
     }
 
     private async Task<(string Subject, string Body)?> TryAiDraftAsync(
@@ -129,6 +143,16 @@ public sealed partial class ComplaintService(
         if (!body.Contains(facts.AmountText, StringComparison.Ordinal) || !body.Contains("2021/782", StringComparison.Ordinal))
             return null;
 
+        // The AI is told to use only the supplied numbers; anything else (other sums, account numbers,
+        // exclusive payout wording) means it improvised or was steered by case text, so the template is used.
+        var allowedMoney = new HashSet<string>
+            { NormalizeMoney(facts.AmountText), NormalizeMoney(facts.PriceText) };
+        if (MoneyPattern().Matches(body).Any(m => !allowedMoney.Contains(NormalizeMoney(m.Value)))
+            || IbanLike().IsMatch(body)
+            || body.Contains("wyłącznie", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("gotówk", StringComparison.OrdinalIgnoreCase))
+            return null;
+
         var tokens = TokenPattern().Matches(body).Select(m => m.Value).ToHashSet();
         var allowed = new HashSet<string> { ComplaintTemplate.FullName, ComplaintTemplate.Address, ComplaintTemplate.Payout };
         if (payout == PayoutPreference.BankTransfer)
@@ -188,6 +212,14 @@ public sealed partial class ComplaintService(
     private static ComplaintFacts ToFacts(RefundCase c) => new(
         c.Carrier, c.TrainCategory, c.FromStation, c.ToStation, c.TravelDate, c.TicketNumber, c.TicketPrice,
         c.CompensationAmount, c.IncidentType, c.DelayMinutes, c.DelayCause);
+
+    private static string NormalizeMoney(string value) => Whitespace().Replace(value, "");
+
+    [GeneratedRegex(@"\d+(?:[\s.]\d{3})*(?:,\d{2})?\s*(?:zł|PLN)", RegexOptions.IgnoreCase)]
+    private static partial Regex MoneyPattern();
+
+    [GeneratedRegex(@"\b[A-Z]{2}\d{2}[\d ]{10,}")]
+    private static partial Regex IbanLike();
 
     [GeneratedRegex(@"\{\{[A-Z_]+\}\}")]
     private static partial Regex TokenPattern();

@@ -9,7 +9,7 @@ namespace RefundPilot.Infrastructure.Pdf;
 
 /// <summary>
 /// Renders the letter as an A4 PDF. QuestPDF's built-in Lato covers Polish diacritics
-/// (QuestPDF is set to throw on a missing glyph, and the tests render every Polish letter).
+/// (the tests render every Polish letter in strict mode).
 /// </summary>
 public sealed class ComplaintPdfRenderer(TimeProvider clock) : IComplaintPdfRenderer
 {
@@ -17,7 +17,8 @@ public sealed class ComplaintPdfRenderer(TimeProvider clock) : IComplaintPdfRend
     {
         // QuestPDF Community license: free for individuals, non-profits, FOSS and organisations under USD 1M annual revenue.
         QuestPDF.Settings.License = LicenseType.Community;
-        QuestPDF.Settings.ThrowOnMissingTextGlyphs = true; // fail loudly instead of printing boxes
+        // Off: an emoji or rare script in a name/address must never turn into a 500; such glyphs just render as fallback.
+        QuestPDF.Settings.ThrowOnMissingTextGlyphs = false;
     }
 
     public byte[] Render(ComplaintDto letter)

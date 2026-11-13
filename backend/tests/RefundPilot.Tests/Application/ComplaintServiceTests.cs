@@ -106,7 +106,7 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         JsonSerializer.Serialize(new { subject = "Wniosek o odszkodowanie", body });
 
     private async Task<ComplaintDto> GenerateAsync(IAiClient ai, ComplaintRequest request, string userId = Anna, int? caseId = null) =>
-        (await Service(ai, userId).GenerateAsync(caseId ?? (userId == Anna ? _annaCaseId : _otherCaseId), request, CancellationToken.None))!;
+        (await Service(ai, userId).GenerateAsync(caseId ?? (userId == Anna ? _annaCaseId : _otherCaseId), request, CancellationToken.None)).Letter!;
 
     [Fact]
     public async Task Template_ContainsCaseFactsAndLegalBasis()
@@ -279,6 +279,11 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     [InlineData("{{FULL_NAME}} {{ADDRESS}} {{PAYOUT}} kwota 10,00 zł")]                        // no legal basis
     [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł {{IBAN}}")]    // IBAN token but not a transfer
     [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł {{SECRET}}")]  // unknown token
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł oraz dodatkowo 500,00 zł")] // extra sum
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł, cena 99 zł")]               // extra integer sum
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł. Konto PL61 1090 1014 0000 0712 1981 2874")] // IBAN-like
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł wyłącznie przelewem")]       // exclusive clause
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł, nie przyjmę gotówki")]     // cash wording
     public async Task InvalidAiOutput_FallsBackToTemplate(string body)
     {
         var letter = await GenerateAsync(new FakeAi(ValidAiJson(body)), Req());
@@ -311,12 +316,13 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     {
         var result = await Service(Failing()).GenerateAsync(_otherCaseId, Req(), CancellationToken.None);
 
-        Assert.Null(result);
+        Assert.Equal(ComplaintStatus.NotFound, result.Status);
+        Assert.Null(result.Letter);
     }
 
     [Fact]
     public async Task UnknownCase_ReturnsNull() =>
-        Assert.Null(await Service(Failing()).GenerateAsync(9999, Req(), CancellationToken.None));
+        Assert.Equal(ComplaintStatus.NotFound, (await Service(Failing()).GenerateAsync(9999, Req(), CancellationToken.None)).Status);
 
     [Fact]
     public async Task OneTimeIban_UsedInLetterButNotSavedByDefault()
@@ -363,5 +369,46 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.Equal(PayoutPreference.Voucher, profile!.PreferredPayout);
         Assert.Equal("Anna Kowalska", profile.FullName);
         Assert.Equal(Iban, profile.Iban);
+    }
+
+    [Fact]
+    public async Task AiOutput_MayMentionTicketPriceButNoOtherSum()
+    {
+        var body = "{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} odszkodowanie 10,00 zł od ceny biletu 40,00 zł";
+
+        var letter = await GenerateAsync(new FakeAi(ValidAiJson(body)), Req());
+
+        Assert.True(letter.UsedAi);
+    }
+
+    [Theory]
+    [InlineData(Verdict.NotCovered, 0, 10)]
+    [InlineData(Verdict.Unknown, 0, 10)]
+    [InlineData(Verdict.Eligible, 0, 0)]
+    public async Task NotEligibleCase_ReturnsNotEligibleAndWritesNothing(Verdict verdict, int unused, int amount)
+    {
+        _ = unused;
+        var c = await _cases.GetAsync(_annaCaseId, Anna);
+        c!.Verdict = verdict;
+        c.CompensationAmount = verdict == Verdict.Eligible ? amount : 0m;
+        await _cases.UpdateAsync(c);
+        var ai = new FakeAi(ValidAiJson());
+
+        var result = await Service(ai).GenerateAsync(_annaCaseId, Req(PayoutPreference.Voucher, "PL27114020040000300201355387", true), CancellationToken.None);
+
+        Assert.Equal(ComplaintStatus.NotEligible, result.Status);
+        Assert.Null(result.Letter);
+        Assert.Null(ai.Prompt);
+        Assert.Equal(PayoutPreference.OriginalPayment, (await _cases.GetAsync(_annaCaseId, Anna))!.PayoutPreference);
+        var profile = await _store.GetAsync(Anna);
+        Assert.Equal(PayoutPreference.OriginalPayment, profile!.PreferredPayout);
+        Assert.Equal(Iban, profile.Iban);
+    }
+
+    [Fact]
+    public async Task CaseExists_OnlyForOwner()
+    {
+        Assert.True(await Service(Failing()).CaseExistsAsync(_annaCaseId));
+        Assert.False(await Service(Failing()).CaseExistsAsync(_otherCaseId));
     }
 }
