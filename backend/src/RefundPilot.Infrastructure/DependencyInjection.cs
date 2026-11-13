@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RefundPilot.Application.Abstractions;
 using RefundPilot.Infrastructure.Ai;
+using RefundPilot.Infrastructure.Pdf;
 
 namespace RefundPilot.Infrastructure;
 
@@ -13,6 +14,8 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
         services.AddScoped<ICaseRepository, CaseRepository>();
         services.AddScoped<IUserProfileStore, UserProfileStore>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddSingleton<IComplaintPdfRenderer, ComplaintPdfRenderer>();
         return services;
     }
 

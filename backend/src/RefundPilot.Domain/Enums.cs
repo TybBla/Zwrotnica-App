@@ -8,4 +8,5 @@ public enum Verdict { Eligible, NotCovered, Unknown }
 
 public enum DelayCause { Unknown, Weather, PersonsOnTrack, RailStrike, Technical, Other }
 
-public enum PayoutPreference { Cash, Voucher }
+/// <summary>OriginalPayment is the default (value 0): refund to the account or card the ticket was paid with.</summary>
+public enum PayoutPreference { OriginalPayment, BankTransfer, Voucher }

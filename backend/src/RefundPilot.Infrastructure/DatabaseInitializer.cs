@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,8 +31,9 @@ public static class DatabaseInitializer
             EmailConfirmed = true,
             FullName = "Anna Kowalska",
             Address = "ul. Lipowa 12/4, 80-001 Gdańsk",
-            Iban = "PL61109010140000071219812874",
-            PreferredPayout = PayoutPreference.Cash,
+            Iban = new IbanCipher(scope.ServiceProvider.GetRequiredService<IDataProtectionProvider>())
+                .Protect("PL61109010140000071219812874"),
+            PreferredPayout = PayoutPreference.BankTransfer,
         };
         var result = await users.CreateAsync(demo, demoPassword);
         if (!result.Succeeded)

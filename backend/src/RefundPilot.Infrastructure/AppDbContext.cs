@@ -23,7 +23,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         var user = modelBuilder.Entity<AppUser>();
         user.Property(u => u.FullName).HasMaxLength(200);
         user.Property(u => u.Address).HasMaxLength(300);
-        user.Property(u => u.Iban).HasMaxLength(34);
+        user.Property(u => u.Iban).HasMaxLength(500);
         user.Property(u => u.PreferredPayout).HasConversion<string>().HasMaxLength(20);
 
         var entity = modelBuilder.Entity<RefundCase>();

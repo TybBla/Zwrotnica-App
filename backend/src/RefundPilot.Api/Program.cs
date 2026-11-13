@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -22,6 +23,10 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("Default") ?? "DataSource=refundpilot.db");
 builder.Services.AddAi(builder.Configuration);
+// Encrypts the stored IBAN. Keys persist to the default per-user location, or to DataProtection:KeysPath when set.
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("RefundPilot");
+if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath)
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 builder.Services.AddIdentityApiEndpoints<AppUser>(o => o.User.RequireUniqueEmail = true)
     .AddEntityFrameworkStores<AppDbContext>();
 

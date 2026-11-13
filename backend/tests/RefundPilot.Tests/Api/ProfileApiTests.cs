@@ -55,7 +55,7 @@ public sealed class ProfileApiTests : IClassFixture<TestApiFactory>
         var client = await LoggedInClientAsync("iban@test.pl");
 
         var response = await client.PutAsJsonAsync("/api/profile",
-            new { iban = new string('1', 35), preferredPayout = "Cash" });
+            new { iban = new string('1', 35), preferredPayout = "BankTransfer" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -66,7 +66,7 @@ public sealed class ProfileApiTests : IClassFixture<TestApiFactory>
         var client = await LoggedInClientAsync("name@test.pl");
 
         var response = await client.PutAsJsonAsync("/api/profile",
-            new { fullName = new string('a', 201), preferredPayout = "Cash" });
+            new { fullName = new string('a', 201), preferredPayout = "BankTransfer" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -75,7 +75,7 @@ public sealed class ProfileApiTests : IClassFixture<TestApiFactory>
     public async Task Put_Anonymous_Returns401()
     {
         var response = await _factory.CreateCookieClient()
-            .PutAsJsonAsync("/api/profile", new { preferredPayout = "Cash" });
+            .PutAsJsonAsync("/api/profile", new { preferredPayout = "BankTransfer" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

@@ -47,7 +47,7 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
         DelayMinutes = 95,
         Verdict = Verdict.Eligible,
         CompensationAmount = 25m,
-        PayoutPreference = PayoutPreference.Cash,
+        PayoutPreference = PayoutPreference.BankTransfer,
         Status = CaseStatus.New,
         CreatedAt = new DateTime(2026, 11, 2, 0, 0, 0, DateTimeKind.Utc),
     };

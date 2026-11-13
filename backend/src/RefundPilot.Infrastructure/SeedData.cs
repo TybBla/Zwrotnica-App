@@ -58,7 +58,7 @@ public static class SeedData
             DelayCause = cause,
             Verdict = eligibility.Verdict,
             CompensationAmount = amount,
-            PayoutPreference = PayoutPreference.Cash,
+            PayoutPreference = PayoutPreference.OriginalPayment,
             Status = status,
             FiledAt = filedAt,
             ResponseDueDate = dueDate,

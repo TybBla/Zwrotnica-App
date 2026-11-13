@@ -39,7 +39,7 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
             delayMinutes = delay,
             delayCause = cause,
             isSeasonTicket = season,
-            payoutPreference = "Cash",
+            payoutPreference = "BankTransfer",
         };
 
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage r) =>
@@ -285,7 +285,7 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         {
             ["carrier"] = "PKP Intercity", ["fromStation"] = "A", ["toStation"] = "B", ["ticketPrice"] = 40m,
             ["incidentType"] = "Delay", ["delayMinutes"] = 95, ["isSeasonTicket"] = false,
-            ["payoutPreference"] = "Cash",
+            ["payoutPreference"] = "BankTransfer",
         };
         if (travelDate is not null)
             body["travelDate"] = travelDate;
