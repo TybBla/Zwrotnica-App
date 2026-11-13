@@ -68,16 +68,30 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Update_PersistsChanges()
+    public async Task Update_WithDetachedCopy_PersistsChangedFieldsOnly()
     {
         var created = NewCase();
         await _repository.AddAsync(created);
+        _db.ChangeTracker.Clear();
 
-        created.Status = CaseStatus.Sent;
-        await _repository.UpdateAsync(created);
+        var detached = NewCase();
+        detached.Id = created.Id;
+        detached.Status = CaseStatus.Sent;
+        detached.FiledAt = new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc);
+        detached.ResponseDueDate = new DateTime(2026, 12, 3, 0, 0, 0, DateTimeKind.Utc);
+        detached.Notes = "Wysłano formularz";
+        await _repository.UpdateAsync(detached);
 
-        var stored = await _repository.GetAsync(created.Id);
-        Assert.Equal(CaseStatus.Sent, stored!.Status);
+        await using var freshDb = new AppDbContext(
+            new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
+        var stored = await new CaseRepository(freshDb).GetAsync(created.Id);
+
+        Assert.NotNull(stored);
+        Assert.Equal(CaseStatus.Sent, stored.Status);
+        Assert.Equal(detached.FiledAt, stored.FiledAt);
+        Assert.Equal(detached.ResponseDueDate, stored.ResponseDueDate);
+        Assert.Equal("Wysłano formularz", stored.Notes);
+        Assert.Equal("PKP Intercity", stored.Carrier);
     }
 
     [Fact]
