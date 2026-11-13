@@ -1,0 +1,87 @@
+using Microsoft.Extensions.Time.Testing;
+using RefundPilot.Application.Abstractions;
+using RefundPilot.Application.Dtos;
+using RefundPilot.Application.Services;
+
+namespace RefundPilot.Tests.Application;
+
+public sealed class ExtractionServiceTests
+{
+    private sealed class FakeAi(string json) : IAiClient
+    {
+        public bool IsConfigured => true;
+        public string? Prompt { get; private set; }
+        public IReadOnlyList<AiFile>? Files { get; private set; }
+
+        public Task<string> GenerateJsonAsync(string prompt, IReadOnlyList<AiFile> files, string jsonSchema, CancellationToken ct)
+        {
+            Prompt = prompt;
+            Files = files;
+            return Task.FromResult(json);
+        }
+
+        public Task<string> GenerateTextAsync(string prompt, CancellationToken ct) => Task.FromResult(json);
+    }
+
+    private static readonly FakeTimeProvider Clock = new(new DateTimeOffset(2026, 11, 13, 10, 0, 0, TimeSpan.Zero));
+    private static readonly IReadOnlyList<AiFile> OneFile = [new AiFile("application/pdf", [1, 2, 3])];
+
+    private static Task<ExtractionDto> RunAsync(string json, FakeAi? ai = null) =>
+        new ExtractionService(ai ?? new FakeAi(json), Clock).ExtractAsync(OneFile, CancellationToken.None);
+
+    [Fact]
+    public async Task ValidJson_MapsFieldsAndListsUnknownAsMissing()
+    {
+        var result = await RunAsync("""
+            {"carrier":"PKP Intercity","trainCategory":"IC","fromStation":"Warszawa Centralna",
+             "toStation":null,"ticketNumber":null,"ticketPrice":59.9,"travelDate":"2026-11-01"}
+            """);
+
+        Assert.Equal("PKP Intercity", result.Carrier);
+        Assert.Equal("IC", result.TrainCategory);
+        Assert.Equal(59.9m, result.TicketPrice);
+        Assert.Equal(new DateOnly(2026, 11, 1), result.TravelDate);
+        Assert.True(result.UsedAi);
+        Assert.Equal(["toStation", "ticketNumber"], result.MissingFields);
+    }
+
+    [Fact]
+    public async Task MalformedJson_ThrowsAiUnavailable() =>
+        await Assert.ThrowsAsync<AiUnavailableException>(() => RunAsync("not json {"));
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-5")]
+    [InlineData("2000.01")]
+    public async Task ImplausiblePrice_BecomesNullAndMissing(string price)
+    {
+        var result = await RunAsync($$"""{"carrier":"X","ticketPrice":{{price}},"travelDate":"2026-11-01"}""");
+
+        Assert.Null(result.TicketPrice);
+        Assert.Contains("ticketPrice", result.MissingFields);
+    }
+
+    [Theory]
+    [InlineData("2026-11-14")] // future
+    [InlineData("2024-11-12")] // older than two years
+    [InlineData("garbage")]
+    public async Task ImplausibleDate_BecomesNullAndMissing(string date)
+    {
+        var result = await RunAsync($$"""{"carrier":"X","ticketPrice":50,"travelDate":"{{date}}"}""");
+
+        Assert.Null(result.TravelDate);
+        Assert.Contains("travelDate", result.MissingFields);
+    }
+
+    [Fact]
+    public async Task SendsFilesAndPromptAskingNotToGuess()
+    {
+        var ai = new FakeAi("{}");
+
+        var result = await RunAsync("{}", ai);
+
+        Assert.Same(OneFile, ai.Files);
+        Assert.Contains("never guess", ai.Prompt);
+        Assert.Equal(7, result.MissingFields.Count);
+    }
+}

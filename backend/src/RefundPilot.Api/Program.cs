@@ -17,6 +17,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("Default") ?? "DataSource=refundpilot.db");
+builder.Services.AddAi(builder.Configuration);
 builder.Services.AddIdentityApiEndpoints<AppUser>(o => o.User.RequireUniqueEmail = true)
     .AddEntityFrameworkStores<AppDbContext>();
 
