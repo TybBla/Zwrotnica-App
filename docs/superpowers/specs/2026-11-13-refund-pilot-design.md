@@ -20,7 +20,7 @@ Pasażer pociągu dalekobieżnego z dużym opóźnieniem zwykle nie wie, że prz
 - Lista spraw (CRUD), statusy Nowa → Wysłana → Wypłacona/Odrzucona, licznik odzyskanych kwot, **odliczanie terminu odpowiedzi przewoźnika** (1 miesiąc od wysłania) i po terminie podpowiedź eskalacji do UTK.
 - **Konta użytkowników** (rejestracja e-mail + hasło, logowanie, wylogowanie). Profil konta: imię i nazwisko, adres, numer rachunku, preferowana forma wypłaty; dostępny z każdego urządzenia. Sprawy należą do konta (użytkownik widzi tylko swoje).
 - **Tryb gościa:** kreator (odczyt biletu, werdykt, kwota) działa bez logowania; zapis sprawy i pobranie pisma wymagają konta – przy "Zapisz sprawę" pojawia się logowanie/rejestracja w miejscu, bez utraty wpisanych danych. Konto demo w seedzie (dane w README).
-- **Forma wypłaty do wyboru przez użytkownika: przelew (gotówka) lub bon.** Ostatni wybór zapisywany w profilu konta i zaznaczany domyślnie.
+- **Forma wypłaty do wyboru (3 opcje):** zwrot na konto/kartę, z których opłacono bilet (**domyślnie**, bez podawania numeru), przelew na inny rachunek (wymaga numeru), bon. Pismo zawiera konkretne zdanie dla wybranej formy. Podpowiedź: bilet kupiony gotówką w kasie → przelew. Ostatni wybór zapisywany w profilu konta i zaznaczany domyślnie.
 - **Mobile-first:** pełna wygoda na telefonie: bilet z **aparatu lub z galerii**; na komputerze wgranie zdjęcia lub pliku biletu (także PDF e-biletu); duże cele dotykowe, przyklejony przycisk akcji.
 - Dwa motywy: jasny fintech i ciemny szklany, z przełącznikiem.
 - Działa bez klucza AI (ścieżka ręczna, pismo z szablonu).
