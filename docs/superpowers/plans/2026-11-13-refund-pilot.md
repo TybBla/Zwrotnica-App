@@ -27,7 +27,7 @@
 - Thin controllers, services in Application, DTOs in/out, no queries in loops, transactions for multi-table writes. SQLite stores decimal as TEXT → no server-side `Sum`/`OrderBy`/comparisons on decimal columns (aggregate in memory). DateTimes stored and returned as UTC.
 - REST under `/api`, ProblemDetails, Swagger (Swashbuckle) in Development, CORS `http://localhost:5173`, no HTTPS redirection in dev, Api http profile on port 5000. UI Polish; code/commits English (Conventional Commits, trailer `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`).
 - Gemini model id from config (`Gemini:Model`, default `gemini-3.5-flash-lite`). README: demo uses free Gemini; production would use a commercial model with proper privacy configuration; production would encrypt sensitive profile data (IBAN).
-- UI: bardzo ładny, nowoczesny; light fintech + dark glass themes with toggle; WCAG-minded contrast; tooltip ⓘ works on hover, keyboard focus and tap; loading/empty/error states; **mobile-first**: fully usable at 375 px, touch targets ≥ 44 px, sticky primary action bar on small screens.
+- UI: bardzo ładny, nowoczesny; **one design language, two color schemes** (light + dark with toggle): identical typography, layout, radii, spacing, icons, motion and component shapes in both — only color tokens (surfaces, text, borders, shadows/elevation, accent tints) change. Subtle glass (translucent blurred surface) used in the same places in both schemes (e.g. sticky header and action bar), never as a dark-only style. Clean fintech feel; WCAG-minded contrast; tooltip ⓘ works on hover, keyboard focus and tap; loading/empty/error states; **mobile-first**: fully usable at 375 px, touch targets ≥ 44 px, sticky primary action bar on small screens.
 
 ## Review Focus
 
@@ -154,7 +154,7 @@ Endpoints (authorized): `POST /api/cases/{id}/complaint` → `ComplaintDto`; `PO
 
 - [ ] **Step 1:** Scaffold with `npm create vite@latest` (TypeScript React); add Vitest + Testing Library.
 - [ ] **Step 2:** Failing tests: `client` maps ProblemDetails 502 → `ApiError` with `detail` and 401 → `ApiError.status === 401`; `Tooltip` opens on hover, keyboard focus and tap, closes on Escape (role `tooltip`, `aria-describedby`).
-- [ ] **Step 3:** Implement client, auth provider, tokens for both themes (light fintech, dark glass; `data-theme` + `prefers-color-scheme` + persisted toggle), app shell with header (logo, theme toggle, account menu), tooltip. Direction from `apple-design`, `emil-design-eng`.
+- [ ] **Step 3:** Implement client, auth provider, one set of design tokens with two color schemes (same components and shapes; only color tokens differ; `data-theme` + `prefers-color-scheme` + persisted toggle), app shell with header (logo, theme toggle, account menu), tooltip. Direction from `apple-design`, `emil-design-eng`.
 - [ ] **Step 4:** `npm run test` and `npm run build` pass. Commit `feat(web): scaffold, design system, themes and api client`.
 
 ### Task 9: Wizard – ticket and delay

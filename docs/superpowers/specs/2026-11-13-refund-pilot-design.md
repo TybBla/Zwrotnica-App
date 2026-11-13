@@ -22,7 +22,7 @@ Pasażer pociągu dalekobieżnego z dużym opóźnieniem zwykle nie wie, że prz
 - **Tryb gościa:** kreator (odczyt biletu, werdykt, kwota) działa bez logowania; zapis sprawy i pobranie pisma wymagają konta – przy "Zapisz sprawę" pojawia się logowanie/rejestracja w miejscu, bez utraty wpisanych danych. Konto demo w seedzie (dane w README).
 - **Forma wypłaty do wyboru (3 opcje):** zwrot na konto/kartę, z których opłacono bilet (**domyślnie**, bez podawania numeru), przelew na inny rachunek (wymaga numeru), bon. Pismo zawiera konkretne zdanie dla wybranej formy. Podpowiedź: bilet kupiony gotówką w kasie → przelew. Ostatni wybór zapisywany w profilu konta i zaznaczany domyślnie.
 - **Mobile-first:** pełna wygoda na telefonie: bilet z **aparatu lub z galerii**; na komputerze wgranie zdjęcia lub pliku biletu (także PDF e-biletu); duże cele dotykowe, przyklejony przycisk akcji.
-- Dwa motywy: jasny fintech i ciemny szklany, z przełącznikiem.
+- Jasny i ciemny motyw z przełącznikiem: **jeden język projektowy, dwie palety kolorów** (te same kształty, typografia, układ i animacje; różnią się tylko kolory). Subtelny efekt szkła w tych samych miejscach w obu motywach.
 - Działa bez klucza AI (ścieżka ręczna, pismo z szablonu).
 
 **Nie-cele (MVP):** autobusy, komunikacja miejska, loty; logowanie przez Google/Facebook, reset hasła e-mailem i weryfikacja e-maila; wysyłka reklamacji przez serwer; przechowywanie zdjęć; upload dowodu opóźnienia (użytkownik wpisuje liczbę minut); mailto.

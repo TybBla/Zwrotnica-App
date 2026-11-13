@@ -20,4 +20,5 @@
 19. **Forma wypłaty (3 opcje):** domyślnie zwrot na konto/kartę użyte do zakupu (bez numeru rachunku); przelew na inny rachunek (numer wymagany); bon. Konkretne sformułowanie w piśmie dla każdej opcji. (Wg wiedzy użytkownika – nie zweryfikowane w regulaminach przewoźników.)
 20. **Dozwolone znaki:** emoji/symbole zablokowane (UI i API); listy znaków per pole; inteligentna interpunkcja z telefonów zamieniana na zwykłą.
 21. **Przewoźnik i kategoria jako listy wyboru** (+ "Inny" z polem tekstowym); stacje opcjonalne (braki → luki w piśmie).
+22. **ZMIANA (zastępuje 9):** jasny i ciemny motyw to ten sam styl – jedna estetyka (czysty fintech), dwie palety kolorów; bez osobnego "szklanego" stylu dla ciemnego.
 3. **Prywatność AI:** demo/MVP używa darmowego Gemini; w README zaznaczyć, że w produkcji użyty byłby model klasy komercyjnej z odpowiednią konfiguracją prywatności. W UI tylko krótka, nienachalna wzmianka (bez dużych ostrzeżeń).
