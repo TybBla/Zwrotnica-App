@@ -77,7 +77,7 @@ public sealed class GeminiClient(HttpClient http, GeminiOptions options) : IAiCl
         {
             throw new AiUnavailableException(Unavailable);
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or NotSupportedException) // non-JSON 200
         {
             throw new AiUnavailableException(Unavailable);
         }

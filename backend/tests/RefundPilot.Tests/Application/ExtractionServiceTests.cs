@@ -84,4 +84,33 @@ public sealed class ExtractionServiceTests
         Assert.Contains("never guess", ai.Prompt);
         Assert.Equal(7, result.MissingFields.Count);
     }
+
+    [Fact]
+    public async Task HugeNumber_DoesNotThrowAndBecomesMissing()
+    {
+        var result = await RunAsync("""{"carrier":"X","ticketPrice":1e400,"travelDate":"2026-11-01"}""");
+
+        Assert.Null(result.TicketPrice);
+        Assert.Contains("ticketPrice", result.MissingFields);
+    }
+
+    [Fact]
+    public async Task LongStrings_AreCappedAt100Characters()
+    {
+        var result = await RunAsync($$"""{"carrier":"{{new string('a', 500)}}","travelDate":"2026-11-01"}""");
+
+        Assert.Equal(100, result.Carrier!.Length);
+    }
+
+    [Fact]
+    public async Task TodayIsWarsawLocalDate()
+    {
+        // 23:30 UTC on 12 Nov is already 13 Nov in Warsaw.
+        var late = new FakeTimeProvider(new DateTimeOffset(2026, 11, 12, 23, 30, 0, TimeSpan.Zero));
+        var ai = new FakeAi("""{"carrier":"X","ticketPrice":50,"travelDate":"2026-11-13"}""");
+
+        var result = await new ExtractionService(ai, late).ExtractAsync(OneFile, CancellationToken.None);
+
+        Assert.Equal(new DateOnly(2026, 11, 13), result.TravelDate);
+    }
 }

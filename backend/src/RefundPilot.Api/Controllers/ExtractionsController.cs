@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RefundPilot.Application.Abstractions;
 using RefundPilot.Application.Dtos;
 using RefundPilot.Application.Services;
@@ -22,6 +23,7 @@ public sealed class ExtractionsController(IExtractionService extraction, IAiClie
 
     /// <summary>Reads ticket data from 1-4 uploaded files. Files are processed in memory and never stored.</summary>
     [HttpPost]
+    [EnableRateLimiting("extractions")]
     [RequestSizeLimit(MaxRequestBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = MaxRequestBytes)]
     public async Task<ActionResult<ExtractionDto>> Extract(

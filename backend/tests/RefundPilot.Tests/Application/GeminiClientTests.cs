@@ -63,4 +63,14 @@ public sealed class GeminiClientTests
         await Assert.ThrowsAsync<AiUnavailableException>(() =>
             client.GenerateJsonAsync("p", [], """{"type":"object"}""", CancellationToken.None));
     }
+
+    [Fact]
+    public async Task NonJsonSuccessResponse_ThrowsAiUnavailable()
+    {
+        var client = Client(new StubHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<html>oops</html>", Encoding.UTF8, "text/html") }));
+
+        await Assert.ThrowsAsync<AiUnavailableException>(() =>
+            client.GenerateJsonAsync("p", [], """{"type":"object"}""", CancellationToken.None));
+    }
 }

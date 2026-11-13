@@ -115,4 +115,26 @@ public sealed class ExtractionsApiTests : IClassFixture<TestApiFactory>
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
     }
+
+    [Fact]
+    public async Task EleventhRequestWithinAMinute_Returns429WithPolishProblem()
+    {
+        var client = _factory
+            .WithWebHostBuilder(b =>
+            {
+                b.UseSetting("RateLimit:ExtractionsPerMinute", "10");
+                b.ConfigureTestServices(s => s.AddSingleton<IAiClient>(new FakeAi(true)));
+            })
+            .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        for (var i = 0; i < 10; i++)
+        {
+            var ok = await client.PostAsync("/api/extractions", Upload(("application/pdf", "t.pdf", 100)));
+            Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        }
+        var limited = await client.PostAsync("/api/extractions", Upload(("application/pdf", "t.pdf", 100)));
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        Assert.Contains("Zbyt wiele", await limited.Content.ReadAsStringAsync());
+    }
 }

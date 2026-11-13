@@ -48,15 +48,8 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
     {
         var raw = await ai.GenerateJsonAsync(Prompt, files, Schema, ct);
 
-        JsonElement root;
-        try
-        {
-            root = JsonDocument.Parse(raw).RootElement;
-        }
-        catch (JsonException)
-        {
-            throw new AiUnavailableException(Malformed);
-        }
+        using var document = Parse(raw);
+        var root = document.RootElement;
         if (root.ValueKind != JsonValueKind.Object)
             throw new AiUnavailableException(Malformed);
 
@@ -80,11 +73,27 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         return new(carrier, category, from, to, number, price, date, missing, UsedAi: true);
     }
 
+    private const int MaxTextLength = 100;
+
+    private static JsonDocument Parse(string raw)
+    {
+        try
+        {
+            return JsonDocument.Parse(raw);
+        }
+        catch (JsonException)
+        {
+            throw new AiUnavailableException(Malformed);
+        }
+    }
+
     private static string? Text(JsonElement root, string name)
     {
-        if (!root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String)
+        if (!root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(value.GetString()))
             return null;
-        return string.IsNullOrWhiteSpace(value.GetString()) ? null : value.GetString()!.Trim();
+        var text = value.GetString()!.Trim();
+        return text.Length > MaxTextLength ? text[..MaxTextLength] : text;
     }
 
     private static decimal? Price(JsonElement root)
@@ -93,7 +102,10 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
             return null;
         decimal price;
         if (value.ValueKind == JsonValueKind.Number)
-            price = value.GetDecimal();
+        {
+            if (!value.TryGetDecimal(out price))
+                return null;
+        }
         else if (value.ValueKind == JsonValueKind.String
                  && decimal.TryParse(value.GetString()?.Replace(',', '.'), NumberStyles.Number,
                      CultureInfo.InvariantCulture, out var parsed))
@@ -108,7 +120,7 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         if (Text(root, "travelDate") is not { } text
             || !DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
             return null;
-        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var today = WarsawClock.Today(clock);
         return date > today || date < today.AddYears(-2) ? null : date;
     }
 }

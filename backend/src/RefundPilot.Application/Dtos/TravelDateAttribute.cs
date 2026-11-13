@@ -14,7 +14,7 @@ public sealed class TravelDateAttribute : ValidationAttribute
             return new ValidationResult("Podaj datę podróży.");
 
         var clock = validationContext.GetService(typeof(TimeProvider)) as TimeProvider ?? TimeProvider.System;
-        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var today = WarsawClock.Today(clock);
         return date > today ? new ValidationResult("Data podróży nie może być z przyszłości.") : ValidationResult.Success;
     }
 }
