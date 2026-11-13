@@ -1,0 +1,86 @@
+.tooltip {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.tooltip__trigger {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-tertiary);
+  transition:
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    transform var(--duration-press) var(--ease-out);
+}
+
+/* Visual 28 px, hit area 44 px. */
+.tooltip__trigger::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+
+.tooltip__trigger[aria-describedby] {
+  color: var(--accent-text);
+  background: var(--accent-tint);
+}
+
+.tooltip__trigger:active {
+  transform: scale(0.92);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tooltip__trigger:hover {
+    color: var(--text);
+  }
+}
+
+.tooltip__bubble {
+  --nudge: 0px;
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + var(--space-2));
+  left: 50%;
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 24px));
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg), var(--card-highlight);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-body);
+  text-align: left;
+  white-space: normal;
+  transform: translateX(calc(-50% + var(--nudge)));
+  transform-origin: calc(50% - var(--nudge)) top;
+  opacity: 1;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateX(calc(-50% + var(--nudge))) translateY(var(--enter-shift)) scale(var(--enter-scale));
+  }
+}
+
+.tooltip__bubble[data-side='top'] {
+  top: auto;
+  bottom: calc(100% + var(--space-2));
+  transform-origin: calc(50% - var(--nudge)) bottom;
+}
+
+.tooltip__bubble[data-instant] {
+  transition-duration: 0ms;
+}

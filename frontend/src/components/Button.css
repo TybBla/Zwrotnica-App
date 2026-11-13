@@ -1,0 +1,143 @@
+.button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  min-height: var(--control-height);
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-body);
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease,
+    transform var(--duration-press) var(--ease-out);
+}
+
+.button--sm {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.button--block {
+  display: grid;
+  width: 100%;
+}
+
+.button__content {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition:
+    opacity var(--duration-fast) ease,
+    filter var(--duration-fast) ease;
+}
+
+.button:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+}
+
+.button:disabled {
+  cursor: not-allowed;
+}
+
+.button:disabled:not([data-loading]) {
+  opacity: 0.5;
+}
+
+/* Primary — the one action per screen */
+.button--primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+
+.button--primary:active:not(:disabled) {
+  background: var(--accent-pressed);
+}
+
+/* Secondary — quiet surface with an outline */
+.button--secondary {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.button--secondary:active:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+/* Ghost — text-weight actions */
+.button--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.button--ghost:active:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button--primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+    box-shadow:
+      0 4px 14px -4px var(--accent-glow),
+      inset 0 1px 0 rgb(255 255 255 / 0.14);
+  }
+
+  .button--secondary:hover:not(:disabled) {
+    border-color: var(--border-strong);
+  }
+
+  .button--ghost:hover:not(:disabled) {
+    background: var(--surface-sunken);
+    color: var(--text);
+  }
+}
+
+/* Loading: the label blurs out in place (width kept), a spinner takes its spot. */
+.button[data-loading] .button__content {
+  opacity: 0;
+  filter: blur(2px);
+}
+
+.button__spinner {
+  position: absolute;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 600ms linear infinite;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button__spinner {
+    animation: button-pulse 1.2s ease-in-out infinite !important;
+    animation-duration: 1.2s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  @keyframes button-pulse {
+    50% {
+      opacity: 0.4;
+    }
+  }
+}

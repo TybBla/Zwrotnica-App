@@ -1,0 +1,23 @@
+.card {
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--card-highlight);
+}
+
+.card--raised {
+  box-shadow: var(--shadow-md), var(--card-highlight);
+}
+
+.card--pad-md {
+  padding: var(--space-5);
+}
+
+.card--pad-lg {
+  padding: var(--space-6);
+}
+
+@media (min-width: 40rem) {
+  .card--pad-lg {
+    padding: var(--space-8);
+  }
+}

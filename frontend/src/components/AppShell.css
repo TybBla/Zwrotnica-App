@@ -1,0 +1,94 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.shell__skip {
+  position: absolute;
+  z-index: 100;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  transform: translateY(-200%);
+}
+
+.shell__skip:focus-visible {
+  transform: none;
+}
+
+/* Glass: a translucent, blurred layer content scrolls under — same material in both schemes. */
+.shell__header {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  padding-top: env(safe-area-inset-top);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  box-shadow: 0 1px 0 var(--glass-border);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .shell__header {
+    background: var(--bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.shell__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  height: var(--header-height);
+}
+
+.shell__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.shell__main {
+  flex: 1;
+  padding-bottom: max(var(--space-12), env(safe-area-inset-bottom));
+  outline: none;
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  margin-left: calc(-1 * var(--space-1));
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.03em;
+  text-decoration: none;
+  transition: transform var(--duration-press) var(--ease-out);
+}
+
+.wordmark:active {
+  transform: scale(var(--press-scale));
+}
+
+.wordmark__logo {
+  flex: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px -2px var(--accent-glow);
+}
+
+.wordmark__accent {
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}

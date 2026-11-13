@@ -1,0 +1,48 @@
+.theme-toggle {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-press) var(--ease-out);
+}
+
+.theme-toggle:active {
+  transform: scale(var(--press-scale));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .theme-toggle:hover {
+    background: var(--surface-sunken);
+    color: var(--text);
+  }
+}
+
+/* Both icons share one cell; the inactive one rotates out so the switch reads as one object turning. */
+.theme-toggle__icon {
+  grid-area: 1 / 1;
+  display: grid;
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+.theme-toggle[data-theme-state='light'] .theme-toggle__icon--sun,
+.theme-toggle[data-theme-state='dark'] .theme-toggle__icon--moon {
+  opacity: 0;
+  transform: rotate(-60deg) scale(0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle[data-theme-state] .theme-toggle__icon {
+    transform: none;
+  }
+}

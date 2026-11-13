@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f6f8" />
+    <meta name="description" content="Refund Pilot – sprawdź, ile należy Ci się za opóźniony pociąg, i wyślij gotową reklamację." />
+    <title>Refund Pilot – odszkodowanie za opóźniony pociąg</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap"
+    />
+    <script>
+      // Set the color scheme before first paint (no flash): stored choice, else the OS preference.
+      ;(function () {
+        var theme = null
+        try {
+          theme = localStorage.getItem('refund-pilot-theme')
+        } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark')
+          theme = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        document.documentElement.dataset.theme = theme
+        if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0c10')
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

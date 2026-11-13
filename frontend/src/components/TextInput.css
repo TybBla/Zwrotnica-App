@@ -1,0 +1,91 @@
+/* Shared by TextInput, TextArea and Select. */
+.input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input__control {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-base); /* 16 px: no iOS zoom on focus */
+  line-height: var(--leading-snug);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition:
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+}
+
+.input__control::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+.input__control:focus-visible,
+.input__control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring);
+}
+
+.input__control[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.input__control[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 var(--focus-ring-width) color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
+.input__control:disabled {
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+.input__control--multiline {
+  display: block;
+  padding-block: var(--space-3);
+  line-height: var(--leading-body);
+  resize: vertical;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .input__control:hover:not(:focus, :disabled, [aria-invalid='true']) {
+    border-color: var(--text-tertiary);
+  }
+}
+
+.input--with-suffix .input__control {
+  padding-right: calc(var(--space-4) + 3ch);
+}
+
+.input__suffix {
+  position: absolute;
+  right: var(--space-4);
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
+  pointer-events: none;
+}
+
+.input--select .input__control {
+  padding-right: calc(var(--space-4) + 1.5rem);
+  cursor: pointer;
+}
+
+.input--select .input__control[data-placeholder] {
+  color: var(--text-tertiary);
+}
+
+.input__chevron {
+  position: absolute;
+  right: var(--space-3);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
