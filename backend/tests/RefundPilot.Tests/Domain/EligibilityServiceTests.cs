@@ -58,4 +58,16 @@ public class EligibilityServiceTests
     {
         Assert.Equal(Verdict.Unknown, _service.Assess("PKP Intercity", null).Verdict);
     }
+
+    [Theory]
+    [InlineData("Slovak Intercity", "IC")]
+    [InlineData("ÖBB Intercity", "IC")]
+    [InlineData("Intercity Express", "IC")]
+    [InlineData("Intercity", "IC")]
+    public void Assess_ForeignOrBareIntercity_IsUnknown(string carrier, string category) =>
+        Assert.Equal(Verdict.Unknown, _service.Assess(carrier, category).Verdict);
+
+    [Fact]
+    public void Assess_RegionalWinsOverIntercityWording() =>
+        Assert.Equal(Verdict.NotCovered, _service.Assess("Polregio Intercity", "IC").Verdict);
 }

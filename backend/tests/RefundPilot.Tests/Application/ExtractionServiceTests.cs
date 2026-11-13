@@ -145,7 +145,9 @@ public sealed class ExtractionServiceTests
     [Theory]
     [InlineData("PKP INTERCITY", "PKP Intercity")]
     [InlineData("pkp ic", "PKP Intercity")]
-    [InlineData("Intercity", "PKP Intercity")]
+    [InlineData("Intercity", "Intercity")]
+    [InlineData("ÖBB Intercity", "ÖBB Intercity")]
+    [InlineData("Polregio Intercity", "Polregio")]
     [InlineData("koleje slaskie", "Koleje Śląskie")]
     [InlineData("Nieznany Przewoźnik", "Nieznany Przewoźnik")]
     public async Task Carrier_IsMappedToTheDictionaryNameOtherwiseKeptSanitized(string raw, string expected)

@@ -28,7 +28,7 @@ public static class CarrierCatalog
     // (Reg. (EU) 2021/782 art. 19 together with the national exemption).
     public static IReadOnlyList<CarrierInfo> Carriers { get; } =
     [
-        new("PKP Intercity", Verdict.Eligible, ["pkp intercity", "pkp ic", "intercity"], Categories),
+        new("PKP Intercity", Verdict.Eligible, ["pkp intercity", "pkp ic"], Categories),
         Regional("Polregio", "polregio"),
         Regional("Koleje Mazowieckie", "koleje mazowieckie"),
         Regional("Koleje Śląskie", "koleje slaskie"),
@@ -51,16 +51,25 @@ public static class CarrierCatalog
     private static CarrierInfo Regional(string name, params string[] aliases) =>
         new(name, Verdict.NotCovered, aliases, []);
 
-    /// <summary>The dictionary carrier named in <paramref name="text"/> (longest matching alias wins), or null.</summary>
+    /// <summary>
+    /// The dictionary carrier named in <paramref name="text"/>, or null. Same precedence as eligibility:
+    /// regional (not covered) carriers first (longest alias wins), then PKP Intercity.
+    /// </summary>
     public static CarrierInfo? FindCarrier(string? text)
     {
         var normalized = Normalize(text);
-        return Carriers
+        var regional = Carriers
+            .Where(c => c.Coverage == Verdict.NotCovered)
             .Select(c => (Carrier: c, Length: c.Aliases.Where(a => ContainsKey(normalized, a)).Select(a => a.Length).DefaultIfEmpty(0).Max()))
             .Where(x => x.Length > 0)
             .OrderByDescending(x => x.Length)
             .Select(x => x.Carrier)
             .FirstOrDefault();
+        if (regional is not null)
+            return regional;
+        if (IsRegional(normalized))
+            return null; // generic regional marker only (e.g. "SKM Poznań"): not a dictionary entry, never PKP
+        return Carriers.FirstOrDefault(c => c.Coverage == Verdict.Eligible && c.Aliases.Any(a => ContainsKey(normalized, a)));
     }
 
     /// <summary>The dictionary category whose code equals <paramref name="text"/> (case-insensitive), or null.</summary>
