@@ -91,7 +91,7 @@ public sealed class CaseService(
         currentUser.UserId is { } userId ? repository.GetAsync(id, userId) : Task.FromResult<RefundCase?>(null);
 
     private void Apply(
-        RefundCase target, string carrier, string? trainCategory, string fromStation, string toStation,
+        RefundCase target, string carrier, string? trainCategory, string? fromStation, string? toStation,
         string? ticketNumber, DateOnly travelDate, decimal ticketPrice, IncidentType incidentType,
         int delayMinutes, DelayCause? delayCause, bool isSeasonTicket, PayoutPreference payoutPreference,
         string? notes)
@@ -101,8 +101,8 @@ public sealed class CaseService(
 
         target.Carrier = carrier.Trim();
         target.TrainCategory = Clean(trainCategory);
-        target.FromStation = fromStation.Trim();
-        target.ToStation = toStation.Trim();
+        target.FromStation = Clean(fromStation);
+        target.ToStation = Clean(toStation);
         target.TicketNumber = Clean(ticketNumber);
         target.TravelDate = travelDate;
         target.TicketPrice = ticketPrice;

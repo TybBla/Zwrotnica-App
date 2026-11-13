@@ -385,4 +385,44 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         Assert.Equal("Gdynia - Gdańsk", json.GetProperty("fromStation").GetString());
         Assert.Equal("Konduktor: \"brak info\"\nDrugi wiersz...", json.GetProperty("notes").GetString());
     }
+
+    [Fact]
+    public async Task Post_WithoutStations_Returns201WithNullStations()
+    {
+        var client = await LoggedInClientAsync("nostations@test.pl");
+
+        var json = await CreateAsync(client, new
+        {
+            carrier = "PKP Intercity", trainCategory = "IC", travelDate = "2026-11-01", ticketPrice = 40m,
+            incidentType = "Delay", delayMinutes = 95, isSeasonTicket = false, payoutPreference = "BankTransfer",
+        });
+
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("fromStation").ValueKind);
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("toStation").ValueKind);
+        var fetched = await JsonAsync(await client.GetAsync($"/api/cases/{json.GetProperty("id").GetInt32()}"));
+        Assert.Equal(JsonValueKind.Null, fetched.GetProperty("fromStation").ValueKind);
+    }
+
+    [Fact]
+    public async Task Put_BlankStations_ClearsThemAndEmojiStationStillRejected()
+    {
+        var client = await LoggedInClientAsync("blankstations@test.pl");
+        var id = (await CreateAsync(client, NewCase())).GetProperty("id").GetInt32();
+
+        var cleared = await client.PutAsJsonAsync($"/api/cases/{id}", new
+        {
+            carrier = "PKP Intercity", trainCategory = "IC", fromStation = "  ", toStation = "", travelDate = "2026-11-01",
+            ticketPrice = 40m, incidentType = "Delay", delayMinutes = 95, isSeasonTicket = false,
+            payoutPreference = "BankTransfer",
+        });
+        Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+        Assert.Equal(JsonValueKind.Null, (await JsonAsync(cleared)).GetProperty("fromStation").ValueKind);
+
+        var bad = await client.PutAsJsonAsync($"/api/cases/{id}", new
+        {
+            carrier = "PKP Intercity", fromStation = "Warszawa 😀", travelDate = "2026-11-01",
+            ticketPrice = 40m, incidentType = "Delay", delayMinutes = 95, payoutPreference = "BankTransfer",
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+    }
 }

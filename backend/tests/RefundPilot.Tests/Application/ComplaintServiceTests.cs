@@ -68,15 +68,15 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         await _connection.DisposeAsync();
     }
 
-    private async Task<int> AddCaseAsync(string userId, DelayCause? cause = null)
+    private async Task<int> AddCaseAsync(string userId, DelayCause? cause = null, bool noStations = false)
     {
         var c = new RefundCase
         {
             UserId = userId,
             Carrier = "PKP Intercity",
             TrainCategory = "IC",
-            FromStation = "Gdynia Główna",
-            ToStation = "Kraków Główny",
+            FromStation = noStations ? null : "Gdynia Główna",
+            ToStation = noStations ? null : "Kraków Główny",
             TicketNumber = "IC-4821-0093",
             TravelDate = new DateOnly(2026, 11, 1),
             TicketPrice = 40m,
@@ -410,5 +410,57 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     {
         Assert.True(await Service(Failing()).CaseExistsAsync(_annaCaseId));
         Assert.False(await Service(Failing()).CaseExistsAsync(_otherCaseId));
+    }
+
+    [Fact]
+    public async Task Template_MissingStations_UsesPlaceholdersAndReportsThem()
+    {
+        var id = await AddCaseAsync(Anna, noStations: true);
+
+        var letter = await GenerateAsync(Failing(), Req(), caseId: id);
+
+        Assert.Contains("[stacja początkowa]", letter.Body);
+        Assert.Contains("[stacja docelowa]", letter.Body);
+        Assert.DoesNotContain("{{", letter.Body);
+        Assert.Equal(["stacja początkowa", "stacja docelowa"], letter.MissingFields);
+    }
+
+    [Fact]
+    public async Task AiPrompt_SaysStationsAreUnknownInsteadOfInventingThem()
+    {
+        var id = await AddCaseAsync(Anna, noStations: true);
+        var ai = new FakeAi(ValidAiJson());
+
+        await GenerateAsync(ai, Req(), caseId: id);
+
+        Assert.Contains("unknown", ai.Prompt!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("{{FROM_STATION}}", ai.Prompt);
+        Assert.DoesNotContain("Gdynia", ai.Prompt);
+    }
+
+    [Fact]
+    public async Task AiOutput_WithStationTokensForMissingStations_IsAcceptedAndFilled()
+    {
+        var id = await AddCaseAsync(Anna, noStations: true);
+        var ai = new FakeAi(ValidAiJson(
+            "{{FULL_NAME}}\n{{ADDRESS}}\n\nPrzejazd {{FROM_STATION}} - {{TO_STATION}}: 10,00 zł, art. 19 rozporządzenia (UE) 2021/782.\n\n{{PAYOUT}}\n\n{{FULL_NAME}}"));
+
+        var letter = await GenerateAsync(ai, Req(), caseId: id);
+
+        Assert.True(letter.UsedAi);
+        Assert.Contains("Przejazd [stacja początkowa] - [stacja docelowa]", letter.Body);
+        Assert.Equal(["stacja początkowa", "stacja docelowa"], letter.MissingFields);
+    }
+
+    [Fact]
+    public async Task AiOutput_WithStationTokensWhenStationsKnown_FallsBackToTemplate()
+    {
+        var ai = new FakeAi(ValidAiJson(
+            "{{FULL_NAME}}\n{{ADDRESS}}\n\n{{FROM_STATION}}: 10,00 zł, art. 19 rozporządzenia (UE) 2021/782.\n\n{{PAYOUT}}"));
+
+        var letter = await GenerateAsync(ai, Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.Contains("Gdynia Główna", letter.Body);
     }
 }

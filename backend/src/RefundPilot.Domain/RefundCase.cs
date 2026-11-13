@@ -6,8 +6,8 @@ public sealed class RefundCase
     public string UserId { get; set; } = string.Empty;
     public string Carrier { get; set; } = string.Empty;
     public string? TrainCategory { get; set; }
-    public string FromStation { get; set; } = string.Empty;
-    public string ToStation { get; set; } = string.Empty;
+    public string? FromStation { get; set; }
+    public string? ToStation { get; set; }
     public string? TicketNumber { get; set; }
     public DateOnly TravelDate { get; set; }
     public decimal TicketPrice { get; set; }

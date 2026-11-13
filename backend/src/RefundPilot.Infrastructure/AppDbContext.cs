@@ -36,8 +36,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
 
         entity.Property(c => c.Carrier).IsRequired().HasMaxLength(100);
         entity.Property(c => c.TrainCategory).HasMaxLength(20);
-        entity.Property(c => c.FromStation).IsRequired().HasMaxLength(100);
-        entity.Property(c => c.ToStation).IsRequired().HasMaxLength(100);
+        entity.Property(c => c.FromStation).HasMaxLength(100);
+        entity.Property(c => c.ToStation).HasMaxLength(100);
         entity.Property(c => c.TicketNumber).HasMaxLength(50);
         entity.Property(c => c.Notes).HasMaxLength(2000);
 

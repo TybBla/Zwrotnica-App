@@ -83,4 +83,11 @@ public sealed class AllowedCharactersAttributeTests
     [Fact]
     public void Notes_RejectTabsAfterNoCanonicalization() =>
         Assert.NotNull(Validate(TextField.Notes, "a\tb"));
+
+    [Fact]
+    public void Sanitize_NotesKeepNewLinesOtherFieldsFlattenThem()
+    {
+        Assert.Equal("linia 1\nlinia 2", TextRules.Sanitize(TextField.Notes, "linia 1\r\nlinia 2😀"));
+        Assert.Equal("linia 1 linia 2", TextRules.Sanitize(TextField.Station, "linia 1\nlinia 2"));
+    }
 }

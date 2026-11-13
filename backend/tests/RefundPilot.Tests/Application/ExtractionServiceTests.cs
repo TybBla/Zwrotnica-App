@@ -141,4 +141,33 @@ public sealed class ExtractionServiceTests
         Assert.Equal("O'Neil Rail", result.Carrier);
         Assert.Equal("Gdynia - Gdańsk", result.FromStation);
     }
+
+    [Theory]
+    [InlineData("PKP INTERCITY", "PKP Intercity")]
+    [InlineData("pkp ic", "PKP Intercity")]
+    [InlineData("Intercity", "PKP Intercity")]
+    [InlineData("koleje slaskie", "Koleje Śląskie")]
+    [InlineData("Nieznany Przewoźnik", "Nieznany Przewoźnik")]
+    public async Task Carrier_IsMappedToTheDictionaryNameOtherwiseKeptSanitized(string raw, string expected)
+    {
+        var result = await RunAsync($$"""
+            {"carrier":"{{raw}}","trainCategory":"ic","fromStation":null,"toStation":null,"ticketNumber":null,
+             "ticketPrice":null,"travelDate":null}
+            """);
+
+        Assert.Equal(expected, result.Carrier);
+        Assert.Equal("IC", result.TrainCategory);
+    }
+
+    [Fact]
+    public async Task UnknownCategory_IsKeptAsSanitizedText()
+    {
+        var result = await RunAsync("""
+            {"carrier":"Polregio","trainCategory":"Regio Express","fromStation":null,"toStation":null,
+             "ticketNumber":null,"ticketPrice":null,"travelDate":null}
+            """);
+
+        Assert.Equal("Polregio", result.Carrier);
+        Assert.Equal("Regio Express", result.TrainCategory);
+    }
 }

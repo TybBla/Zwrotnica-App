@@ -76,7 +76,8 @@ public static class TextRules
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
-        var text = Canonicalize(Rules[field].Disallowed.Replace(Canonicalize(value), ""));
+        var multiline = field == TextField.Notes;
+        var text = Canonicalize(Rules[field].Disallowed.Replace(Canonicalize(value, multiline), ""), multiline);
         return text.Length == 0 ? null : text;
     }
 }

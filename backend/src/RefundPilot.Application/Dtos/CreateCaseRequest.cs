@@ -8,8 +8,8 @@ namespace RefundPilot.Application.Dtos;
 public sealed record CreateCaseRequest(
     [property: JsonConverter(typeof(CanonicalTextConverter))] [Required(ErrorMessage = "Podaj przewoźnika."), MaxLength(200), AllowedCharacters(TextField.Carrier)] string Carrier,
     [property: JsonConverter(typeof(CanonicalTextConverter))] [MaxLength(50), AllowedCharacters(TextField.TrainCategory)] string? TrainCategory,
-    [property: JsonConverter(typeof(CanonicalTextConverter))] [Required(ErrorMessage = "Podaj stację początkową."), MaxLength(200), AllowedCharacters(TextField.Station)] string FromStation,
-    [property: JsonConverter(typeof(CanonicalTextConverter))] [Required(ErrorMessage = "Podaj stację docelową."), MaxLength(200), AllowedCharacters(TextField.Station)] string ToStation,
+    [property: JsonConverter(typeof(CanonicalTextConverter))] [MaxLength(200), AllowedCharacters(TextField.Station)] string? FromStation,
+    [property: JsonConverter(typeof(CanonicalTextConverter))] [MaxLength(200), AllowedCharacters(TextField.Station)] string? ToStation,
     [property: JsonConverter(typeof(CanonicalTextConverter))] [MaxLength(100), AllowedCharacters(TextField.TicketNumber)] string? TicketNumber,
     [TravelDate] DateOnly TravelDate,
     [Range(0, 100000, ErrorMessage = "Cena biletu nie może być ujemna.")] decimal TicketPrice,

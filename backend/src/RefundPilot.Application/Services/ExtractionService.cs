@@ -3,6 +3,7 @@ using System.Text.Json;
 using RefundPilot.Application.Abstractions;
 using RefundPilot.Application.Dtos;
 using RefundPilot.Application.Validation;
+using RefundPilot.Domain;
 
 namespace RefundPilot.Application.Services;
 
@@ -54,8 +55,10 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         if (root.ValueKind != JsonValueKind.Object)
             throw new AiUnavailableException(Malformed);
 
-        var carrier = Text(root, "carrier", TextField.Carrier);
-        var category = Text(root, "trainCategory", TextField.TrainCategory);
+        var rawCarrier = Text(root, "carrier", TextField.Carrier);
+        var carrier = CarrierCatalog.FindCarrier(rawCarrier)?.Name ?? rawCarrier;
+        var rawCategory = Text(root, "trainCategory", TextField.TrainCategory);
+        var category = CarrierCatalog.FindCategory(rawCategory)?.Code ?? rawCategory;
         var from = Text(root, "fromStation", TextField.Station);
         var to = Text(root, "toStation", TextField.Station);
         var number = Text(root, "ticketNumber", TextField.TicketNumber);

@@ -5,9 +5,15 @@ namespace RefundPilot.Application;
 
 /// <summary>Case facts that go into a letter. Deliberately contains no personal data about the passenger.</summary>
 public sealed record ComplaintFacts(
-    string Carrier, string? TrainCategory, string From, string To, DateOnly TravelDate, string? TicketNumber,
+    string Carrier, string? TrainCategory, string? From, string? To, DateOnly TravelDate, string? TicketNumber,
     decimal TicketPrice, decimal Amount, IncidentType Incident, int DelayMinutes, DelayCause? Cause)
 {
+    /// <summary>Station name, or the token the service later turns into a placeholder when the station is unknown.</summary>
+    public string FromText => string.IsNullOrWhiteSpace(From) ? ComplaintTemplate.FromStation : From;
+    public string ToText => string.IsNullOrWhiteSpace(To) ? ComplaintTemplate.ToStation : To;
+    public bool FromMissing => string.IsNullOrWhiteSpace(From);
+    public bool ToMissing => string.IsNullOrWhiteSpace(To);
+
     public string AmountText => FormatMoney(Amount);
     public string PriceText => FormatMoney(TicketPrice);
     public string DateText => TravelDate.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
@@ -37,6 +43,8 @@ public static class ComplaintTemplate
     public const string Address = "{{ADDRESS}}";
     public const string Iban = "{{IBAN}}";
     public const string Payout = "{{PAYOUT}}";
+    public const string FromStation = "{{FROM_STATION}}";
+    public const string ToStation = "{{TO_STATION}}";
 
     public static (string Subject, string Body) Build(ComplaintFacts f)
     {
@@ -60,13 +68,13 @@ public static class ComplaintTemplate
 
             {f.Carrier}
 
-            Dotyczy: bilet{ticket}, przejazd relacją {f.From} – {f.To} w dniu {f.DateText}
+            Dotyczy: bilet{ticket}, przejazd relacją {f.FromText} – {f.ToText} w dniu {f.DateText}
 
             Szanowni Państwo,
 
             zwracam się z wnioskiem o wypłatę odszkodowania na podstawie art. 19 rozporządzenia (UE) 2021/782 Parlamentu Europejskiego i Rady z dnia 29 kwietnia 2021 r. w sprawie praw i obowiązków pasażerów kolejowych.
 
-            W dniu {f.DateText} odbyłem(-am) podróż pociągiem{category} relacją {f.From} – {f.To} na podstawie biletu{ticket}, za który zapłaciłem(-am) {f.PriceText}. {what}
+            W dniu {f.DateText} odbyłem(-am) podróż pociągiem{category} relacją {f.FromText} – {f.ToText} na podstawie biletu{ticket}, za który zapłaciłem(-am) {f.PriceText}. {what}
 
             Wnoszę o wypłatę odszkodowania w wysokości {f.AmountText}.
 

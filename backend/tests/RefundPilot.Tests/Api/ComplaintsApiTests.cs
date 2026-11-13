@@ -221,4 +221,27 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Post_CaseWithoutStations_LetterHasPlaceholdersAndMissingFields()
+    {
+        var client = await LoggedInClientAsync("nostationsletter@test.pl");
+        var created = await client.PostAsJsonAsync("/api/cases", new
+        {
+            carrier = "PKP Intercity", trainCategory = "IC", travelDate = "2026-11-01", ticketPrice = 40m,
+            incidentType = "Delay", delayMinutes = 70, isSeasonTicket = false,
+        });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var response = await client.PostAsJsonAsync($"/api/cases/{id}/complaint", new { payout = "Voucher" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains("[stacja początkowa]", json.GetProperty("body").GetString());
+        Assert.Contains("[stacja docelowa]", json.GetProperty("body").GetString());
+        var missing = json.GetProperty("missingFields").EnumerateArray().Select(m => m.GetString()).ToList();
+        Assert.Contains("stacja początkowa", missing);
+        Assert.Contains("stacja docelowa", missing);
+    }
 }

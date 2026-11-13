@@ -93,6 +93,25 @@ public sealed partial class ComplaintService(
         }
     }
 
+    private static string Route(ComplaintFacts f)
+    {
+        if (!f.FromMissing && !f.ToMissing)
+            return $"{f.From} - {f.To}";
+        var from = f.FromMissing ? "unknown" : f.From;
+        var to = f.ToMissing ? "unknown" : f.To;
+        return $"from {from} to {to}";
+    }
+
+    private static string StationRules(ComplaintFacts f)
+    {
+        var rules = "";
+        if (f.FromMissing)
+            rules += $"\n- The departure station is unknown: write the literal token {ComplaintTemplate.FromStation} where it belongs; never invent or guess a station.";
+        if (f.ToMissing)
+            rules += $"\n- The destination station is unknown: write the literal token {ComplaintTemplate.ToStation} where it belongs; never invent or guess a station.";
+        return rules;
+    }
+
     internal static string BuildPrompt(ComplaintFacts f)
     {
         var incident = f.Incident == IncidentType.Cancellation
@@ -106,7 +125,7 @@ public sealed partial class ComplaintService(
             Case facts:
             - Carrier: {f.Carrier}
             - Train category: {f.TrainCategory ?? "not given"}
-            - Route: {f.From} - {f.To}
+            - Route: {Route(f)}
             - Travel date: {f.DateText}
             - Ticket number: {f.TicketNumber ?? "not given"}
             - Ticket price: {f.PriceText}
@@ -122,7 +141,7 @@ public sealed partial class ComplaintService(
               {ComplaintTemplate.Address} (passenger address, in the sender block),
               {ComplaintTemplate.Payout} (alone on its own line, where the passenger states how the payout should be made).
             - Never write a name, address or bank account number yourself.
-            - Do not add legal claims beyond the facts given.
+            - Do not add legal claims beyond the facts given.{StationRules(f)}
             """;
     }
 
@@ -155,6 +174,10 @@ public sealed partial class ComplaintService(
 
         var tokens = TokenPattern().Matches(body).Select(m => m.Value).ToHashSet();
         var allowed = new HashSet<string> { ComplaintTemplate.FullName, ComplaintTemplate.Address, ComplaintTemplate.Payout };
+        if (facts.FromMissing)
+            allowed.Add(ComplaintTemplate.FromStation);
+        if (facts.ToMissing)
+            allowed.Add(ComplaintTemplate.ToStation);
         if (payout == PayoutPreference.BankTransfer)
             allowed.Add(ComplaintTemplate.Iban);
         if (!tokens.IsSubsetOf(allowed)
@@ -184,12 +207,16 @@ public sealed partial class ComplaintService(
         if (body.Contains(ComplaintTemplate.FullName) && name is null) missing.Add("imię i nazwisko");
         if (body.Contains(ComplaintTemplate.Address) && address is null) missing.Add("adres");
         if (body.Contains(ComplaintTemplate.Iban) && iban is null) missing.Add("numer rachunku");
+        if (body.Contains(ComplaintTemplate.FromStation)) missing.Add("stacja początkowa");
+        if (body.Contains(ComplaintTemplate.ToStation)) missing.Add("stacja docelowa");
 
         // Values are sanitized (no braces), so substituting one after another cannot create new tokens.
         body = body
             .Replace(ComplaintTemplate.FullName, name ?? "[imię i nazwisko]")
             .Replace(ComplaintTemplate.Address, address ?? "[adres]")
-            .Replace(ComplaintTemplate.Iban, iban ?? "[numer rachunku]");
+            .Replace(ComplaintTemplate.Iban, iban ?? "[numer rachunku]")
+            .Replace(ComplaintTemplate.FromStation, "[stacja początkowa]")
+            .Replace(ComplaintTemplate.ToStation, "[stacja docelowa]");
         return (body, missing);
     }
 
