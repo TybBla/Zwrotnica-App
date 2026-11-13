@@ -10,7 +10,7 @@ public sealed class IbanAttribute : ValidationAttribute
     public const string Message = "Numer IBAN jest nieprawidłowy. Podaj 26 cyfr lub numer z kodem kraju (np. PL), bez innych znaków.";
 
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext) =>
-        value is not string text || string.IsNullOrWhiteSpace(text) || Iban.TryNormalize(text, out _)
+        value is not string text || string.IsNullOrWhiteSpace(text) || Iban.TryNormalize(TextRules.Canonicalize(text), out _)
             ? ValidationResult.Success
             : new ValidationResult(Message, validationContext.MemberName is { } member ? [member] : null);
 }

@@ -116,4 +116,35 @@ public sealed class ProfileApiTests : IClassFixture<TestApiFactory>
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Put_CanonicalizesTextAndIbanBeforeStoring()
+    {
+        var client = await LoggedInClientAsync("canon@test.pl");
+
+        var put = await client.PutAsJsonAsync("/api/profile", new
+        {
+            fullName = "Jan  O’Neil",
+            address = "ul. Długa 5\u00A0/ 12",
+            iban = "PL61\u00A01090 1014 0000 0712 1981 2874",
+            preferredPayout = "BankTransfer",
+        });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var json = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Jan O'Neil", json.GetProperty("fullName").GetString());
+        Assert.Equal("ul. Długa 5 / 12", json.GetProperty("address").GetString());
+        Assert.Equal("PL61109010140000071219812874", json.GetProperty("iban").GetString());
+    }
+
+    [Fact]
+    public async Task Put_ComposesDecomposedLetters()
+    {
+        var client = await LoggedInClientAsync("nfd@test.pl");
+
+        await client.PutAsJsonAsync("/api/profile", new { fullName = "Zo\u0301ła", preferredPayout = "Voucher" });
+
+        var json = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Zóła", json.GetProperty("fullName").GetString());
+    }
 }

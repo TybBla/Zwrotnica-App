@@ -361,4 +361,28 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("niedozwolone znaki", await response.Content.ReadAsStringAsync());
     }
+
+    [Fact]
+    public async Task Post_CanonicalizesStationAndNotes()
+    {
+        var client = await LoggedInClientAsync("canoncase@test.pl");
+
+        var response = await client.PostAsJsonAsync("/api/cases", new
+        {
+            carrier = "PKP Intercity",
+            fromStation = "Gdynia – Gdańsk",
+            toStation = "Kraków Główny",
+            travelDate = "2026-11-01",
+            ticketPrice = 40m,
+            incidentType = "Delay",
+            delayMinutes = 95,
+            payoutPreference = "OriginalPayment",
+            notes = "Konduktor: „brak info”\r\nDrugi wiersz…",
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Gdynia - Gdańsk", json.GetProperty("fromStation").GetString());
+        Assert.Equal("Konduktor: \"brak info\"\nDrugi wiersz...", json.GetProperty("notes").GetString());
+    }
 }

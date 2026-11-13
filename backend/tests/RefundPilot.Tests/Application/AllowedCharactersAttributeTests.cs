@@ -34,6 +34,8 @@ public sealed class AllowedCharactersAttributeTests
     [InlineData(TextField.Station, "Kraków★")]
     [InlineData(TextField.Station, "Kraków😀")]
     [InlineData(TextField.TrainCategory, "IC-1")]
+    [InlineData(TextField.TrainCategory, "IC 😀")]
+    [InlineData(TextField.TicketNumber, "IC-1 😀")]
     [InlineData(TextField.TicketNumber, "IC_1")]
     [InlineData(TextField.Notes, "Super 😀")]
     [InlineData(TextField.Notes, "<b>x</b>")]
@@ -53,4 +55,32 @@ public sealed class AllowedCharactersAttributeTests
         Assert.Equal("IC-1/2", TextRules.Sanitize(TextField.TicketNumber, "IC-1/2<>"));
         Assert.Null(TextRules.Sanitize(TextField.Carrier, "😀★"));
     }
+
+    [Theory]
+    [InlineData("O’Neil", "O'Neil")]
+    [InlineData("O‘Neil ʼx", "O'Neil 'x")]
+    [InlineData("Gdynia – Gdańsk — a − b", "Gdynia - Gdańsk - a - b")]
+    [InlineData("„brak info” i “ok”", "\"brak info\" i \"ok\"")]
+    [InlineData("Czekaj…", "Czekaj...")]
+    [InlineData("a\u00A0b\tc\u2003d", "a b c d")]
+    [InlineData("  a    b  ", "a b")]
+    [InlineData("a\r\nb", "a b")]
+    [InlineData("o\u0301", "ó")]
+    public void Canonicalize_SingleLine(string input, string expected) =>
+        Assert.Equal(expected, TextRules.Canonicalize(input));
+
+    [Fact]
+    public void Canonicalize_Multiline_KeepsLineBreaks() =>
+        Assert.Equal("a b\nc\nd", TextRules.Canonicalize("a\u00A0\u00A0b\r\nc\rd", multiline: true));
+
+    [Theory]
+    [InlineData("O’Neil", "O'Neil")]
+    [InlineData("Jan 😀 Kowalski", "Jan Kowalski")]
+    [InlineData("Gdynia – Gdańsk", "Gdynia - Gdańsk")]
+    public void Sanitize_CanonicalizesAndCollapsesSpaces(string input, string expected) =>
+        Assert.Equal(expected, TextRules.Sanitize(TextField.Station, input));
+
+    [Fact]
+    public void Notes_RejectTabsAfterNoCanonicalization() =>
+        Assert.NotNull(Validate(TextField.Notes, "a\tb"));
 }

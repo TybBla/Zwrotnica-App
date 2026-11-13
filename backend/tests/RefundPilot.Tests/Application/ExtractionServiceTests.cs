@@ -129,4 +129,16 @@ public sealed class ExtractionServiceTests
         Assert.Equal("IC-1/2026X", result.TicketNumber);
         Assert.Contains("toStation", result.MissingFields);
     }
+
+    [Fact]
+    public async Task Extraction_CanonicalizesSmartPunctuation()
+    {
+        var result = await RunAsync("""
+            {"carrier":"O’Neil  Rail","trainCategory":null,"fromStation":"Gdynia – Gdańsk","toStation":null,
+             "ticketNumber":null,"ticketPrice":null,"travelDate":null}
+            """);
+
+        Assert.Equal("O'Neil Rail", result.Carrier);
+        Assert.Equal("Gdynia - Gdańsk", result.FromStation);
+    }
 }

@@ -71,4 +71,8 @@ public sealed class IbanTests
         Assert.Equal(ValidationResult.Success, Validate(null));
         Assert.Equal(ValidationResult.Success, Validate(""));
     }
+
+    [Fact]
+    public void Attribute_AcceptsNbspAndTabs() =>
+        Assert.Equal(ValidationResult.Success, Validate("PL61\u00A01090\t1014 0000 0712 1981 2874"));
 }
