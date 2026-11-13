@@ -8,6 +8,9 @@ namespace RefundPilot.Tests.Application;
 
 public sealed class CaseRepositoryTests : IAsyncLifetime
 {
+    private const string UserA = "user-a";
+    private const string UserB = "user-b";
+
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private AppDbContext _db = null!;
     private ICaseRepository _repository = null!;
@@ -18,6 +21,11 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         await _db.Database.EnsureCreatedAsync();
         _repository = new CaseRepository(_db);
+
+        _db.Users.AddRange(
+            new AppUser { Id = UserA, UserName = "a@test.pl", Email = "a@test.pl" },
+            new AppUser { Id = UserB, UserName = "b@test.pl", Email = "b@test.pl" });
+        await _db.SaveChangesAsync();
     }
 
     public async Task DisposeAsync()
@@ -26,8 +34,9 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
         await _connection.DisposeAsync();
     }
 
-    private static RefundCase NewCase() => new()
+    private static RefundCase NewCase(string userId = UserA) => new()
     {
+        UserId = userId,
         Carrier = "PKP Intercity",
         TrainCategory = "IC",
         FromStation = "Gdynia Główna",
@@ -48,7 +57,7 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
     {
         await _repository.AddAsync(NewCase());
 
-        var cases = await _repository.ListAsync();
+        var cases = await _repository.ListAsync(UserA);
 
         var stored = Assert.Single(cases);
         Assert.True(stored.Id > 0);
@@ -62,9 +71,9 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
         var created = NewCase();
         await _repository.AddAsync(created);
 
-        Assert.True(await _repository.DeleteAsync(created.Id));
-        Assert.False(await _repository.DeleteAsync(created.Id));
-        Assert.Null(await _repository.GetAsync(created.Id));
+        Assert.True(await _repository.DeleteAsync(created.Id, UserA));
+        Assert.False(await _repository.DeleteAsync(created.Id, UserA));
+        Assert.Null(await _repository.GetAsync(created.Id, UserA));
     }
 
     [Fact]
@@ -84,12 +93,13 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
 
         await using var freshDb = new AppDbContext(
             new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
-        var stored = await new CaseRepository(freshDb).GetAsync(created.Id);
+        var stored = await new CaseRepository(freshDb).GetAsync(created.Id, UserA);
 
         Assert.NotNull(stored);
         Assert.Equal(CaseStatus.Sent, stored.Status);
         Assert.Equal(detached.FiledAt, stored.FiledAt);
         Assert.Equal(detached.ResponseDueDate, stored.ResponseDueDate);
+        Assert.Equal(DateTimeKind.Utc, stored.FiledAt!.Value.Kind);
         Assert.Equal("Wysłano formularz", stored.Notes);
         Assert.Equal("PKP Intercity", stored.Carrier);
     }
@@ -97,13 +107,45 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
     [Fact]
     public async Task Seeding_Twice_YieldsExactlyFiveCases()
     {
-        await SeedData.EnsureSeededAsync(_db);
-        await SeedData.EnsureSeededAsync(_db);
+        await SeedData.EnsureSeededAsync(_db, UserA);
+        await SeedData.EnsureSeededAsync(_db, UserA);
 
-        var cases = await _repository.ListAsync();
+        var cases = await _repository.ListAsync(UserA);
 
         Assert.Equal(5, cases.Count);
         Assert.Contains(cases, c => c.Status == CaseStatus.Paid);
         Assert.Contains(cases, c => c.Verdict == Verdict.NotCovered && c.CompensationAmount == 0m);
+    }
+
+    [Fact]
+    public async Task List_ExcludesOtherUsersCases()
+    {
+        await _repository.AddAsync(NewCase(UserA));
+        await _repository.AddAsync(NewCase(UserB));
+
+        var cases = await _repository.ListAsync(UserA);
+
+        var only = Assert.Single(cases);
+        Assert.Equal(UserA, only.UserId);
+    }
+
+    [Fact]
+    public async Task Get_WithWrongUser_ReturnsNull()
+    {
+        var created = NewCase(UserA);
+        await _repository.AddAsync(created);
+
+        Assert.Null(await _repository.GetAsync(created.Id, UserB));
+        Assert.NotNull(await _repository.GetAsync(created.Id, UserA));
+    }
+
+    [Fact]
+    public async Task Delete_WithWrongUser_ReturnsFalse_AndKeepsCase()
+    {
+        var created = NewCase(UserA);
+        await _repository.AddAsync(created);
+
+        Assert.False(await _repository.DeleteAsync(created.Id, UserB));
+        Assert.NotNull(await _repository.GetAsync(created.Id, UserA));
     }
 }

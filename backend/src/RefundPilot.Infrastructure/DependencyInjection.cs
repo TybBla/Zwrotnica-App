@@ -10,6 +10,7 @@ public static class DependencyInjection
     {
         services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
         services.AddScoped<ICaseRepository, CaseRepository>();
+        services.AddScoped<IUserProfileStore, UserProfileStore>();
         return services;
     }
 }

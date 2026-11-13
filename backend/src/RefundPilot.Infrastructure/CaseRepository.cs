@@ -6,10 +6,14 @@ namespace RefundPilot.Infrastructure;
 
 public sealed class CaseRepository(AppDbContext db) : ICaseRepository
 {
-    public Task<List<RefundCase>> ListAsync() =>
-        db.Cases.AsNoTracking().OrderByDescending(c => c.CreatedAt).ThenByDescending(c => c.Id).ToListAsync();
+    public Task<List<RefundCase>> ListAsync(string userId) =>
+        db.Cases.AsNoTracking()
+            .Where(c => c.UserId == userId)
+            .OrderByDescending(c => c.CreatedAt).ThenByDescending(c => c.Id)
+            .ToListAsync();
 
-    public Task<RefundCase?> GetAsync(int id) => db.Cases.FirstOrDefaultAsync(c => c.Id == id);
+    public Task<RefundCase?> GetAsync(int id, string userId) =>
+        db.Cases.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
 
     public async Task AddAsync(RefundCase refundCase)
     {
@@ -23,6 +27,6 @@ public sealed class CaseRepository(AppDbContext db) : ICaseRepository
         await db.SaveChangesAsync();
     }
 
-    public async Task<bool> DeleteAsync(int id) =>
-        await db.Cases.Where(c => c.Id == id).ExecuteDeleteAsync() > 0;
+    public async Task<bool> DeleteAsync(int id, string userId) =>
+        await db.Cases.Where(c => c.Id == id && c.UserId == userId).ExecuteDeleteAsync() > 0;
 }

@@ -3,6 +3,7 @@ namespace RefundPilot.Domain;
 public sealed class RefundCase
 {
     public int Id { get; set; }
+    public string UserId { get; set; } = string.Empty;
     public string Carrier { get; set; } = string.Empty;
     public string? TrainCategory { get; set; }
     public string FromStation { get; set; } = string.Empty;
