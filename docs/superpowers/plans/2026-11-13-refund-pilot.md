@@ -180,7 +180,7 @@ Endpoints (authorized): `POST /api/cases/{id}/complaint` → `ComplaintDto`; `PO
 
 **Files:** Create `README.md`, `docs/demo.gif` (or `.mp4`).
 
-- [ ] **Step 1:** README: description, tech notes (AI vs rules split, fallback, accounts and privacy, demo-vs-production AI note), step-by-step run (`dotnet run --project backend/src/RefundPilot.Api`, `cd frontend && npm install && npm run dev`), demo account, optional free Gemini key how-to, API table, how AI tools were used (Claude Code, `instructions.md`, superpowers workflow), legal disclaimer ("narzędzie pomocnicze, nie porada prawna"), out-of-scope rights (assistance, refunds, rerouting).
+- [ ] **Step 1:** README: description, tech notes (AI vs rules split, fallback, accounts and privacy, demo-vs-production AI note), step-by-step run (`dotnet run --project backend/src/RefundPilot.Api`, `cd frontend && npm install && npm run dev`), demo account, optional free Gemini key how-to, API table, how AI tools were used (Claude Code, `instructions.md`, superpowers workflow), legal disclaimer ("narzędzie pomocnicze, nie porada prawna"), out-of-scope rights (assistance, refunds, rerouting), section "Kierunki rozwoju / model biznesowy" from `docs/product-notes.md` (guest AI rate limit 5/min and plan-based quotas; module-of-a-larger-system thesis; subscription vs one-off payment).
 - [ ] **Step 2:** Record demo (login → upload fictional ticket → delay → verdict → PDF/text → status Sent with countdown) with the browser tooling; embed in README.
 - [ ] **Step 3:** Fresh-clone check in a temp directory following only the README, without API key.
 - [ ] **Step 4:** Publish: user creates the public GitHub repo (no `gh` installed) and pushes; user sends the email to recruitment@xeler.it.
