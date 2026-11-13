@@ -340,4 +340,25 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
                 Assert.EndsWith("Z", c.GetProperty("responseDueDate").GetString());
         }
     }
+
+    [Fact]
+    public async Task Post_WithEmojiStation_Returns400()
+    {
+        var client = await LoggedInClientAsync("emojicase@test.pl");
+
+        var response = await client.PostAsJsonAsync("/api/cases", new
+        {
+            carrier = "PKP Intercity",
+            fromStation = "Warszawa 😀",
+            toStation = "Kraków Główny",
+            travelDate = "2026-11-01",
+            ticketPrice = 40m,
+            incidentType = "Delay",
+            delayMinutes = 95,
+            payoutPreference = "OriginalPayment",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("niedozwolone znaki", await response.Content.ReadAsStringAsync());
+    }
 }

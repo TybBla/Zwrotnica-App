@@ -57,7 +57,7 @@ public sealed partial class ComplaintService(
             return new(ComplaintStatus.NotEligible, null);
 
         var profile = await profiles.GetAsync(userId) ?? new UserProfile(null, null, null, request.Payout);
-        var oneTimeIban = Sanitize(request.OneTimeIban, MaxIban);
+        var oneTimeIban = Sanitize(request.OneTimeIban is { } raw && !string.IsNullOrWhiteSpace(raw) ? Domain.Iban.Normalize(raw) : null, MaxIban);
         var facts = ToFacts(refundCase);
 
         var draft = ai.IsConfigured ? await TryAiDraftAsync(facts, request.Payout, ct) : null;

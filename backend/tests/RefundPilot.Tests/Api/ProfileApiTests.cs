@@ -79,4 +79,41 @@ public sealed class ProfileApiTests : IClassFixture<TestApiFactory>
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Put_WithEmojiName_Returns400NamingTheField()
+    {
+        var client = await LoggedInClientAsync("emoji@test.pl");
+
+        var response = await client.PutAsJsonAsync("/api/profile", new { fullName = "Jan 😀", preferredPayout = "Voucher" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("niedozwolone znaki", body);
+        Assert.Contains("FullName", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Put_NormalizesIban()
+    {
+        var client = await LoggedInClientAsync("norm@test.pl");
+
+        var put = await client.PutAsJsonAsync("/api/profile",
+            new { iban = "pl61 1090 1014 0000 0712 1981 2874", preferredPayout = "BankTransfer" });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var json = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("PL61109010140000071219812874", json.GetProperty("iban").GetString());
+    }
+
+    [Fact]
+    public async Task Put_WithBadChecksumIban_Returns400()
+    {
+        var client = await LoggedInClientAsync("badsum@test.pl");
+
+        var response = await client.PutAsJsonAsync("/api/profile",
+            new { iban = "PL61109010140000071219812875", preferredPayout = "BankTransfer" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }

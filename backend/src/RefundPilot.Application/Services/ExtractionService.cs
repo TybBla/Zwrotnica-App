@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using RefundPilot.Application.Abstractions;
 using RefundPilot.Application.Dtos;
+using RefundPilot.Application.Validation;
 
 namespace RefundPilot.Application.Services;
 
@@ -53,11 +54,11 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         if (root.ValueKind != JsonValueKind.Object)
             throw new AiUnavailableException(Malformed);
 
-        var carrier = Text(root, "carrier");
-        var category = Text(root, "trainCategory");
-        var from = Text(root, "fromStation");
-        var to = Text(root, "toStation");
-        var number = Text(root, "ticketNumber");
+        var carrier = Text(root, "carrier", TextField.Carrier);
+        var category = Text(root, "trainCategory", TextField.TrainCategory);
+        var from = Text(root, "fromStation", TextField.Station);
+        var to = Text(root, "toStation", TextField.Station);
+        var number = Text(root, "ticketNumber", TextField.TicketNumber);
         var price = Price(root);
         var date = Date(root);
 
@@ -87,13 +88,16 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         }
     }
 
-    private static string? Text(JsonElement root, string name)
+    /// <summary>Trimmed string capped at <see cref="MaxTextLength"/>; when a field is given, characters outside its allowlist are dropped.</summary>
+    private static string? Text(JsonElement root, string name, TextField? field = null)
     {
         if (!root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String
             || string.IsNullOrWhiteSpace(value.GetString()))
             return null;
         var text = value.GetString()!.Trim();
-        return text.Length > MaxTextLength ? text[..MaxTextLength] : text;
+        if (field is { } f)
+            text = TextRules.Sanitize(f, text);
+        return text is { Length: > MaxTextLength } ? text[..MaxTextLength].TrimEnd() : text;
     }
 
     private static decimal? Price(JsonElement root)

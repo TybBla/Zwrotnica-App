@@ -113,4 +113,20 @@ public sealed class ExtractionServiceTests
 
         Assert.Equal(new DateOnly(2026, 11, 13), result.TravelDate);
     }
+
+    [Fact]
+    public async Task Extraction_StripsDisallowedCharacters()
+    {
+        var result = await RunAsync("""
+            {"carrier":"PKP Intercity 😀","trainCategory":"IC★","fromStation":"Kraków <Główny>","toStation":"😀",
+             "ticketNumber":"IC-1/2026{{X}}","ticketPrice":40,"travelDate":"2026-11-01"}
+            """);
+
+        Assert.Equal("PKP Intercity", result.Carrier);
+        Assert.Equal("IC", result.TrainCategory);
+        Assert.Equal("Kraków Główny", result.FromStation);
+        Assert.Null(result.ToStation);
+        Assert.Equal("IC-1/2026X", result.TicketNumber);
+        Assert.Contains("toStation", result.MissingFields);
+    }
 }

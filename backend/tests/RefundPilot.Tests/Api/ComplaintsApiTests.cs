@@ -194,4 +194,31 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task OneTimeIban_IsNormalizedBeforeSaving()
+    {
+        var client = await LoggedInClientAsync("normiban@test.pl");
+        var id = await CreateCaseAsync(client);
+
+        var response = await client.PostAsJsonAsync($"/api/cases/{id}/complaint",
+            new { payout = "BankTransfer", oneTimeIban = "27 1140 2004 0000 3002 0135 5387", saveIbanToProfile = true });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("PL27114020040000300201355387", await response.Content.ReadAsStringAsync());
+        var profile = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("PL27114020040000300201355387", profile.GetProperty("iban").GetString());
+    }
+
+    [Fact]
+    public async Task OneTimeIban_WithBadChecksum_Returns400()
+    {
+        var client = await LoggedInClientAsync("badiban@test.pl");
+        var id = await CreateCaseAsync(client);
+
+        var response = await client.PostAsJsonAsync($"/api/cases/{id}/complaint",
+            new { payout = "BankTransfer", oneTimeIban = "PL27114020040000300201355388" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }
