@@ -19,7 +19,7 @@ type TextInputProps = TextControlProps &
     ref?: Ref<HTMLInputElement>
   }
 
-export function TextInput({ value, onValueChange, field, invalid, suffix, className, onBlur, id, ...props }: TextInputProps) {
+export function TextInput({ value, onValueChange, field, invalid, suffix, className, onBlur, onCompositionStart, onCompositionEnd, id, ...props }: TextInputProps) {
   const control = useFieldControl()
   const allowed = useAllowedInput<HTMLInputElement>(field, value, onValueChange)
   const isInvalid = invalid ?? control?.invalid ?? false
@@ -32,6 +32,14 @@ export function TextInput({ value, onValueChange, field, invalid, suffix, classN
         id={id ?? control?.id}
         value={value}
         onChange={allowed.onChange}
+        onCompositionStart={(event) => {
+          allowed.onCompositionStart()
+          onCompositionStart?.(event)
+        }}
+        onCompositionEnd={(event) => {
+          allowed.onCompositionEnd(event)
+          onCompositionEnd?.(event)
+        }}
         onBlur={(event: FocusEvent<HTMLInputElement>) => {
           allowed.onBlur()
           onBlur?.(event)
@@ -55,7 +63,7 @@ type TextAreaProps = TextControlProps &
     ref?: Ref<HTMLTextAreaElement>
   }
 
-export function TextArea({ value, onValueChange, field, invalid, className, onBlur, id, rows = 4, ...props }: TextAreaProps) {
+export function TextArea({ value, onValueChange, field, invalid, className, onBlur, onCompositionStart, onCompositionEnd, id, rows = 4, ...props }: TextAreaProps) {
   const control = useFieldControl()
   const allowed = useAllowedInput<HTMLTextAreaElement>(field, value, onValueChange)
   const isInvalid = invalid ?? control?.invalid ?? false
@@ -67,6 +75,14 @@ export function TextArea({ value, onValueChange, field, invalid, className, onBl
       id={id ?? control?.id}
       value={value}
       onChange={allowed.onChange}
+      onCompositionStart={(event) => {
+        allowed.onCompositionStart()
+        onCompositionStart?.(event)
+      }}
+      onCompositionEnd={(event) => {
+        allowed.onCompositionEnd(event)
+        onCompositionEnd?.(event)
+      }}
       onBlur={(event) => {
         allowed.onBlur()
         onBlur?.(event)

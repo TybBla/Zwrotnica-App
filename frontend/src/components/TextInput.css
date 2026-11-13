@@ -31,8 +31,9 @@
 
 .input__control:focus-visible,
 .input__control:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring);
+  /* 1 px border + 1 px shadow = a solid 2 px ring in the focus color. */
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 
 .input__control[aria-invalid='true'] {
@@ -40,7 +41,7 @@
 }
 
 .input__control[aria-invalid='true']:focus {
-  box-shadow: 0 0 0 var(--focus-ring-width) color-mix(in srgb, var(--danger) 30%, transparent);
+  box-shadow: 0 0 0 1px var(--danger);
 }
 
 .input__control:disabled {

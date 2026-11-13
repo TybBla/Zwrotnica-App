@@ -75,6 +75,17 @@
   }
 }
 
+/* Invisible bridge over the gap to the trigger, so the pointer can travel onto the bubble without leaving it. */
+.tooltip__bubble::before {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-2)) 0 100% 0;
+}
+
+.tooltip__bubble[data-side='top']::before {
+  inset: 100% 0 calc(-1 * var(--space-2)) 0;
+}
+
 .tooltip__bubble[data-side='top'] {
   top: auto;
   bottom: calc(100% + var(--space-2));

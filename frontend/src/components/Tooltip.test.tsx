@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Tooltip } from './Tooltip'
@@ -33,7 +33,21 @@ describe('Tooltip', () => {
     expectOpenAndDescribing(trigger, await screen.findByRole('tooltip'))
 
     await user.unhover(trigger)
-    expect(screen.queryByRole('tooltip')).toBeNull()
+    await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull())
+  })
+
+  it('stays open while the pointer moves from the trigger onto the bubble (WCAG 1.4.13)', async () => {
+    const { user, trigger } = setup()
+
+    await user.hover(trigger)
+    const bubble = await screen.findByRole('tooltip')
+    await user.hover(bubble)
+    await new Promise((resolve) => setTimeout(resolve, 250))
+
+    expect(screen.getByRole('tooltip')).toBe(bubble)
+
+    await user.unhover(bubble)
+    await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull())
   })
 
   it('opens on keyboard focus and closes on Escape', async () => {

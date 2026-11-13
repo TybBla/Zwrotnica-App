@@ -11,6 +11,7 @@ interface TooltipProps {
 }
 
 const HOVER_DELAY_MS = 120
+const HOVER_CLOSE_DELAY_MS = 120
 const VIEWPORT_MARGIN = 12
 
 // Once one tooltip was just open, the next opens instantly and without animation (moving along a form).
@@ -81,7 +82,24 @@ export function Tooltip({ label, content, children }: TooltipProps) {
   }, [open])
 
   return (
-    <span className="tooltip" ref={rootRef}>
+    // Hover lives on the root, which also contains the bubble, so the pointer can move onto the text (WCAG 1.4.13);
+    // a short close delay bridges the gap between trigger and bubble.
+    <span
+      className="tooltip"
+      ref={rootRef}
+      onPointerEnter={(event) => {
+        if (event.pointerType !== 'mouse') return
+        clearTimer()
+        if (open) return
+        if (recentlyClosed()) show(false)
+        else hoverTimer.current = window.setTimeout(() => show(false), HOVER_DELAY_MS)
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType !== 'mouse') return
+        clearTimer()
+        if (!pinned.current) hoverTimer.current = window.setTimeout(hide, HOVER_CLOSE_DELAY_MS)
+      }}
+    >
       <button
         type="button"
         className="tooltip__trigger"
@@ -89,17 +107,6 @@ export function Tooltip({ label, content, children }: TooltipProps) {
         aria-describedby={open ? id : undefined}
         onPointerDown={(event) => {
           lastPointerType.current = event.pointerType
-        }}
-        onPointerEnter={(event) => {
-          if (event.pointerType !== 'mouse') return
-          clearTimer()
-          if (recentlyClosed()) show(false)
-          else hoverTimer.current = window.setTimeout(() => show(false), HOVER_DELAY_MS)
-        }}
-        onPointerLeave={(event) => {
-          if (event.pointerType !== 'mouse') return
-          clearTimer()
-          if (!pinned.current) hide()
         }}
         onFocus={() => {
           // Pointer-initiated focus is handled by the click that follows; this branch is the keyboard.

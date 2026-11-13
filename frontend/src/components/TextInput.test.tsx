@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
@@ -34,6 +34,30 @@ describe('TextInput with a character allowlist', () => {
     await user.paste('Seán O’Neil ★')
 
     expect(input.value).toBe("Seán O'Neil ")
+  })
+
+  it('leaves a dead-key / IME composition alone and filters when it ends', () => {
+    render(<NameField />)
+    const input = screen.getByLabelText('Imię i nazwisko') as HTMLInputElement
+
+    fireEvent.compositionStart(input)
+    fireEvent.change(input, { target: { value: 'Józef Gr´' } })
+    expect(input.value).toBe('Józef Gr´')
+
+    fireEvent.change(input, { target: { value: 'Józef Gró' } })
+    fireEvent.compositionEnd(input)
+    expect(input.value).toBe('Józef Gró')
+  })
+
+  it('filters disallowed characters committed by a composition', () => {
+    render(<NameField />)
+    const input = screen.getByLabelText('Imię i nazwisko') as HTMLInputElement
+
+    fireEvent.compositionStart(input)
+    fireEvent.change(input, { target: { value: 'Ola ★' } })
+    fireEvent.compositionEnd(input)
+
+    expect(input.value).toBe('Ola ')
   })
 
   it('trims on blur', async () => {
