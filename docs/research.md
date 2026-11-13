@@ -36,3 +36,7 @@
 6. **Gemini:** model `gemini-3.5-flash-lite` w configu; obsługa 429/5xx → komunikat i tryb ręczny.
 7. **Do usunięcia/ostrożnie:** stałe "4 EUR ≈ 17 zł", przykład Polregio w seedach (zastąpić IC/EIC; jedna sprawa regionalna jako przykład "nie przysługuje").
 8. **Demo:** nagrywać z prawdziwym (zanonimizowanym) lub syntetycznym biletem; w seedach tylko dane fikcyjne.
+
+## Weryfikacja reguł (Task 2)
+
+EUR-Lex był niedostępny automatycznie (404 dla ELI/CELEX). Progi 25 % (60–119 min) i 50 % (≥120 min) oraz próg 4 EUR potwierdzone w źródłach wtórnych (BMV, ECC Malta, ECC Italia, B-Europe); kwota 16 zł PKP IC pozostaje bez zmian. Do ręcznego sprawdzenia: treść art. 19 w EUR-Lex.
