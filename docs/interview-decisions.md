@@ -18,4 +18,6 @@
 17. **Dane konta:** e-mail i hasło wymagane; imię i nazwisko, adres, rachunek, forma wypłaty opcjonalne. Rachunek szyfrowany w bazie + prawdziwa informacja o bezpieczeństwie przy polu. Rachunek można podać jednorazowo w kreatorze (opcja "zapamiętaj") albo pominąć – luka w piśmie.
 18. **Braki w piśmie:** po wygenerowaniu lista danych do ręcznego uzupełnienia.
 19. **Forma wypłaty (3 opcje):** domyślnie zwrot na konto/kartę użyte do zakupu (bez numeru rachunku); przelew na inny rachunek (numer wymagany); bon. Konkretne sformułowanie w piśmie dla każdej opcji. (Wg wiedzy użytkownika – nie zweryfikowane w regulaminach przewoźników.)
+20. **Dozwolone znaki:** emoji/symbole zablokowane (UI i API); listy znaków per pole; inteligentna interpunkcja z telefonów zamieniana na zwykłą.
+21. **Przewoźnik i kategoria jako listy wyboru** (+ "Inny" z polem tekstowym); stacje opcjonalne (braki → luki w piśmie).
 3. **Prywatność AI:** demo/MVP używa darmowego Gemini; w README zaznaczyć, że w produkcji użyty byłby model klasy komercyjnej z odpowiednią konfiguracją prywatności. W UI tylko krótka, nienachalna wzmianka (bez dużych ostrzeżeń).
