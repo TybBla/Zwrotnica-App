@@ -1,0 +1,18 @@
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+.env
+node_modules/
+dist/
+.vs/
+.vscode/
+.idea/
+
+# local agent tooling and scratch (not part of the deliverable)
+.agents/
+.claude/
+.superpowers/
+skills-lock.json
+instrucions.md
