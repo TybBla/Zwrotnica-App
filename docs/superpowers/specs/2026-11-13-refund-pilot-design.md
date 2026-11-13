@@ -33,7 +33,9 @@ Pasażer pociągu dalekobieżnego z dużym opóźnieniem zwykle nie wie, że prz
 
 - SQLite (plik lokalny) – brak zewnętrznych baz; darmowe AI, klucz opcjonalny (`GEMINI_API_KEY`).
 - Zasady z `instructions.md` (chude kontrolery, serwisy, DTO, brak zapytań w pętlach, transakcje).
-- Zdjęcia biletu nie są zapisywane. Dane profilu konta są w bazie (SQLite), **nigdy nie trafiają do AI**; hasła hashowane przez ASP.NET Core Identity. W README: produkcyjnie szyfrowanie danych wrażliwych (IBAN) i HTTPS.
+- Zdjęcia biletu nie są zapisywane. Dane profilu konta są w bazie (SQLite), **nigdy nie trafiają do AI**; hasła hashowane przez ASP.NET Core Identity. **Numer rachunku szyfrowany w bazie** (ASP.NET Data Protection), widoczny tylko dla właściciela po zalogowaniu. Wszystkie dane profilu poza e-mailem i hasłem są opcjonalne. Przy polu numeru rachunku krótka, prawdziwa informacja o bezpieczeństwie (szyfrowanie, widoczny tylko dla Ciebie, nie trafia do AI) – bez obietnic typu "nikt nie ma dostępu". W README: produkcyjnie HTTPS, zarządzanie kluczami szyfrowania (np. Key Vault).
+- Numer rachunku można też podać jednorazowo w kreatorze (z opcją "zapamiętaj na koncie") albo pominąć – wtedy w piśmie zostaje luka `[numer rachunku]`.
+- **Po wygenerowaniu pisma** użytkownik widzi listę danych, które musi uzupełnić ręcznie (np. "Uzupełnij w piśmie: numer rachunku, adres").
 - Demo używa darmowego Gemini (treści z darmowego poziomu mogą służyć do ulepszania produktów Google). W README zaznaczone, że produkcyjnie użyty byłby model komercyjny z właściwą konfiguracją prywatności; w UI tylko krótka wzmianka.
 - Dane w seedach i demo wyłącznie fikcyjne.
 

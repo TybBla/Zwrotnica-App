@@ -19,7 +19,8 @@
 - Rules in code only: delay 60–119 min = 25 %, ≥120 min = 50 %, cancellation = 100 % refund, price = amount actually paid, minimum payout default **16 zł**; regional/urban/suburban Polish carriers = `NotCovered`.
 - Delay cause is optional and never blocks submission or changes the amount; weather / persons-on-track set `RefusalRisk`; season ticket → verdict `Unknown`.
 - **Accounts:** ASP.NET Core Identity, email + password, cookie auth, API returns 401/403 (never redirects). Profile (FullName, Address, Iban, PreferredPayout) stored with the user; available on any device. `/api/cases*` and `/api/profile` require auth; a user only ever sees their own cases (another user's case → 404). Wizard extraction/assessment work anonymously; saving a case and the letter require login. Demo account seeded (credentials in `appsettings.Development.json` and README – test values only).
-- Personal data never goes to the AI. Ticket files are never persisted.
+- Personal data never goes to the AI. Ticket files are never persisted. All profile fields except email/password are optional. **Iban is encrypted at rest** (ASP.NET Data Protection) and shown only to its owner; UI copy states exactly that (encrypted, visible only to you, never sent to AI) and nothing stronger.
+- Letters list the placeholders left for the user to fill (e.g. "Uzupełnij w piśmie: numer rachunku, adres").
 - Payout form (transfer / voucher) is the user's choice, preselected from the profile's `PreferredPayout` and saved back on change; the letter states the **preferred** form without excluding others.
 - Ticket input: phone – camera **or** gallery; desktop – image or file; accepted types JPEG/PNG/WebP/HEIC/HEIF and PDF, 1–4 files, ≤ 5 MB each.
 - Thin controllers, services in Application, DTOs in/out, no queries in loops, transactions for multi-table writes. SQLite stores decimal as TEXT → no server-side `Sum`/`OrderBy`/comparisons on decimal columns (aggregate in memory). DateTimes stored and returned as UTC.
@@ -120,18 +121,19 @@ public sealed class AiUnavailableException(string message) : Exception(message);
 
 ### Task 7: Complaint letter (text and PDF)
 
-**Files:** Create `Application/Services/ComplaintService.cs`, `Application/ComplaintTemplate.cs`, `Application/Dtos/{ComplaintRequest,ComplaintDto}.cs`, `Infrastructure/Pdf/ComplaintPdfRenderer.cs`, `Api/Controllers/ComplaintsController.cs`; Tests `ComplaintServiceTests.cs`, `ComplaintPdfTests.cs`.
+**Files:** Modify `Infrastructure/UserProfileStore.cs` (encrypt/decrypt `Iban` with `IDataProtector`, purpose `"RefundPilot.Profile.Iban"`; existing plaintext seed value encrypted at seed time); Create `Application/Services/ComplaintService.cs`, `Application/ComplaintTemplate.cs`, `Application/Dtos/{ComplaintRequest,ComplaintDto}.cs`, `Infrastructure/Pdf/ComplaintPdfRenderer.cs`, `Api/Controllers/ComplaintsController.cs`; Tests `ComplaintServiceTests.cs`, `ComplaintPdfTests.cs`.
 
 **Interfaces:** Consumes `IAiClient`, `ICaseRepository`, `IUserProfileStore`, `ICurrentUser`. Produces:
 ```csharp
-public sealed record ComplaintRequest(PayoutPreference Payout);
-public sealed record ComplaintDto(string Subject, string Body, bool UsedAi);
+public sealed record ComplaintRequest(PayoutPreference Payout, string? OneTimeIban, bool SaveIbanToProfile);
+public sealed record ComplaintDto(string Subject, string Body, bool UsedAi, IReadOnlyList<string> MissingFields);
+// MissingFields: Polish labels of placeholders left in the letter, e.g. ["numer rachunku", "adres"]; Iban required only for Payout=Cash
 public interface IComplaintService { Task<ComplaintDto?> GenerateAsync(int caseId, PayoutPreference payout, CancellationToken ct); }
 public interface IComplaintPdfRenderer { byte[] Render(ComplaintDto letter); }
 ```
 Endpoints (authorized): `POST /api/cases/{id}/complaint` → `ComplaintDto`; `POST /api/cases/{id}/complaint/pdf` → `application/pdf` download (`Content-Disposition: attachment`). AI prompt contains only case facts (no profile) and must keep tokens `{{FULL_NAME}}`, `{{ADDRESS}}`, `{{IBAN}}` and the supplied amount verbatim; server substitutes tokens from the account profile (sanitized: single line, max length; empty → `[imię i nazwisko]` etc.). Letter states the **preferred** payout form (transfer to the given account or voucher) without excluding others; cites art. 19 rozp. 2021/782; AI error or no key → `ComplaintTemplate`. Generating a letter also saves `payout` as the case's `PayoutPreference` and the profile's `PreferredPayout`.
 
-- [ ] **Step 1:** Failing tests: body contains carrier, route, ticket number, delay and amount `10,00 zł` from the stored case; profile tokens replaced; empty profile → placeholders; profile value `"{{IBAN}}\nX"` cannot inject tokens/lines; Cash vs Voucher wording differs and neither variant contains a refusal of the other form; AI exception → template, `UsedAi == false`; other user's case → null; PDF bytes start with `%PDF`, Polish diacritics (`ąęśżźćńół`) do not throw.
+- [ ] **Step 1:** Failing tests: body contains carrier, route, ticket number, delay and amount `10,00 zł` from the stored case; profile tokens replaced; empty profile → placeholders; profile value `"{{IBAN}}\nX"` cannot inject tokens/lines; Cash vs Voucher wording differs and neither variant contains a refusal of the other form; AI exception → template, `UsedAi == false`; other user's case → null; PDF bytes start with `%PDF`, Polish diacritics (`ąęśżźćńół`) do not throw; `OneTimeIban` is used in the letter and saved to the profile only when `SaveIbanToProfile` is true; missing name/address/iban are reported in `MissingFields` (iban only for Cash) and appear as `[…]` placeholders; Iban is stored encrypted (raw DB value ≠ plaintext) and round-trips through `IUserProfileStore`.
 - [ ] **Step 2:** Run – FAIL. **Step 3:** Implement (verify QuestPDF Community license terms; embed a font with Polish glyphs). **Step 4:** PASS. Commit `feat: complaint letter as text and PDF`.
 
 ### Task 8: Frontend scaffold, design system, themes, API/auth client
@@ -159,14 +161,14 @@ Endpoints (authorized): `POST /api/cases/{id}/complaint` → `ComplaintDto`; `PO
 **Files:** Create `src/wizard/{ResultStep,VerdictCard,PayoutChoice,LetterChoice}.tsx`, `src/auth/{AuthPanel,LoginForm,RegisterForm}.tsx`.
 
 - [ ] **Step 1:** Failing tests: `VerdictCard` renders Należy się / Nie należy się / Do sprawdzenia plus "poniżej progu", "podaj cenę" and `RefusalRisk` warning; NotCovered hides save/letter actions; `PayoutChoice` preselects the profile's `preferredPayout`; anonymous "Zapisz sprawę" shows `AuthPanel` and after successful login/registration saves the case without losing wizard state.
-- [ ] **Step 2:** Run – FAIL. **Step 3:** Implement result with animated amount, payout choice (Przelew / Bon), save, then "Wybierz format": **Tekst** (subject + body with copy buttons) or **PDF** (download). **Step 4:** PASS; `npm run build`. Commit `feat(web): result, inline auth, letter formats`.
+- [ ] **Step 2:** Run – FAIL. **Step 3:** Implement result with animated amount, payout choice (Przelew / Bon), optional one-time account number field for Przelew (prefilled from profile, "zapamiętaj na koncie" checkbox, ⓘ security note), save, then "Wybierz format": **Tekst** (subject + body with copy buttons) or **PDF** (download); after generation a clear notice lists `MissingFields` ("Uzupełnij w piśmie: …"). **Step 4:** PASS; `npm run build`. Commit `feat(web): result, inline auth, letter formats`.
 
 ### Task 11: Account pages and cases list with deadline countdown
 
 **Files:** Create `src/auth/{LoginPage,RegisterPage}.tsx`, `src/profile/ProfilePage.tsx`, `src/cases/{CasesPage,StatsHeader,CaseCard,StatusSelect,DeadlineBadge,EmptyState}.tsx`, `src/hooks/useCases.ts`; simple routing (hash or `react-router` – one dependency allowed).
 
 - [ ] **Step 1:** Failing tests: `DeadlineBadge` – Sent, due in 18 days → "jeszcze 18 dni"; past due → "Brak odpowiedzi? Możesz złożyć skargę do UTK"; non-Sent → nothing. Optimistic status update rolls back on failure. Profile form saves and shows validation errors from ProblemDetails.
-- [ ] **Step 2:** Run – FAIL. **Step 3:** Implement login/register pages, profile page (name, address, IBAN, preferred payout), cases list with status chips, delete confirmation, stats header (Odzyskano / Czeka), empty/error states, protected routes redirect to login. **Step 4:** PASS; `npm run build`. Commit `feat(web): account pages and cases list`.
+- [ ] **Step 2:** Run – FAIL. **Step 3:** Implement login/register pages, profile page (name, address, IBAN, preferred payout – all optional; next to IBAN a short security note: encrypted in the database, visible only to you, never sent to AI, optional – can be entered per letter instead), cases list with status chips, delete confirmation, stats header (Odzyskano / Czeka), empty/error states, protected routes redirect to login. **Step 4:** PASS; `npm run build`. Commit `feat(web): account pages and cases list`.
 
 ### Task 12: UI polish and mobile pass
 
