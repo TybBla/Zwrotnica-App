@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 using RefundPilot.Api;
+using RefundPilot.Application;
 using RefundPilot.Application.Abstractions;
-using RefundPilot.Application.Services;
 using RefundPilot.Infrastructure;
 
 const string FrontendCorsPolicy = "Frontend";
@@ -10,7 +10,7 @@ const string FrontendCorsPolicy = "Frontend";
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -40,7 +40,7 @@ builder.Services.ConfigureApplicationCookie(o =>
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddApplication();
 
 builder.Services.AddCors(o => o.AddPolicy(FrontendCorsPolicy, policy => policy
     .WithOrigins("http://localhost:5173")

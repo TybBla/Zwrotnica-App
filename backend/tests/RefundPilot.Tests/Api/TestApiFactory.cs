@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 
 namespace RefundPilot.Tests.Api;
 
@@ -12,6 +14,8 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>
 {
     public const string DemoEmail = "demo@refundpilot.test";
     public const string DemoPassword = "Demo!2026pass";
+
+    public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 13, 10, 0, 0, TimeSpan.Zero));
 
     private readonly SqliteConnection _sentinel;
     private readonly string _connectionString = $"DataSource=file:test-{Guid.NewGuid():N}?mode=memory&cache=shared";
@@ -28,6 +32,7 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
         builder.UseSetting("Seed:DemoEmail", DemoEmail);
         builder.UseSetting("Seed:DemoPassword", DemoPassword);
+        builder.ConfigureServices(services => services.AddSingleton<TimeProvider>(Time));
     }
 
     public HttpClient CreateCookieClient() =>
