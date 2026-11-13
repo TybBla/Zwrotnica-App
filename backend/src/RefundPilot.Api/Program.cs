@@ -52,10 +52,11 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddApplication();
 
-// Anonymous extraction calls the paid AI API: limit per client IP (fixed window, configurable).
+// Anonymous extraction calls the paid AI API: limit per client IP (fixed window, default 5/min, configurable).
+// In a commercial version the quota would depend on the user's plan (free vs paid).
 const string ExtractionsRateLimit = "extractions";
-var extractionsPerMinute = int.TryParse(builder.Configuration["RateLimit:ExtractionsPerMinute"], out var configuredLimit)
-    && configuredLimit > 0 ? configuredLimit : 10;
+var extractionsPerMinute = int.TryParse(builder.Configuration["RateLimiting:ExtractionsPerMinute"], out var configuredLimit)
+    && configuredLimit > 0 ? configuredLimit : 5;
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

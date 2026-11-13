@@ -117,17 +117,17 @@ public sealed class ExtractionsApiTests : IClassFixture<TestApiFactory>
     }
 
     [Fact]
-    public async Task EleventhRequestWithinAMinute_Returns429WithPolishProblem()
+    public async Task SixthRequestWithinAMinute_Returns429WithPolishProblem()
     {
         var client = _factory
             .WithWebHostBuilder(b =>
             {
-                b.UseSetting("RateLimit:ExtractionsPerMinute", "10");
+                b.UseSetting("RateLimiting:ExtractionsPerMinute", "5");
                 b.ConfigureTestServices(s => s.AddSingleton<IAiClient>(new FakeAi(true)));
             })
             .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 5; i++)
         {
             var ok = await client.PostAsync("/api/extractions", Upload(("application/pdf", "t.pdf", 100)));
             Assert.Equal(HttpStatusCode.OK, ok.StatusCode);

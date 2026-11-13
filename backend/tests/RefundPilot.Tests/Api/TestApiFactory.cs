@@ -33,7 +33,7 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
-        builder.UseSetting("RateLimit:ExtractionsPerMinute", "100000");
+        builder.UseSetting("RateLimiting:ExtractionsPerMinute", "100000");
         builder.UseSetting("Seed:DemoEmail", DemoEmail);
         builder.UseSetting("Seed:DemoPassword", DemoPassword);
         builder.ConfigureServices(services => services.AddSingleton<TimeProvider>(Time));
