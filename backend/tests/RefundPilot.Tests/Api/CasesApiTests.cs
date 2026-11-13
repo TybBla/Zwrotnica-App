@@ -263,8 +263,8 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         var weather = await AssessAsync(Assessment(cause: "Weather"));
         var strike = await AssessAsync(Assessment(cause: "RailStrike"));
 
-        Assert.Equal(10m, none.GetProperty("amount").GetDecimal());
-        Assert.Equal(10m, weather.GetProperty("amount").GetDecimal());
+        Assert.Equal(10m, none.GetProperty("compensationAmount").GetDecimal());
+        Assert.Equal(10m, weather.GetProperty("compensationAmount").GetDecimal());
         Assert.True(weather.GetProperty("refusalRisk").GetBoolean());
         Assert.False(strike.GetProperty("refusalRisk").GetBoolean());
         Assert.False(none.GetProperty("refusalRisk").GetBoolean());
@@ -276,6 +276,68 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         var json = await AssessAsync(Assessment(season: true));
 
         Assert.Equal("Unknown", json.GetProperty("verdict").GetString());
-        Assert.Equal(0m, json.GetProperty("amount").GetDecimal());
+        Assert.Equal(0m, json.GetProperty("compensationAmount").GetDecimal());
+    }
+
+    private static Dictionary<string, object?> CaseBody(string? travelDate)
+    {
+        var body = new Dictionary<string, object?>
+        {
+            ["carrier"] = "PKP Intercity", ["fromStation"] = "A", ["toStation"] = "B", ["ticketPrice"] = 40m,
+            ["incidentType"] = "Delay", ["delayMinutes"] = 95, ["isSeasonTicket"] = false,
+            ["payoutPreference"] = "Cash",
+        };
+        if (travelDate is not null)
+            body["travelDate"] = travelDate;
+        return body;
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("0001-01-01")]
+    [InlineData("2026-11-14")]
+    public async Task Post_MissingDefaultOrFutureTravelDate_Returns400(string? travelDate)
+    {
+        var client = await LoggedInClientAsync($"date{travelDate}@test.pl");
+
+        var response = await client.PostAsJsonAsync("/api/cases", CaseBody(travelDate));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Put_FutureTravelDate_Returns400()
+    {
+        var client = await LoggedInClientAsync("putfuture@test.pl");
+        var id = (await CreateAsync(client, NewCase())).GetProperty("id").GetInt32();
+
+        var response = await client.PutAsJsonAsync($"/api/cases/{id}", CaseBody("2027-01-01"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dates_AreSerializedAsUtcWithTrailingZ()
+    {
+        var client = await LoggedInClientAsync("utc@test.pl");
+        var id = (await CreateAsync(client, NewCase())).GetProperty("id").GetInt32();
+        await client.PatchAsJsonAsync($"/api/cases/{id}/status", new { status = "Sent" });
+
+        var raw = await (await client.GetAsync($"/api/cases/{id}")).Content.ReadAsStringAsync();
+        var json = JsonDocument.Parse(raw).RootElement;
+        foreach (var name in new[] { "createdAt", "filedAt", "responseDueDate" })
+            Assert.EndsWith("Z", json.GetProperty(name).GetString());
+
+        var list = await (await client.GetAsync("/api/cases")).Content.ReadAsStringAsync();
+        Assert.EndsWith("Z", JsonDocument.Parse(list).RootElement[0].GetProperty("createdAt").GetString());
+
+        var demo = await DemoClientAsync();
+        var demoRaw = await (await demo.GetAsync("/api/cases")).Content.ReadAsStringAsync();
+        foreach (var c in JsonDocument.Parse(demoRaw).RootElement.EnumerateArray())
+        {
+            Assert.EndsWith("Z", c.GetProperty("createdAt").GetString());
+            if (c.GetProperty("responseDueDate").ValueKind == JsonValueKind.String)
+                Assert.EndsWith("Z", c.GetProperty("responseDueDate").GetString());
+        }
     }
 }

@@ -9,7 +9,7 @@ public sealed record CreateCaseRequest(
     [Required(ErrorMessage = "Podaj stację początkową."), MaxLength(200)] string FromStation,
     [Required(ErrorMessage = "Podaj stację docelową."), MaxLength(200)] string ToStation,
     [MaxLength(100)] string? TicketNumber,
-    DateOnly TravelDate,
+    [TravelDate] DateOnly TravelDate,
     [Range(0, 100000, ErrorMessage = "Cena biletu nie może być ujemna.")] decimal TicketPrice,
     IncidentType IncidentType,
     [Range(0, 10000, ErrorMessage = "Opóźnienie musi mieścić się w zakresie 0-10000 minut.")] int DelayMinutes,

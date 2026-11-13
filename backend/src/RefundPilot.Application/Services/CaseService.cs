@@ -114,7 +114,7 @@ public sealed class CaseService(
         target.Notes = Clean(notes);
         target.Verdict = assessment.Verdict;
         target.RefusalRisk = assessment.RefusalRisk;
-        target.CompensationAmount = assessment.Amount;
+        target.CompensationAmount = assessment.CompensationAmount;
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
