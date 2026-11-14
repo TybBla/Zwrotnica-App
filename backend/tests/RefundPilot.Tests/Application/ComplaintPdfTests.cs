@@ -1,5 +1,4 @@
 using System.Text;
-using Microsoft.Extensions.Time.Testing;
 using RefundPilot.Application.Dtos;
 using RefundPilot.Infrastructure.Pdf;
 
@@ -8,8 +7,7 @@ namespace RefundPilot.Tests.Application;
 // QuestPDF settings are global: both tests live in one class so xUnit runs them sequentially.
 public sealed class ComplaintPdfTests
 {
-    private static readonly ComplaintPdfRenderer Renderer =
-        new(new FakeTimeProvider(new DateTimeOffset(2026, 11, 13, 10, 0, 0, TimeSpan.Zero)));
+    private static readonly ComplaintPdfRenderer Renderer = new();
 
     [Fact]
     public void Render_ProducesPdfWithPolishDiacritics()

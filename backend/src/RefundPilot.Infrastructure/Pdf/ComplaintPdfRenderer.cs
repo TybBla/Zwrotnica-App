@@ -11,7 +11,7 @@ namespace RefundPilot.Infrastructure.Pdf;
 /// Renders the letter as an A4 PDF. QuestPDF's built-in Lato covers Polish diacritics
 /// (the tests render every Polish letter in strict mode).
 /// </summary>
-public sealed class ComplaintPdfRenderer(TimeProvider clock) : IComplaintPdfRenderer
+public sealed class ComplaintPdfRenderer : IComplaintPdfRenderer
 {
     static ComplaintPdfRenderer()
     {
@@ -23,7 +23,6 @@ public sealed class ComplaintPdfRenderer(TimeProvider clock) : IComplaintPdfRend
 
     public byte[] Render(ComplaintDto letter)
     {
-        var date = WarsawClock.Today(clock).ToString("dd.MM.yyyy");
         var paragraphs = letter.Body.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries);
 
         return Document.Create(container => container.Page(page =>
@@ -33,11 +32,7 @@ public sealed class ComplaintPdfRenderer(TimeProvider clock) : IComplaintPdfRend
             page.MarginHorizontal(2.5f, Unit.Centimetre);
             page.DefaultTextStyle(t => t.FontFamily("Lato").FontSize(11).LineHeight(1.35f));
 
-            page.Header().Column(column =>
-            {
-                column.Item().AlignRight().Text($"Wygenerowano: {date}").FontSize(9).FontColor(Colors.Grey.Darken1);
-                column.Item().PaddingTop(10).Text(letter.Subject).FontSize(15).Bold();
-            });
+            page.Header().Text(letter.Subject).FontSize(15).Bold();
 
             page.Content().PaddingTop(18).Column(column =>
             {

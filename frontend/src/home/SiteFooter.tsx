@@ -12,7 +12,7 @@ export function SiteFooter() {
           <strong>Narzędzie pomocnicze. Nie stanowi porady prawnej.</strong> Przed wysłaniem reklamacji sprawdź regulamin
           swojego przewoźnika.
         </p>
-        <p>Projekt rekrutacyjny. Nie jest usługą PKP Intercity ani żadnego innego przewoźnika.</p>
+        <p>Nie jest to oficjalna usługa PKP Intercity ani żadnego innego przewoźnika.</p>
       </div>
       <nav className="site-footer__sources" aria-labelledby="footer-sources-title">
         <h2 className="site-footer__title" id="footer-sources-title">
