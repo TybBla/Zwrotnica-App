@@ -14,8 +14,13 @@ public static class DatabaseInitializer
     {
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        EnsureDatabaseDirectory(db.Database.GetConnectionString());
+        var databaseFile = DatabaseFile(db.Database.GetConnectionString());
+        if (databaseFile is not null)
+            Directory.CreateDirectory(Path.GetDirectoryName(databaseFile)!);
         await db.Database.EnsureCreatedAsync();
+        // Azure App Service keeps /home on an SMB share, where WAL's shared-memory index is unreliable; the rollback journal is not.
+        if (databaseFile is not null)
+            await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=DELETE;");
 
         if (string.IsNullOrWhiteSpace(demoEmail) || string.IsNullOrWhiteSpace(demoPassword))
             return;
@@ -46,16 +51,16 @@ public static class DatabaseInitializer
         await transaction.CommitAsync();
     }
 
-    /// <summary>SQLite creates the file but not its folder (e.g. /home/data on Azure App Service).</summary>
-    private static void EnsureDatabaseDirectory(string? connectionString)
+    /// <summary>
+    /// Full path of a file-backed database, or null for in-memory ones. SQLite creates the file but not
+    /// its folder (e.g. /home/data on Azure App Service), so the caller creates the folder.
+    /// </summary>
+    private static string? DatabaseFile(string? connectionString)
     {
         var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
         if (string.IsNullOrEmpty(dataSource) || dataSource == ":memory:"
             || dataSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
-            return;
-
-        var directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
+            return null;
+        return Path.GetFullPath(dataSource);
     }
 }
