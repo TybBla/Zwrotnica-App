@@ -8,7 +8,8 @@ public sealed record ReminderMessage(string Subject, string Text, string Html);
 
 /// <summary>
 /// The one follow-up e-mail after the carrier's month has passed. Money due (the same rule as the letter) gets
-/// "has it been paid?"; a complaint under the carrier's own rules only asks about the answer and claims no amount.
+/// "has it been paid?"; a complaint under the carrier's own rules only asks about the answer and claims no amount;
+/// a regional carrier's costs claim is named as such ("wniosek o zwrot kosztów").
 /// </summary>
 public static class ReminderEmail
 {
@@ -27,14 +28,19 @@ public static class ReminderEmail
             : "";
         var sent = c.FiledAt is { } filedAt ? $"wysłano {Date(filedAt)}" : "wysłano";
         var due = c.ResponseDueDate is { } dueDate ? $"upłynął {Date(dueDate)}" : "już upłynął";
-        var document = moneyDue ? "pismo" : "reklamację";
+        var costsClaim = c.Verdict == Verdict.NotCovered && c.ExpenseAmount > 0;
+        const string costs = "wniosek o zwrot kosztów";
+        // Accusative ("wysłano reklamację", "powołuje się na wniosek…").
+        var document = moneyDue ? "pismo" : costsClaim ? costs : "reklamację";
+        // What the carrier answers: "odpowiedź na reklamację" / "odpowiedź na wniosek o zwrot kosztów".
+        var answered = costsClaim ? costs : "reklamację";
 
         // The amount is our calculation from the rules, not a figure the carrier confirmed.
         var amount = $"{ComplaintFacts.FormatMoney(c.CompensationAmount)} (według naszego wyliczenia)";
 
         var subject = moneyDue
             ? cancelled ? "Czy przewoźnik zwrócił już należność za bilet? – Zwrotnica" : "Czy otrzymali Państwo już odszkodowanie? – Zwrotnica"
-            : "Czy przewoźnik odpowiedział na reklamację? – Zwrotnica";
+            : $"Czy przewoźnik odpowiedział na {answered}? – Zwrotnica";
 
         string[] paragraphs =
         [
@@ -47,13 +53,13 @@ public static class ReminderEmail
                       ? $"Mamy nadzieję, że przewoźnik zwrócił już należność za bilet w wysokości {amount}. "
                       : $"Mamy nadzieję, że przewoźnik wypłacił już odszkodowanie w wysokości {amount}. ") +
                   "Jeśli tak, prosimy oznaczyć sprawę w Zwrotnicy jako wypłaconą."
-                : "Mamy nadzieję, że odpowiedź na reklamację już nadeszła i jest dla Państwa satysfakcjonująca. " +
+                : $"Mamy nadzieję, że odpowiedź na {answered} już nadeszła i jest dla Państwa satysfakcjonująca. " +
                   "Jeśli tak, prosimy zaktualizować status sprawy w Zwrotnicy.",
             moneyDue
                 ? cancelled
                     ? "Jeżeli przewoźnik nie zwrócił należności za bilet albo nie odpowiedział, warto:"
                     : "Jeżeli przewoźnik nie wypłacił kwoty, o którą Państwo wnioskowali, albo nie odpowiedział, warto:"
-                : "Jeżeli odpowiedź na reklamację nie nadeszła albo jej Państwo nie akceptują, warto:",
+                : $"Jeżeli odpowiedź na {answered} nie nadeszła albo jej Państwo nie akceptują, warto:",
         ];
         (string Text, string? Url)[] steps =
         [

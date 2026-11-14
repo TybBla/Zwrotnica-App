@@ -73,6 +73,25 @@ public sealed class ReminderEmailTests
     }
 
     [Fact]
+    public void RegionalCaseWithCosts_RefersToTheCostsClaim()
+    {
+        var c = Case(Verdict.NotCovered, 0);
+        c.ExpenseAmount = 85m;
+
+        var message = ReminderEmail.Build(c, BaseUrl);
+
+        Assert.Equal("Czy przewoźnik odpowiedział na wniosek o zwrot kosztów? – Zwrotnica", message.Subject);
+        foreach (var part in new[] { message.Text, message.Html })
+        {
+            Assert.Contains("Według naszych zapisów wniosek o zwrot kosztów do przewoźnika PKP Intercity", part);
+            Assert.Contains("odpowiedź na wniosek o zwrot kosztów", part);
+            Assert.Contains("powołuje się na wniosek o zwrot kosztów i datę wysłania", part);
+            Assert.DoesNotContain("reklamac", part);
+            Assert.DoesNotContain("odszkodowani", part);
+        }
+    }
+
+    [Fact]
     public void Html_EncodesTextTheUserTypedIn()
     {
         var c = Case();
