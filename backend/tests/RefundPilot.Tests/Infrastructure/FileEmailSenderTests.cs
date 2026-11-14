@@ -1,4 +1,4 @@
-using System.Net.Mail;
+using RefundPilot.Application.Abstractions;
 using RefundPilot.Infrastructure.Email;
 
 namespace RefundPilot.Tests.Infrastructure;
@@ -36,8 +36,9 @@ public sealed class FileEmailSenderTests : IDisposable
     {
         var sender = new FileEmailSender(new EmailOptions(), _outbox);
 
-        await Assert.ThrowsAnyAsync<FormatException>(() =>
+        var error = await Assert.ThrowsAsync<EmailRecipientRejectedException>(() =>
             sender.SendAsync("not an address", "S", "T", "<p>T</p>", CancellationToken.None));
+        Assert.Equal(EmailRejection.InvalidAddress, error.Reason);
         Assert.Empty(Directory.Exists(_outbox) ? Directory.GetFiles(_outbox) : []);
     }
 }

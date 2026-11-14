@@ -158,4 +158,23 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
         Assert.False(await _repository.DeleteAsync(created.Id, UserB));
         Assert.NotNull(await _repository.GetAsync(created.Id, UserA));
     }
+
+    [Fact]
+    public async Task ClaimReminders_IsAtMostOnce_AndReleaseOnlyUndoesItsOwnClaim()
+    {
+        var c = NewCase();
+        await _repository.AddAsync(c);
+        var first = new DateTime(2026, 11, 13, 10, 0, 0, DateTimeKind.Utc);
+
+        var claimed = await _repository.ClaimRemindersAsync([c.Id], first, CancellationToken.None);
+        var again = await _repository.ClaimRemindersAsync([c.Id], first.AddSeconds(1), CancellationToken.None);
+        await _repository.ReleaseRemindersAsync([c.Id], first.AddSeconds(1), CancellationToken.None);
+
+        Assert.Equal([c.Id], claimed);
+        Assert.Empty(again);
+        Assert.Equal(first, await _db.Cases.AsNoTracking().Where(x => x.Id == c.Id).Select(x => x.ReminderSentAt).SingleAsync());
+
+        await _repository.ReleaseRemindersAsync([c.Id], first, CancellationToken.None);
+        Assert.Null(await _db.Cases.AsNoTracking().Where(x => x.Id == c.Id).Select(x => x.ReminderSentAt).SingleAsync());
+    }
 }

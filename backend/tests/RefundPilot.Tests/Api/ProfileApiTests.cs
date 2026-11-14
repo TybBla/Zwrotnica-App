@@ -163,4 +163,18 @@ public sealed class ProfileApiTests : IClassFixture<TestApiFactory>
         var json = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
         Assert.False(json.GetProperty("emailReminders").GetBoolean());
     }
+
+    [Fact]
+    public async Task Put_WithoutEmailReminders_KeepsTheStoredChoice()
+    {
+        var client = await LoggedInClientAsync("keep-reminders@test.pl");
+        await client.PutAsJsonAsync("/api/profile", new { preferredPayout = "Voucher", emailReminders = false });
+
+        var put = await client.PutAsJsonAsync("/api/profile", new { fullName = "Jan Testowy", preferredPayout = "Voucher" });
+
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        Assert.False((await put.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("emailReminders").GetBoolean());
+        var json = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(json.GetProperty("emailReminders").GetBoolean());
+    }
 }

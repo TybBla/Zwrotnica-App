@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using RefundPilot.Api;
 using RefundPilot.Application;
 using RefundPilot.Application.Abstractions;
-using RefundPilot.Application.Services;
 using RefundPilot.Infrastructure;
 
 const string FrontendCorsPolicy = "Frontend";
@@ -63,15 +62,12 @@ builder.Services.AddApplication();
 
 // Reminder e-mails one month after filing: SMTP when Email:Smtp:Host is set, otherwise .eml files in a local outbox.
 builder.Services.AddEmail(builder.Configuration, builder.Environment.ContentRootPath);
-var publicBaseUrl = builder.Configuration["PublicBaseUrl"];
-builder.Services.AddSingleton(new ReminderOptions(
-    string.IsNullOrWhiteSpace(publicBaseUrl) ? "http://localhost:5173" : publicBaseUrl.Trim()));
-if (builder.Configuration.GetValue("Reminders:Enabled", defaultValue: true))
+var reminders = ReminderSettings.From(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddSingleton(reminders.Options);
+if (reminders.Run)
 {
-    var intervalMinutes = builder.Configuration.GetValue("Reminders:IntervalMinutes", defaultValue: 60);
     builder.Services.AddHostedService(sp => new ReminderBackgroundService(
-        sp.GetRequiredService<IServiceScopeFactory>(),
-        TimeSpan.FromMinutes(intervalMinutes > 0 ? intervalMinutes : 60),
+        sp.GetRequiredService<IServiceScopeFactory>(), reminders.Interval,
         sp.GetRequiredService<ILogger<ReminderBackgroundService>>()));
 }
 
@@ -133,8 +129,10 @@ var app = builder.Build();
 if (app.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keyRingPath)
     StorageDirectory.Ensure(keyRingPath, "DataProtection__KeysPath", app.Logger);
 
-if (!app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(publicBaseUrl))
-    app.Logger.LogWarning("PublicBaseUrl is not set: links in reminder e-mails point to http://localhost:5173.");
+if (reminders.Error is { } reminderError)
+    app.Logger.LogError("{Problem}", reminderError);
+if (reminders.Warning is { } reminderWarning)
+    app.Logger.LogWarning("{Problem}", reminderWarning);
 
 var seedEnabled = app.Configuration.GetValue("Seed:Enabled", defaultValue: true);
 await DatabaseInitializer.InitializeAsync(

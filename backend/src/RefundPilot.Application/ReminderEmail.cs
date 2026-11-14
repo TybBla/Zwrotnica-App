@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Net;
 using System.Text;
 using RefundPilot.Domain;
 
@@ -30,6 +29,9 @@ public static class ReminderEmail
         var due = c.ResponseDueDate is { } dueDate ? $"upłynął {Date(dueDate)}" : "już upłynął";
         var document = moneyDue ? "pismo" : "reklamację";
 
+        // The amount is our calculation from the rules, not a figure the carrier confirmed.
+        var amount = $"{ComplaintFacts.FormatMoney(c.CompensationAmount)} (według naszego wyliczenia)";
+
         var subject = moneyDue
             ? cancelled ? "Czy przewoźnik zwrócił już należność za bilet? – Zwrotnica" : "Czy otrzymali Państwo już odszkodowanie? – Zwrotnica"
             : "Czy przewoźnik odpowiedział na reklamację? – Zwrotnica";
@@ -42,13 +44,15 @@ public static class ReminderEmail
             $"a termin na odpowiedź przewoźnika {due}.",
             moneyDue
                 ? (cancelled
-                      ? $"Mamy nadzieję, że przewoźnik zwrócił już należność za bilet ({ComplaintFacts.FormatMoney(c.CompensationAmount)}). "
-                      : $"Mamy nadzieję, że przewoźnik wypłacił już odszkodowanie w wysokości {ComplaintFacts.FormatMoney(c.CompensationAmount)}. ") +
+                      ? $"Mamy nadzieję, że przewoźnik zwrócił już należność za bilet w wysokości {amount}. "
+                      : $"Mamy nadzieję, że przewoźnik wypłacił już odszkodowanie w wysokości {amount}. ") +
                   "Jeśli tak, prosimy oznaczyć sprawę w Zwrotnicy jako wypłaconą."
                 : "Mamy nadzieję, że odpowiedź na reklamację już nadeszła i jest dla Państwa satysfakcjonująca. " +
                   "Jeśli tak, prosimy zaktualizować status sprawy w Zwrotnicy.",
             moneyDue
-                ? "Jeżeli przewoźnik nie wypłacił należnej kwoty albo nie odpowiedział, warto:"
+                ? cancelled
+                    ? "Jeżeli przewoźnik nie zwrócił należności za bilet albo nie odpowiedział, warto:"
+                    : "Jeżeli przewoźnik nie wypłacił kwoty, o którą Państwo wnioskowali, albo nie odpowiedział, warto:"
                 : "Jeżeli odpowiedź na reklamację nie nadeszła albo jej Państwo nie akceptują, warto:",
         ];
         (string Text, string? Url)[] steps =
@@ -58,7 +62,7 @@ public static class ReminderEmail
             ("zwrócić się do Rzecznika Praw Pasażera Kolei z prośbą o mediację.", null),
         ];
         const string signature = "Z wyrazami szacunku\nZespół Zwrotnicy";
-        const string footer = "To jednorazowe przypomnienie dotyczące tej sprawy. Przypomnienia e-mail można wyłączyć w profilu:";
+        const string footer = "Wiadomość ma charakter informacyjny i nie stanowi porady prawnej. To jednorazowe przypomnienie dotyczące tej sprawy. Przypomnienia e-mail można wyłączyć w profilu:";
 
         return new(subject,
             Text(paragraphs, steps, caseUrl, signature, footer, profileUrl),
@@ -84,7 +88,9 @@ public static class ReminderEmail
     private static string Html(string[] paragraphs, (string Text, string? Url)[] steps, string caseUrl,
         string signature, string footer, string profileUrl)
     {
-        static string E(string value) => WebUtility.HtmlEncode(value);
+        // Only the markup characters: Polish letters stay readable in the UTF-8 source (WebUtility would turn "ó" into &#243;).
+        static string E(string value) => value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
+            .Replace("\"", "&quot;").Replace("'", "&#39;");
         static string Link(string url, string label) => $"<a href=\"{E(url)}\">{E(label)}</a>";
 
         var html = new StringBuilder("<!doctype html><html lang=\"pl\"><head><meta charset=\"utf-8\"></head>")

@@ -26,8 +26,10 @@ public sealed class ProfileService(ICurrentUser currentUser, IUserProfileStore s
         if (currentUser.UserId is not { } userId)
             return null;
 
+        // An older client that does not send the flag must not switch reminders back on.
+        var emailReminders = request.EmailReminders ?? (await store.GetAsync(userId))?.EmailReminders ?? true;
         var profile = new UserProfile(Clean(request.FullName), Clean(request.Address), NormalizeIban(request.Iban),
-            request.PreferredPayout, request.EmailReminders);
+            request.PreferredPayout, emailReminders);
         return await store.UpdateAsync(userId, profile) ? ToDto(profile) : null;
     }
 

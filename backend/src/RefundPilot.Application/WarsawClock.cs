@@ -11,6 +11,10 @@ public static class WarsawClock
     public static DateOnly DateOf(DateTime utc) =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone));
 
+    /// <summary>The UTC instant at which <paramref name="date"/> begins in Warsaw.</summary>
+    public static DateTime StartOfDayUtc(DateOnly date) =>
+        TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), Zone);
+
     private static TimeZoneInfo Resolve()
     {
         foreach (var id in new[] { "Europe/Warsaw", "Central European Standard Time" })

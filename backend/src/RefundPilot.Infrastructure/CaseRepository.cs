@@ -30,17 +30,28 @@ public sealed class CaseRepository(AppDbContext db) : ICaseRepository
     public async Task<bool> DeleteAsync(int id, string userId) =>
         await db.Cases.Where(c => c.Id == id && c.UserId == userId).ExecuteDeleteAsync() > 0;
 
-    public Task<List<DueReminder>> ListDueRemindersAsync(DateTime now, CancellationToken ct) =>
+    public Task<List<DueReminder>> ListDueRemindersAsync(DateTime dueBefore, CancellationToken ct) =>
         (from c in db.Cases.AsNoTracking()
          join u in db.Users on c.UserId equals u.Id
          where c.Status == CaseStatus.Sent && c.ReminderSentAt == null
-               && c.ResponseDueDate != null && c.ResponseDueDate <= now
+               && c.ResponseDueDate != null && c.ResponseDueDate < dueBefore
                && u.EmailReminders && u.Email != null
          orderby c.Id
          select new DueReminder(c, u.Email!))
         .ToListAsync(ct);
 
-    public Task MarkRemindersSentAsync(IReadOnlyCollection<int> caseIds, DateTime sentAt, CancellationToken ct) =>
-        db.Cases.Where(c => caseIds.Contains(c.Id) && c.ReminderSentAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ReminderSentAt, sentAt), ct);
+    public async Task<List<int>> ClaimRemindersAsync(IReadOnlyCollection<int> caseIds, DateTime claimedAt, CancellationToken ct)
+    {
+        await db.Cases.Where(c => caseIds.Contains(c.Id) && c.ReminderSentAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ReminderSentAt, claimedAt), ct);
+        // The claim timestamp doubles as the claim token: rows another run claimed carry its own timestamp.
+        return await db.Cases.AsNoTracking()
+            .Where(c => caseIds.Contains(c.Id) && c.ReminderSentAt == claimedAt)
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+    }
+
+    public Task ReleaseRemindersAsync(IReadOnlyCollection<int> caseIds, DateTime claimedAt, CancellationToken ct) =>
+        db.Cases.Where(c => caseIds.Contains(c.Id) && c.ReminderSentAt == claimedAt)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ReminderSentAt, (DateTime?)null), ct);
 }

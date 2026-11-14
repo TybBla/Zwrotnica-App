@@ -35,7 +35,9 @@ public sealed class ReminderEmailTests
         foreach (var part in new[] { message.Text, message.Html })
         {
             Assert.Contains("dziękujemy, że skorzystali Państwo ze Zwrotnicy", part);
-            Assert.Contains("25,00 zł", part);
+            Assert.Contains("w wysokości 25,00 zł (według naszego wyliczenia)", part);
+            Assert.Contains("kwoty, o którą Państwo wnioskowali", part);
+            Assert.Contains("Wiadomość ma charakter informacyjny i nie stanowi porady prawnej.", part);
             Assert.Contains("PKP Intercity", part);
             Assert.Contains("01.10.2026", part);
             Assert.Contains("02.11.2026", part);
@@ -64,6 +66,7 @@ public sealed class ReminderEmailTests
             Assert.DoesNotMatch(@"\d zł", part);
         }
         Assert.Contains("odpowiedź na reklamację", message.Text);
+        Assert.Contains("Wiadomość ma charakter informacyjny i nie stanowi porady prawnej.", message.Text);
         Assert.Contains("ponaglenie", message.Text);
         Assert.Contains("https://utk.gov.pl", message.Text);
         Assert.Contains("https://zwrotnica.example/sprawy/42", message.Html);
@@ -80,5 +83,19 @@ public sealed class ReminderEmailTests
         Assert.DoesNotContain("<script>", message.Html);
         Assert.Contains("&lt;script&gt;", message.Html);
         Assert.Contains("<script>", message.Text);
+    }
+
+    [Fact]
+    public void CancelledTrain_AsksAboutTheTicketRefund()
+    {
+        var c = Case();
+        c.IncidentType = IncidentType.Cancellation;
+        c.CompensationAmount = 100m;
+
+        var message = ReminderEmail.Build(c, BaseUrl);
+
+        Assert.Contains("należność za bilet", message.Subject);
+        Assert.Contains("Jeżeli przewoźnik nie zwrócił należności za bilet", message.Text);
+        Assert.DoesNotContain("odszkodowani", message.Text);
     }
 }
