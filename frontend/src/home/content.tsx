@@ -21,7 +21,7 @@ export const rules: Rule[] = [
   { situation: 'Opóźnienie poniżej 60 min', outcome: 'Brak odszkodowania', kind: 'none' },
   {
     situation: 'Pociąg regionalny, podmiejski lub miejski w Polsce',
-    detail: 'np. Polregio (także InterRegio), Koleje Mazowieckie, Koleje Śląskie, SKM',
+    detail: 'np. Polregio (wszystkie jego pociągi, także InterRegio), Koleje Mazowieckie, Koleje Śląskie, SKM',
     outcome: 'Brak odszkodowania wg przepisów UE. Obowiązuje regulamin przewoźnika.',
     kind: 'none',
   },
@@ -80,7 +80,8 @@ export const faq: FaqItem[] = [
         Nie. Polska wyłączyła pociągi miejskie, podmiejskie i regionalne z unijnego systemu 25%/50% (art. 3a ustawy o
         transporcie kolejowym). Dotyczy to polskich przewoźników regionalnych, m.in. Polregio (także jego pociągów
         InterRegio), Kolei Mazowieckich, Kolei Śląskich, Kolei Dolnośląskich, SKM i WKD. Reklamację możesz złożyć na
-        zasadach z regulaminu przewoźnika. Sprawdź w nim, czy i ile zwraca za opóźnienie.
+        zasadach z regulaminu przewoźnika. Sprawdź w nim, czy i ile zwraca za opóźnienie. Jeśli znasz tylko kategorię
+        InterRegio (IR), a przewoźnik jest inny niż Polregio albo go nie podasz, wynik to „Do sprawdzenia”.
       </p>
     ),
   },

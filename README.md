@@ -26,8 +26,8 @@ Pociąg dalekobieżny spóźnił się ponad godzinę? Według rozporządzenia (U
 - **Uczciwy werdykt: Należy się / Nie należy się / Do sprawdzenia** z krótkim uzasadnieniem.
   - PKP Intercity (EIP, EIC, IC, TLK) i połączenia międzynarodowe są objęte systemem 25%/50%.
   - Przewoźnicy regionalni, miejscy i podmiejscy (Polregio, Koleje Mazowieckie, Śląskie, Dolnośląskie, Małopolskie, Wielkopolskie, SKM, WKD, ŁKA, Arriva RP) dostają „Nie należy się”, bo Polska wyłącza je z tego systemu. Aplikacja nie pokazuje dla nich błędnej kwoty.
-  - InterRegio (prowadzi je Polregio, a nie PKP Intercity) oraz nierozpoznany przewoźnik lub kategoria dostają „Do sprawdzenia”.
-- **Zasady kwot:** 60–119 min to 25%, co najmniej 120 min to 50%, odwołanie to 100% ceny faktycznie zapłaconej. Kwoty poniżej minimalnej wypłaty przewoźnika (16 zł) są oznaczone ostrzeżeniem. Bez ceny biletu kwota nie jest zgadywana.
+  - Polregio dostaje „Nie należy się” dla wszystkich swoich pociągów, także InterRegio (polskie wyłączenie przewozów regionalnych). Sama kategoria InterRegio (IR) przy innym lub nieznanym przewoźniku oraz nierozpoznany przewoźnik lub kategoria dostają „Do sprawdzenia”.
+- **Zasady kwot:** 60–119 min to 25%, co najmniej 120 min to 50%, odwołanie to zwrot 100% ceny faktycznie zapłaconej. Pismo za opóźnienie żąda odszkodowania na podstawie art. 19 rozporządzenia (UE) 2021/782, a pismo za odwołany pociąg zwrotu należności za bilet na podstawie art. 18. Kwoty poniżej minimalnej wypłaty przewoźnika (16 zł) są oznaczone ostrzeżeniem. Bez ceny biletu kwota nie jest zgadywana.
 - **Ryzyko siły wyższej.** Gdy przyczyną są pogoda albo osoby na torach, kwota się nie zmienia, ale pojawia się ostrzeżenie o ryzyku odmowy.
 - **Bilet okresowy** dostaje „Do sprawdzenia”. Kwota nie jest liczona automatycznie.
 - **Forma wypłaty (3 opcje):** zwrot na konto lub kartę użyte do zakupu (domyślnie, bez podawania numeru), przelew na inny rachunek albo bon. Pismo zawiera osobne, konkretne zdanie dla każdej opcji.
@@ -92,13 +92,13 @@ To główna zasada projektu i mój „creative twist”: AI robi tylko to, czego
 
 - **LLM tylko odczytuje dane z biletu i pisze treść pisma.** O tym, czy odszkodowanie się należy, ile wynosi i czy jest ryzyko odmowy, decydują `EligibilityService`, `CompensationCalculator` i `AssessmentService`. Serwer zawsze liczy to od nowa, także przy zapisie sprawy.
 - **Wyjście AI jest walidowane.** Odczyt biletu wymusza JSON Schema (`responseJsonSchema`), a serwer i tak sprawdza typy, długości i znaki. Przewoźnika i kategorię mapuje na słownik, więc AI nie wprowadzi nowego przewoźnika, który niechcący „kwalifikuje się”.
-- **Pismo od AI przechodzi kontrolę, zanim trafi do użytkownika.** Musi zawierać dokładnie wyliczoną kwotę i odwołanie do 2021/782. Odrzucane jest pismo, które zawiera inne sumy niż kwota i cena, ciąg podobny do numeru rachunku, wyłączające sformułowania o formie wypłaty albo nieznane lub źle zbudowane tokeny. W każdym takim przypadku, a także przy awarii AI, pismo powstaje z szablonu.
+- **Pismo od AI przechodzi kontrolę, zanim trafi do użytkownika.** Musi zawierać dokładnie wyliczoną kwotę, odwołanie do 2021/782 i właściwy artykuł (art. 19 przy opóźnieniu, art. 18 przy odwołaniu). Odrzucane jest pismo, które zawiera inne sumy niż kwota i cena, ciąg podobny do numeru rachunku (IBAN albo 26 cyfr, także ze spacjami), wyłączające sformułowania o formie wypłaty albo nieznane lub źle zbudowane tokeny. W każdym takim przypadku, a także przy awarii AI, pismo powstaje z szablonu.
 - **Zdanie o formie wypłaty wstawia serwer** w miejsce tokenu, więc zawsze brzmi dokładnie tak, jak ustalono dla wybranej opcji.
 - **Dane osobowe z profilu nie trafiają do AI.** Model dostaje tylko fakty sprawy i pisze tokeny `{{FULL_NAME}}`, `{{ADDRESS}}` itd., które serwer zastępuje oczyszczonymi danymi z profilu. Brakujące dane stają się lukami `[ ]` i trafiają na listę do uzupełnienia. Wyjątek: zdjęcie biletu wysłane do odczytu idzie do Gemini w całości, dlatego UI radzi zasłonić dane osobowe albo wpisać dane ręcznie.
 
 ### Pozostałe
 
-- **Uczciwe werdykty zamiast optymistycznych.** Regionalny pociąg dostaje „Nie należy się” z wyjaśnieniem, InterRegio i bilet okresowy „Do sprawdzenia”, brak ceny oznacza brak zgadywanej kwoty. Pisma nie da się wygenerować dla sprawy, w której nic się nie należy (409).
+- **Uczciwe werdykty zamiast optymistycznych.** Regionalny pociąg dostaje „Nie należy się” z wyjaśnieniem, sama kategoria InterRegio bez Polregio i bilet okresowy „Do sprawdzenia”, brak ceny oznacza brak zgadywanej kwoty. Pisma nie da się wygenerować dla sprawy, w której nic się nie należy (409).
 - **Dozwolone znaki per pole, lustrzane w FE i BE.** Każde pole (imię, adres, stacja, numer biletu, IBAN, notatka…) ma własną listę dozwolonych znaków, bez emoji i symboli. Frontend odrzuca niedozwolone znaki przy wpisywaniu i wklejaniu, z obsługą IME i klawiszy martwych. API odrzuca je z kodem 400. „Inteligentna” interpunkcja z klawiatur telefonów (cudzysłowy drukarskie, półpauzy, twarda spacja) jest zamieniana na zwykłą po obu stronach, tak samo (`TextRules.cs` ↔ `textRules.ts`).
 - **IBAN:** walidacja sumy kontrolnej mod-97 (FE i BE) i szyfrowanie w bazie przez Data Protection. Numer widzi tylko właściciel po zalogowaniu.
 - **Jedna sprawa na jedno przejście kreatora.** Ponowne „Zapisz” lub błąd w połowie nie tworzą duplikatów. Stan kreatora jest powiązany z kontem, więc po wylogowaniu nic nie przecieka do następnej osoby.
@@ -251,13 +251,14 @@ Głównym narzędziem był **Claude Code** (modele Claude Opus i Sonnet). Pracow
 - **Brak weryfikacji e-maila i resetu hasła** (świadomie poza zakresem MVP).
 - **Klucze Data Protection są per maszyna i użytkownik** (domyślny katalog lub `DataProtection:KeysPath`). Baza przeniesiona na inną maszynę nie odszyfruje rachunków. Produkcyjnie: HTTPS, wspólny magazyn kluczy (np. Key Vault) i ich rotacja.
 - Typ pliku jest rozpoznawany po nagłówku `Content-Type`, bez sprawdzania sygnatury pliku.
+- **Limit na adres IP za reverse proxy:** bez konfiguracji forwarded headers (`UseForwardedHeaders` ze znanymi proxy) wszyscy użytkownicy mają adres proxy i dzielą jeden limit odczytów AI.
 
 ### Kierunki rozwoju i model biznesowy
 
 - **Limity odczytu AI:** w MVP gość może odczytać bilet maksymalnie 5 razy na minutę (limit per IP, `RateLimiting:ExtractionsPerMinute`), co chroni darmowy limit Gemini. Przy komercjalizacji limit zależałby od planu konta: mały dla darmowych użytkowników, wyższy albo bez limitu dla płatnych.
 - **Lepiej jako moduł większego systemu niż samodzielna aplikacja.** Reklamacje za opóźnienia zdarzają się rzadko (np. 1–2 razy w roku), więc trudno o abonament. Refund Pilot ma więcej sensu jako funkcja aplikacji przewoźnika, wyszukiwarki połączeń, planera podróży, aplikacji biletowej lub bankowej, gdzie wartość dla pasażera rośnie, a koszt rozkłada się na cały produkt.
 - **Jeśli jako samodzielny produkt:** obok abonamentu płatność jednorazowa za pojedynczą reklamację, w cenie minimalnie niższej niż miesięczny abonament. Abonament opłaca się przy częstym korzystaniu, płatność jednorazowa przy sporadycznym.
-- Poza zakresem MVP pozostały pozostałe prawa pasażera z rozporządzenia: pomoc w czasie opóźnienia, zwrot biletu zamiast kontynuacji podróży, zmiana trasy. Pominięte są też inne środki transportu (autobusy, loty).
+- Poza zakresem MVP pozostały pozostałe prawa pasażera z rozporządzenia: pomoc w czasie opóźnienia, zwrot biletu zamiast kontynuacji podróży przy przewidywanym opóźnieniu, zmiana trasy. Z art. 18 aplikacja obsługuje tylko zwrot ceny biletu po odwołaniu pociągu. Pominięte są też inne środki transportu (autobusy, loty).
 
 ## Zastrzeżenie prawne
 
