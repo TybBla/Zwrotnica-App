@@ -172,9 +172,9 @@ To lokalne dane testowe z `appsettings.Development.json` (fikcyjna osoba, 5 fikc
 ### 7. Testy
 
 ```bash
-dotnet test backend/RefundPilot.sln     # 293 testy: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
+dotnet test backend/RefundPilot.sln     # 295 testów: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
 cd frontend
-npm run test                             # 151 testów (Vitest + Testing Library)
+npm run test                             # 152 testy (Vitest + Testing Library)
 npm run build                            # tsc + build produkcyjny
 npm run lint                             # oxlint
 ```
