@@ -1,10 +1,42 @@
 /*
  * Zwrotnica design tokens (design direction v2, docs/design-direction.md).
  * One design language, two color schemes: type, spacing, radii, sizes and motion are defined once on :root;
- * [data-theme] swaps only colors. Brand: ink navy (timetable posters, station signage). Single accent: signal yellow
- * ("Odjazdy" poster), used sparingly – the amount plate, the current wizard step, the focus ring.
+ * [data-theme] swaps only colors (user's choice 2026-11-14):
+ *   light = "L3 Granatowy pasek" – a solid navy header bar over a cool paper page, like a bank or carrier service;
+ *   dark  = "D3 Tablica odjazdów" – a near-black neutral board with warm-white type and signal yellow, like a
+ *           Polish station departure board.
+ * In both, the PRIMARY action is a signal-yellow fill (#ffc20e) with ink / near-black text. Yellow is never text on
+ * a light surface. --brand is the structural color for selection and progress: navy (light), warm white (dark).
  * Verdicts follow rail signals: green = Należy się, muted red = Nie należy się, amber = Do sprawdzenia.
- * Contrast ratios (WCAG 2.2) are noted next to each pair; all text ≥ 4.5:1, control borders and focus ≥ 3:1.
+ *
+ * WCAG 2.2 contrast (computed from relative luminance). Text ≥ 4.5:1, control borders and focus ≥ 3:1.
+ *   LIGHT                                   on bg #f4f6f9 / surface #ffffff / sunken #edf0f4
+ *     text #0e1a2b                          16.2 / 17.5 / 15.3
+ *     text-secondary #43506a                 7.5 /  8.1 /  7.1
+ *     text-tertiary #566277                  5.7 /  6.2 /  5.4
+ *     border-strong #7b8597 (controls)       3.4 /  3.7 /  3.3
+ *     link #1a4a8f                           8.0 /  8.7 /  7.6
+ *     brand #163a70 on surface 11.2 · white on brand 11.2 · brand-tint-text #163a70 on tint #e7eef8 9.6
+ *     primary: ink on #ffc20e 10.8 · on hover #f2b200 9.3 · on pressed #e0a300 7.8 · muted #4a3a00 on it 6.8 / 5.9
+ *     header bar #163a70: white 11.2 · muted #c8d4e8 7.5 · control border #8fa6c9 4.5 · white on hover #1d4a8a 8.8
+ *       · focus ring #ffc20e 6.9
+ *     amount plate: #ffc20e digits on navy #163a70 6.9
+ *     verdict tone on tint / surface: success 5.8 / 6.7 · danger 6.1 / 7.1 · warning 6.1 / 6.9 · neutral 7.7 / 9.0
+ *       · danger button white on #a8261f 7.1
+ *     focus: ink ring 16.2 / 17.5 / 15.3 with a yellow band in the gap
+ *   DARK                                    on bg #0b0b0c / surface #141415 / raised #1c1c1e
+ *     text #f5f5f2                          18.0 / 16.9 / 15.6
+ *     text-secondary #a3a39e                 7.8 /  7.3 /  6.7
+ *     text-tertiary #8a8a85                  5.7 /  5.3 /  4.9
+ *     border-strong #707074 (controls)       4.0 /  3.7 /  3.5
+ *     link #ffc20e (always underlined)      12.2 / 11.4 / 10.5
+ *     brand #f5f5f2 on surface 16.9 · near-black on brand 18.0 · brand-tint-text #f5f5f2 on tint #1f1e1a 15.3
+ *     primary: #0b0b0c on #ffc20e 12.2 · on hover #ffcf3d 13.3 · on pressed #ffdb70 14.6 · muted #4a3a00 6.8 / 7.5
+ *     header = surface: as above; control border 3.7, focus ring 11.4
+ *     amount plate: #ffc20e digits on #0b0b0c 12.2 (decorative edge #3a3a3d)
+ *     verdict tone on tint / surface: success #4cc38a 7.5 / 8.3 · danger #f2847a 6.9 / 7.3 · warning #f0b44c
+ *       8.7 / 9.9 · neutral #c9c9c4 on #222224 9.8 · danger button #141415 on #f2847a 7.3
+ *     focus: yellow ring 12.2 / 11.4 / 10.5, no band
  */
 
 :root {
@@ -81,40 +113,52 @@
   --enter-shift: -4px;
 }
 
-/* ---------- Light scheme: paper and ink ---------- */
+/* ---------- Light scheme: L3 Granatowy pasek (navy bar, cool paper, yellow primary) ---------- */
 :root,
 [data-theme='light'] {
   color-scheme: light;
 
-  --bg: #f6f7f9;
+  --bg: #f4f6f9;
   --surface: #ffffff;
   --surface-sunken: #edf0f4;
   --surface-raised: #ffffff;
 
   /* on bg / surface / sunken */
-  --text: #0e1a2b; /* 16.3 / 17.5 / 15.3 */
-  --text-secondary: #43506a; /* 7.6 / 8.1 / 7.1 */
-  --text-tertiary: #566277; /* 5.8 / 6.2 / 5.4 */
+  --text: #0e1a2b; /* 16.2 / 17.5 / 15.3 */
+  --text-secondary: #43506a; /* 7.5 / 8.1 / 7.1 */
+  --text-tertiary: #566277; /* 5.7 / 6.2 / 5.4 */
 
-  --border: #dce1e8; /* decorative dividers only */
-  --border-strong: #7b8597; /* control borders: 3.5 / 3.7 / 3.3 */
+  --border: #dde3eb; /* decorative dividers only */
+  --border-strong: #7b8597; /* control borders: 3.4 / 3.7 / 3.3 */
 
-  /* Brand navy: primary buttons, links, headings' accents. */
+  /* Primary action: signal-yellow fill, ink text. Hover and pressed turn darker amber. */
+  --primary: #ffc20e;
+  --primary-hover: #f2b200;
+  --primary-pressed: #e0a300;
+  --primary-edge: #d9a200; /* a deeper rim so the fill holds its shape on paper; the label identifies it */
+  --text-on-primary: #0e1a2b; /* 10.8 / 9.3 / 7.8 */
+  --text-on-primary-muted: #4a3a00; /* 6.8 on primary, 5.9 on hover */
+
+  /* Brand navy: selection, progress, checkbox, avatar, the header bar. */
   --brand: #163a70;
   --brand-hover: #112f5d;
   --brand-pressed: #0c2549;
-  --text-on-brand: #ffffff; /* 11.2 on brand, 13.2 on hover */
-  --text-on-brand-muted: #c8d4e8; /* 7.5 on brand */
-  --link: #1a4a8f; /* 8.1 / 8.7 / 7.6 */
+  --text-on-brand: #ffffff; /* 11.2 */
+  --link: #1a4a8f; /* 8.0 / 8.7 / 7.6 */
   --brand-tint: #e7eef8;
   --brand-tint-text: #163a70; /* 9.6 on tint */
 
-  /* Signal yellow: fills only, always with ink on top (10.8). Never text on a light surface. */
+  /* Signal yellow as a fill only (current step, skip link, selection), always with ink on top (10.8). */
   --accent: #ffc20e;
   --text-on-accent: #0e1a2b;
   --accent-tint: #fff4cc;
 
-  /* Verdicts and status – tone text on its tint: 5.8 / 6.1 / 6.1 / 7.8; tone on surface: 6.7 / 7.1 / 6.9 */
+  /* The amount plate: yellow digits on navy (6.9). */
+  --plate-bg: #163a70;
+  --plate-text: #ffc20e;
+  --plate-edge: #163a70;
+
+  /* Verdicts and status – tone text on its tint: 5.8 / 6.1 / 6.1 / 7.7; tone on surface: 6.7 / 7.1 / 6.9 */
   --success: #0a6a3d;
   --success-tint: #e2f2e9;
   --danger: #a8261f;
@@ -124,63 +168,108 @@
   --neutral: #3e4a5d;
   --neutral-tint: #edf0f4;
 
-  /* Focus: an ink ring (16.3 / 17.5 / 15.3) with a signal-yellow band in the gap, GOV.UK-style. */
+  /* Focus: an ink ring (16.2 / 17.5 / 15.3) with a signal-yellow band in the gap, GOV.UK-style. */
   --focus-ring: #0e1a2b;
   --focus-halo: #ffc20e;
 
-  --header-bg: #ffffff;
+  /* Header: a full-width solid navy bar; controls on it are white, focus turns yellow (6.9 on navy). */
+  --header-bg: #163a70;
+  --header-border: #163a70;
+  --header-text: #ffffff; /* 11.2 */
+  --header-text-muted: #c8d4e8; /* 7.5 */
+  --header-hover: #1d4a8a; /* white on it 8.8 */
+  --header-control-bg: transparent;
+  --header-control-border: #8fa6c9; /* 4.5 */
+  --header-avatar-bg: #ffffff;
+  --header-avatar-text: #163a70; /* 11.2 */
+  --header-focus-ring: #ffc20e;
+  --header-focus-halo: transparent;
+  --logo-plate: #0c2549;
+  --logo-plate-edge: #4f6d99;
+  --logo-dot: #ffffff;
+
+  /* Phone sticky action bar: solid surface. */
+  --bar-bg: #ffffff;
 
   --shadow-raised: 0 1px 2px rgb(14 26 43 / 0.06), 0 8px 24px -6px rgb(14 26 43 / 0.16);
   --scrim: rgb(14 26 43 / 0.5);
 }
 
-/* ---------- Dark scheme: deep navy, not black ---------- */
+/* ---------- Dark scheme: D3 Tablica odjazdów (near-black board, warm white, signal yellow) ---------- */
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --bg: #0b1524;
-  --surface: #111e31;
-  --surface-sunken: #0e192a;
-  --surface-raised: #172539;
+  --bg: #0b0b0c;
+  --surface: #141415;
+  --surface-sunken: #101011;
+  --surface-raised: #1c1c1e;
 
-  /* on bg / surface / sunken / raised */
-  --text: #e7ecf3; /* 15.4 / 14.1 / 14.9 / 13.0 */
-  --text-secondary: #adb9cb; /* 9.2 / 8.4 / 8.9 / 7.8 */
-  --text-tertiary: #8f9db2; /* 6.7 / 6.1 / 6.4 / 5.6 */
+  /* on bg / surface / raised */
+  --text: #f5f5f2; /* 18.0 / 16.9 / 15.6 */
+  --text-secondary: #a3a39e; /* 7.8 / 7.3 / 6.7 */
+  --text-tertiary: #8a8a85; /* 5.7 / 5.3 / 4.9 */
 
-  --border: #22324a;
-  --border-strong: #64769a; /* 4.0 / 3.7 / 3.9 / 3.4 */
+  --border: #262628; /* hairlines */
+  --border-strong: #707074; /* control borders: 4.0 / 3.7 / 3.5 */
 
-  /* On a navy canvas a navy button disappears: primary turns light blue with navy text. */
-  --brand: #a8c4f2;
-  --brand-hover: #bed3f6;
-  --brand-pressed: #92b4ec;
-  --text-on-brand: #0b1524; /* 10.3 on brand, 12.1 on hover */
-  --text-on-brand-muted: #24385a; /* 6.6 on brand */
-  --link: #9fc0ff; /* 10.0 / 9.1 / 9.6 / 8.4 */
-  --brand-tint: #172a47;
-  --brand-tint-text: #c3d6f7; /* 9.8 on tint */
+  /* Primary action: the same signal yellow with near-black text. Hover and pressed turn lighter. */
+  --primary: #ffc20e;
+  --primary-hover: #ffcf3d;
+  --primary-pressed: #ffdb70;
+  --primary-edge: #ffc20e;
+  --text-on-primary: #0b0b0c; /* 12.2 / 13.3 / 14.6 */
+  --text-on-primary-muted: #4a3a00; /* 6.8 / 7.5 */
 
-  --accent: #ffc933; /* 11.9 on bg as a ring */
-  --text-on-accent: #0b1524; /* 11.9 */
-  --accent-tint: #2e2611;
+  /* Brand turns warm white on the board: selection, progress, checkbox. */
+  --brand: #f5f5f2;
+  --brand-hover: #ffffff;
+  --brand-pressed: #e4e4df;
+  --text-on-brand: #0b0b0c; /* 18.0 */
+  --link: #ffc20e; /* always underlined; 12.2 / 11.4 / 10.5 */
+  --brand-tint: #1f1e1a;
+  --brand-tint-text: #f5f5f2; /* 15.3 on tint */
 
-  /* tone on tint: 8.2 / 8.0 / 8.6 / 9.3; tone on surface: 9.0 / 8.3 / 9.5 */
-  --success: #5fd394;
-  --success-tint: #0f2a20;
-  --danger: #ff9b91;
-  --danger-tint: #33181b;
-  --warning: #f3b94d;
-  --warning-tint: #2e2411;
-  --neutral: #c3ccd9;
-  --neutral-tint: #1a273b;
+  --accent: #ffc20e;
+  --text-on-accent: #0b0b0c; /* 12.2 */
+  --accent-tint: #2a2410;
 
-  /* Signal yellow ring: 11.9 / 10.9 / 11.5 / 10.0; no band needed. */
-  --focus-ring: #ffc933;
+  /* The amount plate: yellow digits on a black plate (12.2), a hairline edge so it sits on the surface. */
+  --plate-bg: #0b0b0c;
+  --plate-text: #ffc20e;
+  --plate-edge: #3a3a3d;
+
+  /* tone on tint: 7.5 / 6.9 / 8.7 / 9.8; tone on surface: 8.3 / 7.3 / 9.9 */
+  --success: #4cc38a;
+  --success-tint: #0f2219;
+  --danger: #f2847a;
+  --danger-tint: #2a1513;
+  --warning: #f0b44c;
+  --warning-tint: #2a1f0c;
+  --neutral: #c9c9c4;
+  --neutral-tint: #222224;
+
+  /* Signal yellow ring: 12.2 / 11.4 / 10.5; no band needed. */
+  --focus-ring: #ffc20e;
   --focus-halo: transparent;
 
-  --header-bg: #111e31;
+  /* Header: the surface with a bottom hairline, no glass. */
+  --header-bg: #141415;
+  --header-border: #262628;
+  --header-text: #f5f5f2;
+  --header-text-muted: #a3a39e;
+  --header-hover: #1c1c1e;
+  --header-control-bg: #141415;
+  --header-control-border: #707074; /* 3.7 */
+  --header-avatar-bg: #f5f5f2;
+  --header-avatar-text: #0b0b0c;
+  --header-focus-ring: #ffc20e;
+  --header-focus-halo: transparent;
+  --logo-plate: #0b0b0c;
+  --logo-plate-edge: #3a3a3d;
+  --logo-dot: #f5f5f2;
 
-  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -8px rgb(0 0 0 / 0.6);
-  --scrim: rgb(3 8 16 / 0.65);
+  --bar-bg: #141415;
+
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.7);
+  --scrim: rgb(0 0 0 / 0.7);
 }

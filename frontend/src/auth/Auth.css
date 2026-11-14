@@ -95,7 +95,7 @@ section.auth-panel {
   padding: 0;
   border: 0;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
   box-shadow: var(--shadow-raised);
   overscroll-behavior: contain;

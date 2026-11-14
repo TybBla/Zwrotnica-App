@@ -61,7 +61,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The current step is the signal-yellow plate (ink number, 10.8:1); finished steps are navy with a check. */
+/* The current step is the signal-yellow plate (ink number, 10.8 / 12.2:1); finished steps are brand-colored
+   (navy on paper, warm white on the dark board) with a check. */
 .steps-indicator__item[data-state='current'] .steps-indicator__dot {
   background: var(--accent);
   color: var(--text-on-accent);
@@ -162,11 +163,11 @@
     transform var(--duration-press) var(--ease-out);
 }
 
-/* The recommended path is the solid brand button. */
+/* The recommended path is the primary (signal-yellow) button. */
 .choice[data-primary] {
-  border-color: var(--brand);
-  background: var(--brand);
-  color: var(--text-on-brand);
+  border-color: var(--primary-edge);
+  background: var(--primary);
+  color: var(--text-on-primary);
 }
 
 .choice:active {
@@ -184,9 +185,10 @@
   color: var(--brand-tint-text);
 }
 
+/* On the yellow button the icon plate inverts: ink plate, yellow glyph. */
 .choice[data-primary] .choice__icon {
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--text-on-primary);
+  color: var(--primary);
 }
 
 .choice__text {
@@ -210,7 +212,7 @@
 }
 
 .choice[data-primary] .choice__description {
-  color: var(--text-on-brand-muted);
+  color: var(--text-on-primary-muted);
 }
 
 .choice__arrow {
@@ -225,8 +227,8 @@
   }
 
   .choice[data-primary]:hover {
-    border-color: var(--brand-hover);
-    background: var(--brand-hover);
+    border-color: var(--primary-hover);
+    background: var(--primary-hover);
   }
 
   .choice:hover .choice__arrow {
@@ -556,7 +558,7 @@
     margin-inline: calc(-1 * var(--gutter));
     padding: var(--space-3) var(--gutter) max(var(--space-3), env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
-    background: var(--header-bg);
+    background: var(--bar-bg);
   }
 
   .wizard-actions__hint {

@@ -27,14 +27,59 @@
   transform: none;
 }
 
-/* Solid header with a bottom rule – no translucency. */
+/* Solid header, no translucency: a full-width navy bar (light) / the surface with a bottom hairline (dark). */
 .shell__header {
   position: sticky;
   z-index: 40;
   top: 0;
   padding-top: env(safe-area-inset-top);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--header-border);
   background: var(--header-bg);
+  color: var(--header-text);
+}
+
+/* Controls that sit directly on the bar use the --header-* tokens (white on navy in light). The account menu's
+   panel is a normal raised surface and keeps the page tokens. */
+.shell__header .theme-toggle {
+  color: var(--header-text-muted);
+}
+
+.shell__actions > .button--secondary {
+  border-color: var(--header-control-border);
+  background: var(--header-control-bg);
+  color: var(--header-text);
+}
+
+.shell__actions > .button--secondary:active:not(:disabled, [data-loading]) {
+  background: var(--header-hover);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .shell__header .theme-toggle:hover {
+    background: var(--header-hover);
+    color: var(--header-text);
+  }
+
+  .shell__actions > .button--secondary:hover:not(:disabled) {
+    border-color: var(--header-text);
+    background: var(--header-hover);
+  }
+}
+
+.shell__header .account-menu__avatar {
+  background: var(--header-avatar-bg);
+  color: var(--header-avatar-text);
+}
+
+.shell__header .account-menu__trigger[aria-expanded='true'] .account-menu__avatar {
+  box-shadow:
+    0 0 0 2px var(--header-bg),
+    0 0 0 4px var(--header-avatar-bg);
+}
+
+.shell__header :is(.wordmark, .theme-toggle, .account-menu__trigger, .shell__actions > .button):focus-visible {
+  outline-color: var(--header-focus-ring);
+  box-shadow: 0 0 0 2px var(--header-focus-halo);
 }
 
 .shell__bar {
@@ -65,7 +110,7 @@
   margin-left: calc(-1 * var(--space-1));
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
-  color: var(--text);
+  color: var(--header-text);
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-heading);
@@ -74,6 +119,17 @@
 
 .wordmark__logo {
   flex: none;
+}
+
+/* The station plate follows the header: deep navy on the navy bar, black on the dark board. Arrow stays yellow. */
+.wordmark__plate {
+  fill: var(--logo-plate);
+  stroke: var(--logo-plate-edge);
+  stroke-width: 1;
+}
+
+.wordmark__dot {
+  fill: var(--logo-dot);
 }
 
 /* ---------- Footer ---------- */

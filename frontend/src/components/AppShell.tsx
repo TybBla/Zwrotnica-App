@@ -51,14 +51,17 @@ export function AppShell({ account, onHome, footer, notice, children }: AppShell
   )
 }
 
-/** A navy station plate with a signal-yellow return arrow: the train trip that pays you back. */
+/**
+ * A station plate with a signal-yellow return arrow: the train trip that pays you back. Plate and dot colors come
+ * from the theme (AppShell.css); the attributes are the fallback (favicon colors).
+ */
 function Logo() {
   return (
     <svg className="wordmark__logo" width="30" height="30" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
-      <rect width="28" height="28" rx="6" fill="#163a70" />
+      <rect className="wordmark__plate" x="0.5" y="0.5" width="27" height="27" rx="5.5" fill="#163a70" />
       <path d="M8 19.5V12a4 4 0 0 1 4-4h6.5" fill="none" stroke="#ffc20e" strokeWidth="2.5" strokeLinecap="round" />
       <path d="m16 5 3.25 3L16 11" fill="none" stroke="#ffc20e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="19" cy="18.5" r="2" fill="#ffffff" />
+      <circle className="wordmark__dot" cx="19" cy="18.5" r="2" fill="#ffffff" />
     </svg>
   )
 }

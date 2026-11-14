@@ -367,12 +367,13 @@
   gap: var(--space-3);
 }
 
-/* The amount on the signal-yellow plate, as on the wizard's result. */
+/* The amount on the station plate (yellow digits on navy / black), as on the wizard's result. */
 .case-detail__amount {
   padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--plate-edge);
   border-radius: var(--radius-xs);
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--plate-bg);
+  color: var(--plate-text);
   font-size: var(--text-xl);
   font-weight: var(--weight-medium);
 }

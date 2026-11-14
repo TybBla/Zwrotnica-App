@@ -6,7 +6,7 @@ export const THEME_STORAGE_KEY = 'refund-pilot-theme'
 const darkQuery = '(prefers-color-scheme: dark)'
 
 // Matches --header-bg of each scheme: colors the mobile browser chrome / status bar.
-const themeColors: Record<Theme, string> = { light: '#ffffff', dark: '#111e31' }
+const themeColors: Record<Theme, string> = { light: '#163a70', dark: '#141415' }
 
 export function systemTheme(): Theme {
   return typeof window.matchMedia === 'function' && window.matchMedia(darkQuery).matches ? 'dark' : 'light'

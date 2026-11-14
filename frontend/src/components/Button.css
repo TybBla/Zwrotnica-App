@@ -57,14 +57,17 @@
   color: var(--text-tertiary);
 }
 
-/* Primary – the one action per screen: solid brand navy (light) / light blue with navy text (dark). */
+/* Primary – the one action per screen: signal-yellow fill with ink text in both schemes. Hover / pressed turn
+   darker amber on paper, lighter on the dark board. */
 .button--primary {
-  background: var(--brand);
-  color: var(--text-on-brand);
+  border-color: var(--primary-edge);
+  background: var(--primary);
+  color: var(--text-on-primary);
 }
 
 .button--primary:active:not(:disabled, [data-loading]) {
-  background: var(--brand-pressed);
+  border-color: var(--primary-pressed);
+  background: var(--primary-pressed);
 }
 
 /* Secondary – an outlined surface button. */
@@ -78,7 +81,7 @@
   background: var(--surface-sunken);
 }
 
-/* Danger – confirms a destructive action; solid muted red, surface-colored text (7.9:1 light, 8.1:1 dark). */
+/* Danger – confirms a destructive action; solid muted red, surface-colored text (7.1:1 light, 7.3:1 dark). */
 .button--danger {
   background: var(--danger);
   color: var(--surface);
@@ -100,7 +103,8 @@
 
 @media (hover: hover) and (pointer: fine) {
   .button--primary:hover:not(:disabled) {
-    background: var(--brand-hover);
+    border-color: var(--primary-hover);
+    background: var(--primary-hover);
   }
 
   .button--secondary:hover:not(:disabled) {
