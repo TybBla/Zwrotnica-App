@@ -486,4 +486,80 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         });
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
     }
+
+    // ---------- Documented costs for regional carriers (outside the EU 25%/50% scheme) ----------
+
+    private static object RegionalCase(string? description, decimal? amount, string carrier = "Polregio") => new
+    {
+        carrier, fromStation = "Szczecin Główny", toStation = "Stargard", ticketNumber = "PR-1", travelDate = "2026-11-01",
+        ticketPrice = 22m, incidentType = "Delay", delayMinutes = 70, payoutPreference = "OriginalPayment",
+        expenseDescription = description, expenseAmount = amount,
+    };
+
+    [Fact]
+    public async Task PostAndGet_RegionalCase_KeepsExpensesAndStatesThemInTheOutcome()
+    {
+        var client = await LoggedInClientAsync("expenses@test.pl");
+
+        var created = await CreateAsync(client, RegionalCase("Taksówka do Stargardu – 85 zł\r\nParagon nr 12", 85.5m));
+        var fetched = await JsonAsync(await client.GetAsync($"/api/cases/{created.GetProperty("id").GetInt32()}"));
+
+        Assert.Equal("Taksówka do Stargardu - 85 zł\nParagon nr 12", fetched.GetProperty("expenseDescription").GetString());
+        Assert.Equal(85.5m, fetched.GetProperty("expenseAmount").GetDecimal());
+        Assert.EndsWith("Wniosek obejmuje zwrot udokumentowanych kosztów w kwocie 85,50 zł.",
+            fetched.GetProperty("outcome").GetProperty("statement").GetString());
+    }
+
+    [Fact]
+    public async Task PostAndPut_CoveredCarrier_DropsExpenses()
+    {
+        var client = await LoggedInClientAsync("expenses-covered@test.pl");
+
+        var created = await CreateAsync(client, RegionalCase("Taksówka", 85m, carrier: "Leo Express"));
+        var id = created.GetProperty("id").GetInt32();
+        var updated = await JsonAsync(await client.PutAsJsonAsync($"/api/cases/{id}", RegionalCase("Taksówka", 85m)));
+
+        Assert.Equal(JsonValueKind.Null, created.GetProperty("expenseDescription").ValueKind);
+        Assert.Equal(JsonValueKind.Null, created.GetProperty("expenseAmount").ValueKind);
+        Assert.Equal(85m, updated.GetProperty("expenseAmount").GetDecimal());
+    }
+
+    [Theory]
+    [InlineData("Taksówka", 0)]
+    [InlineData("Taksówka", -5)]
+    [InlineData("Taksówka", 100000.01)]
+    [InlineData("Taksówka 🚕", 50)]
+    [InlineData("Taksówka {{IBAN}}", 50)]
+    public async Task Post_InvalidExpenses_Returns400(string description, double amount)
+    {
+        var client = await LoggedInClientAsync($"expenses-bad-{Guid.NewGuid():N}@test.pl");
+
+        var response = await client.PostAsJsonAsync("/api/cases", RegionalCase(description, (decimal)amount));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_TooLongExpenseDescription_Returns400()
+    {
+        var client = await LoggedInClientAsync("expenses-long@test.pl");
+
+        var response = await client.PostAsJsonAsync("/api/cases", RegionalCase(new string('a', 501), 10m));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Assessment_RegionalCarrierWithExpense_StatesTheAmountInTheOutcome()
+    {
+        var response = await _factory.CreateClient().PostAsJsonAsync("/api/assessments", new
+        {
+            carrier = "Polregio", incidentType = "Delay", delayMinutes = 70, ticketPrice = 22m, isSeasonTicket = false,
+            expenseAmount = 85m,
+        });
+
+        var outcome = (await JsonAsync(response)).GetProperty("outcome");
+        Assert.Equal("Przewoźnik nie ma obowiązku wypłaty automatycznego odszkodowania", outcome.GetProperty("title").GetString());
+        Assert.EndsWith("w kwocie 85,00 zł.", outcome.GetProperty("statement").GetString());
+    }
 }

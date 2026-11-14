@@ -100,17 +100,42 @@ public sealed class AssessmentOutcomeTests
     }
 
     [Fact]
-    public void RegionalCarrier_NoStatutoryObligation()
+    public void RegionalCarrier_NoAutomaticCompensation_OnlyProvenDamage()
     {
         var outcome = Outcome(carrier: "Polregio", category: null, delay: 200)!;
 
         Assert.Equal(new OutcomeDto(
-            "Przewoźnik nie ma ustawowego obowiązku wypłaty odszkodowania",
-            "Przewozy regionalne, podmiejskie i miejskie w Polsce są wyłączone z systemu odszkodowań określonego " +
-            "w rozporządzeniu (UE) 2021/782. Przewoźnik może jednak przyznać rekompensatę na zasadach określonych " +
-            "w swoim regulaminie przewozu.",
+            "Przewoźnik nie ma obowiązku wypłaty automatycznego odszkodowania",
+            RegionalStatement,
             null,
             null), outcome);
+    }
+
+    private const string RegionalStatement =
+        "Przewozy regionalne, podmiejskie i miejskie w Polsce są wyłączone z systemu automatycznych odszkodowań " +
+        "(25% lub 50% ceny biletu) określonego w rozporządzeniu (UE) 2021/782. Tacy przewoźnicy zwykle uwzględniają " +
+        "jedynie roszczenia o zwrot udowodnionej, udokumentowanej szkody, np. kosztów taksówki lub noclegu.";
+
+    [Fact]
+    public void RegionalCarrierWithExpense_StatesTheClaimedCostsWithoutADeadline()
+    {
+        var outcome = _service.Assess(new AssessmentRequest(
+            "Koleje Mazowieckie", null, IncidentType.Cancellation, 0, 18m, null, false, ExpenseAmount: 85m)).Outcome!;
+
+        Assert.Equal(new OutcomeDto(
+            "Przewoźnik nie ma obowiązku wypłaty automatycznego odszkodowania",
+            RegionalStatement + " Wniosek obejmuje zwrot udokumentowanych kosztów w kwocie 85,00 zł.",
+            null,
+            null), outcome);
+    }
+
+    [Fact]
+    public void ExpenseAmount_IsIgnoredOutsideRegionalCarriers()
+    {
+        var outcome = _service.Assess(new AssessmentRequest(
+            "PKP Intercity", "IC", IncidentType.Delay, 75, 100m, null, false, ExpenseAmount: 85m)).Outcome!;
+
+        Assert.DoesNotContain("kosztów", outcome.Statement);
     }
 
     [Theory]

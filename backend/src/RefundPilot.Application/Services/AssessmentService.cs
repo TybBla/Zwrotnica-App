@@ -29,7 +29,7 @@ public sealed class AssessmentService(
         if (eligible.Verdict != Verdict.Eligible)
         {
             var outcome = priceRequired ? null
-                : eligible.Verdict == Verdict.NotCovered ? FinalVerdict.NotCovered()
+                : eligible.Verdict == Verdict.NotCovered ? FinalVerdict.NotCovered(request.ExpenseAmount)
                 : FinalVerdict.Unclear(eligible.Reason);
             return new(eligible.Verdict, eligible.Reason, 0m, 0, false, false, refusalRisk, outcome);
         }

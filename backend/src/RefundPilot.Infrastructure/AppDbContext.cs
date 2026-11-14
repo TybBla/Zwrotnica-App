@@ -40,9 +40,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         entity.Property(c => c.ToStation).HasMaxLength(200);
         entity.Property(c => c.TicketNumber).HasMaxLength(100);
         entity.Property(c => c.Notes).HasMaxLength(2000);
+        entity.Property(c => c.ExpenseDescription).HasMaxLength(500);
 
         entity.Property(c => c.TicketPrice).HasPrecision(10, 2);
         entity.Property(c => c.CompensationAmount).HasPrecision(10, 2);
+        entity.Property(c => c.ExpenseAmount).HasPrecision(10, 2);
 
         entity.Property(c => c.IncidentType).HasConversion<string>().HasMaxLength(20);
         entity.Property(c => c.DelayCause).HasConversion<string>().HasMaxLength(20);

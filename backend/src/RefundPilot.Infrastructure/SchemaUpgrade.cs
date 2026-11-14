@@ -12,6 +12,8 @@ public static class SchemaUpgrade
     private static readonly (string Table, string Column, string AlterSql)[] AddedColumns =
     [
         ("Cases", "ReminderSentAt", "ALTER TABLE \"Cases\" ADD COLUMN \"ReminderSentAt\" TEXT NULL;"),
+        ("Cases", "ExpenseDescription", "ALTER TABLE \"Cases\" ADD COLUMN \"ExpenseDescription\" TEXT NULL;"),
+        ("Cases", "ExpenseAmount", "ALTER TABLE \"Cases\" ADD COLUMN \"ExpenseAmount\" TEXT NULL;"),
         ("AspNetUsers", "EmailReminders", "ALTER TABLE \"AspNetUsers\" ADD COLUMN \"EmailReminders\" INTEGER NOT NULL DEFAULT 1;"),
     ];
 

@@ -21,6 +21,7 @@ public static class TextRules
         [TextField.TrainCategory] = new("Kategoria pociągu", "litery, cyfry i spacja", @"\p{L}\p{N} "),
         [TextField.TicketNumber] = new("Numer biletu", "litery, cyfry, spacja i znaki - /", @"\p{L}\p{N} \-/"),
         [TextField.Notes] = new("Uwagi", "litery, cyfry, spacja, nowa linia i znaki . , ; : ! ? - ( ) / ' \" %", @"\p{L}\p{N} \n.,;:!?\-()/'""%"),
+        [TextField.ExpenseDescription] = new("Opis kosztów", "litery, cyfry, spacja, nowa linia i znaki . , ; : ! ? - ( ) / ' \" %", @"\p{L}\p{N} \n.,;:!?\-()/'""%"),
     };
 
     // Decomposed input (letter + combining accent) is composed first so Polish text typed either way is accepted.
@@ -76,7 +77,7 @@ public static class TextRules
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
-        var multiline = field == TextField.Notes;
+        var multiline = field is TextField.Notes or TextField.ExpenseDescription;
         var text = Canonicalize(Rules[field].Disallowed.Replace(Canonicalize(value, multiline), ""), multiline);
         return text.Length == 0 ? null : text;
     }

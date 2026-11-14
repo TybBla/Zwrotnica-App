@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RefundPilot.Application.Validation;
 using RefundPilot.Domain;
 
 namespace RefundPilot.Application.Dtos;
@@ -10,4 +11,5 @@ public sealed record AssessmentRequest(
     [Range(0, 10000, ErrorMessage = "Opóźnienie musi mieścić się w zakresie 0-10000 minut.")] int DelayMinutes,
     [Range(0, 100000, ErrorMessage = "Cena biletu nie może być ujemna.")] decimal TicketPrice,
     DelayCause? DelayCause,
-    bool IsSeasonTicket);
+    bool IsSeasonTicket,
+    [Range(0.01, 100000, ErrorMessage = ExpenseRules.AmountMessage)] decimal? ExpenseAmount = null);

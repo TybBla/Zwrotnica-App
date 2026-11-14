@@ -28,6 +28,9 @@ public sealed class RefundCase
     /// <summary>When the one follow-up e-mail after ResponseDueDate went out; null until then.</summary>
     public DateTime? ReminderSentAt { get; set; }
     public string? Notes { get; set; }
+    /// <summary>Costs the passenger incurred because of the incident (regional carriers only: they refund proven damage).</summary>
+    public string? ExpenseDescription { get; set; }
+    public decimal? ExpenseAmount { get; set; }
     public DateTime CreatedAt { get; set; }
 
     /// <summary>

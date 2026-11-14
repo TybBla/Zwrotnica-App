@@ -18,4 +18,6 @@ public sealed record CreateCaseRequest(
     DelayCause? DelayCause,
     bool IsSeasonTicket,
     PayoutPreference PayoutPreference,
-    [property: JsonConverter(typeof(CanonicalMultilineTextConverter))] [MaxLength(2000), AllowedCharacters(TextField.Notes)] string? Notes);
+    [property: JsonConverter(typeof(CanonicalMultilineTextConverter))] [MaxLength(2000), AllowedCharacters(TextField.Notes)] string? Notes,
+    [property: JsonConverter(typeof(CanonicalMultilineTextConverter))] [MaxLength(ExpenseRules.MaxDescription), AllowedCharacters(TextField.ExpenseDescription)] string? ExpenseDescription = null,
+    [Range(0.01, ExpenseRules.MaxAmount, ErrorMessage = ExpenseRules.AmountMessage)] decimal? ExpenseAmount = null);

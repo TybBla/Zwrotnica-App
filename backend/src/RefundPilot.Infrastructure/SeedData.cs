@@ -31,7 +31,8 @@ public static class SeedData
                 IncidentType.Delay, 75, 64.00m, CaseStatus.Paid, DelayCause.Weather,
                 filedAt: paidFiledAt, dueDate: paidFiledAt.AddMonths(1)),
             Build(userId, "Polregio", null, "Szczecin Główny", "Stargard", "PR-5518-0412", 3,
-                IncidentType.Delay, 70, 22.00m, CaseStatus.New, DelayCause.PersonsOnTrack),
+                IncidentType.Delay, 70, 22.00m, CaseStatus.New, DelayCause.PersonsOnTrack,
+                expense: ("Taksówka ze Szczecina do Stargardu z powodu opóźnienia pociągu", 85.00m)),
             Build(userId, "PKP Intercity", "EIP", "Kraków Główny", "Gdańsk Główny", "EIP-6120-3358", 37,
                 IncidentType.Delay, 125, 219.00m, CaseStatus.Sent, DelayCause.Technical,
                 filedAt: overdueFiledAt, dueDate: overdueFiledAt.AddMonths(1)));
@@ -41,7 +42,7 @@ public static class SeedData
 
     private static RefundCase Build(string userId, string carrier, string? category, string from, string to, string ticketNumber,
         int daysAgo, IncidentType type, int delayMinutes, decimal price, CaseStatus status, DelayCause? cause,
-        DateTime? filedAt = null, DateTime? dueDate = null)
+        DateTime? filedAt = null, DateTime? dueDate = null, (string Description, decimal Amount)? expense = null)
     {
         var eligibility = Eligibility.Assess(carrier, category);
         var amount = eligibility.Verdict == Verdict.Eligible
@@ -65,6 +66,8 @@ public static class SeedData
             CompensationAmount = amount,
             PayoutPreference = PayoutPreference.OriginalPayment,
             Status = status,
+            ExpenseDescription = expense?.Description,
+            ExpenseAmount = expense?.Amount,
             FiledAt = filedAt,
             ResponseDueDate = dueDate,
             CreatedAt = Today.AddDays(-daysAgo),

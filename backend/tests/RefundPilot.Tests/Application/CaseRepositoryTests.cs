@@ -115,7 +115,10 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
         Assert.Equal(6, cases.Count);
         Assert.Contains(cases, c => c.Status == CaseStatus.Paid);
         Assert.Contains(cases, c => c.Verdict == Verdict.NotCovered && c.CompensationAmount == 0m);
-        Assert.Null(Assert.Single(cases, c => c.Carrier == "Polregio").TrainCategory);
+        var regional = Assert.Single(cases, c => c.Carrier == "Polregio");
+        Assert.Null(regional.TrainCategory);
+        Assert.Equal(85m, regional.ExpenseAmount);
+        Assert.Equal("Taksówka ze Szczecina do Stargardu z powodu opóźnienia pociągu", regional.ExpenseDescription);
     }
 
     [Fact]

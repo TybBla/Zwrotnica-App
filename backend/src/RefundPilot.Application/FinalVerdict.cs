@@ -70,13 +70,20 @@ public static class FinalVerdict
             "Przewoźnik powinien wypłacić odszkodowanie w terminie 1 miesiąca od złożenia wniosku.");
     }
 
-    /// <summary>A Polish regional, suburban or urban service: exempt from the EU compensation scheme.</summary>
-    public static OutcomeDto NotCovered() => new(
-        "Przewoźnik nie ma ustawowego obowiązku wypłaty odszkodowania",
-        $"Przewozy regionalne, podmiejskie i miejskie w Polsce są wyłączone z systemu odszkodowań określonego {InRegulation}. " +
-        "Przewoźnik może jednak przyznać rekompensatę na zasadach określonych w swoim regulaminie przewozu.",
-        null,
-        null);
+    /// <summary>
+    /// A Polish regional, suburban or urban service: exempt from the EU 25%/50% scheme; such carriers usually accept only
+    /// claims for proven, documented damage. The costs the passenger entered are stated, but nothing is promised.
+    /// </summary>
+    public static OutcomeDto NotCovered(decimal? expenseAmount = null)
+    {
+        var statement =
+            $"Przewozy regionalne, podmiejskie i miejskie w Polsce są wyłączone z systemu automatycznych odszkodowań " +
+            $"(25% lub 50% ceny biletu) określonego {InRegulation}. Tacy przewoźnicy zwykle uwzględniają jedynie " +
+            "roszczenia o zwrot udowodnionej, udokumentowanej szkody, np. kosztów taksówki lub noclegu.";
+        if (expenseAmount is > 0 and var amount)
+            statement += $" Wniosek obejmuje zwrot udokumentowanych kosztów w kwocie {ComplaintFacts.FormatMoney(amount)}.";
+        return new("Przewoźnik nie ma obowiązku wypłaty automatycznego odszkodowania", statement, null, null);
+    }
 
     /// <summary>
     /// Season ticket, InterRegio without Polregio, or an unrecognised carrier: say why it is unclear. The advice to

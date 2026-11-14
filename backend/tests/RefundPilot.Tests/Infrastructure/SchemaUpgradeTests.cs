@@ -26,4 +26,20 @@ public sealed class SchemaUpgradeTests
         Assert.True(await db.Users.Where(u => u.Id == "old").Select(u => u.EmailReminders).SingleAsync());
         Assert.Empty(await db.Cases.Where(c => c.ReminderSentAt != null).ToListAsync());
     }
+
+    [Fact]
+    public async Task AddsExpenseColumns_ToADatabaseCreatedWithoutThem()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options);
+        await db.Database.EnsureCreatedAsync();
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE Cases DROP COLUMN ExpenseDescription;");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE Cases DROP COLUMN ExpenseAmount;");
+
+        await SchemaUpgrade.ApplyAsync(db);
+        await SchemaUpgrade.ApplyAsync(db);
+
+        Assert.Empty(await db.Cases.Where(c => c.ExpenseAmount != null || c.ExpenseDescription != null).ToListAsync());
+    }
 }

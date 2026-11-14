@@ -37,7 +37,7 @@ public sealed class CaseService(
         Apply(refundCase, request.Carrier, request.TrainCategory, request.FromStation, request.ToStation,
             request.TicketNumber, request.TravelDate, request.TicketPrice, request.IncidentType,
             request.DelayMinutes, request.DelayCause, request.IsSeasonTicket, request.PayoutPreference,
-            request.Notes);
+            request.Notes, request.ExpenseDescription, request.ExpenseAmount);
 
         await repository.AddAsync(refundCase);
         return ToDto(refundCase);
@@ -51,7 +51,7 @@ public sealed class CaseService(
         Apply(refundCase, request.Carrier, request.TrainCategory, request.FromStation, request.ToStation,
             request.TicketNumber, request.TravelDate, request.TicketPrice, request.IncidentType,
             request.DelayMinutes, request.DelayCause, request.IsSeasonTicket, request.PayoutPreference,
-            request.Notes);
+            request.Notes, request.ExpenseDescription, request.ExpenseAmount);
 
         await repository.UpdateAsync(refundCase);
         return ToDto(refundCase);
@@ -90,10 +90,10 @@ public sealed class CaseService(
         RefundCase target, string carrier, string? trainCategory, string? fromStation, string? toStation,
         string? ticketNumber, DateOnly travelDate, decimal ticketPrice, IncidentType incidentType,
         int delayMinutes, DelayCause? delayCause, bool isSeasonTicket, PayoutPreference payoutPreference,
-        string? notes)
+        string? notes, string? expenseDescription, decimal? expenseAmount)
     {
         var assessment = assessments.Assess(new AssessmentRequest(
-            carrier, trainCategory, incidentType, delayMinutes, ticketPrice, delayCause, isSeasonTicket));
+            carrier, trainCategory, incidentType, delayMinutes, ticketPrice, delayCause, isSeasonTicket, expenseAmount));
 
         target.Carrier = carrier.Trim();
         // Regional catalogue carriers have no train categories; a stray one ("Regio") would only duplicate the name.
@@ -111,6 +111,10 @@ public sealed class CaseService(
         target.IsSeasonTicket = isSeasonTicket;
         target.PayoutPreference = payoutPreference;
         target.Notes = Clean(notes);
+        // Only regional carriers refund proven costs; for any other train the fields would be stale leftovers.
+        var regional = assessment.Verdict == Verdict.NotCovered;
+        target.ExpenseDescription = regional ? Clean(expenseDescription) : null;
+        target.ExpenseAmount = regional ? expenseAmount : null;
         target.Verdict = assessment.Verdict;
         target.RefusalRisk = assessment.RefusalRisk;
         target.CompensationAmount = assessment.CompensationAmount;
@@ -123,7 +127,8 @@ public sealed class CaseService(
         c.Id, c.Carrier, c.TrainCategory, c.FromStation, c.ToStation, c.TicketNumber, c.TravelDate,
         c.TicketPrice, c.IncidentType, c.DelayMinutes, c.DelayCause, c.IsSeasonTicket, c.Verdict,
         c.RefusalRisk, c.CompensationAmount, c.PayoutPreference, c.Status, c.FiledAt, c.ResponseDueDate,
-        c.Notes, c.CreatedAt,
+        c.Notes, c.ExpenseDescription, c.ExpenseAmount, c.CreatedAt,
         assessments.Assess(new AssessmentRequest(
-            c.Carrier, c.TrainCategory, c.IncidentType, c.DelayMinutes, c.TicketPrice, c.DelayCause, c.IsSeasonTicket)).Outcome);
+            c.Carrier, c.TrainCategory, c.IncidentType, c.DelayMinutes, c.TicketPrice, c.DelayCause, c.IsSeasonTicket,
+            c.ExpenseAmount)).Outcome);
 }
