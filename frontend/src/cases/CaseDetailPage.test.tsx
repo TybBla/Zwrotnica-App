@@ -116,7 +116,7 @@ describe('CaseDetailPage', () => {
 
     expect(
       await screen.findByText(
-        'Zakładamy, że wyślesz pismo dziś – termin odpowiedzi przewoźnika (do 13 grudnia 2026) liczymy od dziś. Status możesz zmienić w Moich sprawach.',
+        'Zakładamy, że wyślesz pismo dziś, więc termin odpowiedzi przewoźnika (do 13 grudnia 2026) liczymy od dzisiaj. Status możesz zmienić w Moich sprawach.',
       ),
     ).toBeTruthy()
     expect(await screen.findByText(/Odpowiedź do 13 grudnia 2026/)).toBeTruthy()

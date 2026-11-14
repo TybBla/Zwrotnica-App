@@ -353,7 +353,7 @@ describe('ResultStep – save with inline sign-in', () => {
     expect(screen.queryByRole('region', { name: /Zaloguj się/ })).toBeNull()
     expect(
       screen.getByText(
-        'Zakładamy, że wyślesz pismo dziś – termin odpowiedzi przewoźnika (do 13 grudnia 2026) liczymy od dziś. Status możesz zmienić w Moich sprawach.',
+        'Zakładamy, że wyślesz pismo dziś, więc termin odpowiedzi przewoźnika (do 13 grudnia 2026) liczymy od dzisiaj. Status możesz zmienić w Moich sprawach.',
       ),
     ).toBeTruthy()
   })

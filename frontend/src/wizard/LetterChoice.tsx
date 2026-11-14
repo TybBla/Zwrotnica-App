@@ -104,8 +104,8 @@ export function LetterChoice({ caseId, letter }: LetterChoiceProps) {
         <p className="letter__lead">Sprawa jest zapisana na Twoim koncie. Wyślij pismo przewoźnikowi – e-mailem, przez jego formularz reklamacyjny albo w kasie.</p>
         {letter.deadlineStarted && letter.responseDueDate && (
           <p className="letter__deadline">
-            Zakładamy, że wyślesz pismo dziś – termin odpowiedzi przewoźnika (do {formatDate(warsawDate(new Date(letter.responseDueDate)))})
-            liczymy od dziś. Status możesz zmienić w Moich sprawach.
+            Zakładamy, że wyślesz pismo dziś, więc termin odpowiedzi przewoźnika (do {formatDate(warsawDate(new Date(letter.responseDueDate)))})
+            liczymy od dzisiaj. Status możesz zmienić w Moich sprawach.
           </p>
         )}
       </header>
