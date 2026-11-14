@@ -199,7 +199,7 @@ public sealed partial class ComplaintService(
             - {CorrectPolishRule}
             - Ask the carrier to consider the complaint under its "regulamin przewozu" and to reply in writing.
             - Do not demand any amount. The only sum you may mention is the ticket price "{f.PriceText}", as a fact.
-            - Do not cite any article of Regulation (EU) 2021/782 and do not claim a legal entitlement to compensation.
+            - Do not mention Regulation (EU) 2021/782 ("rozporządzenie") at all and do not claim a legal entitlement to compensation.
             - Use these literal tokens, each at least once, and do not invent any other tokens:
               {ComplaintTemplate.FullName} (passenger name, in the sender block and the signature),
               {ComplaintTemplate.Address} (passenger address, in the sender block),
@@ -230,7 +230,7 @@ public sealed partial class ComplaintService(
     }
 
     /// <summary>
-    /// The carrier-rules complaint must not turn into an EU claim: no art. 18/19, no sum other than the ticket price,
+    /// The carrier-rules complaint must not turn into an EU claim: no art. 18/19, no mention of the regulation, no sum other than the ticket price,
     /// and it has to point the carrier to its terms of carriage.
     /// </summary>
     private static (string Subject, string Body)? ValidateCarrierRules(string raw, ComplaintFacts facts, PayoutPreference payout)
@@ -243,6 +243,10 @@ public sealed partial class ComplaintService(
 
         var cited = CitedArticles(body);
         if (cited.Contains("18") || cited.Contains("19") || !body.Contains("regulamin", StringComparison.OrdinalIgnoreCase))
+            return null;
+        // No appeal to the EU regulation at all, not even without an article number.
+        if (new[] { subject, body }.Any(text => text.Contains("2021/782", StringComparison.Ordinal)
+                || text.Contains("rozporządzeni", StringComparison.OrdinalIgnoreCase)))
             return null;
 
         return PassesCommonChecks(body, facts, payout, facts.PriceText) ? (subject, body) : null;

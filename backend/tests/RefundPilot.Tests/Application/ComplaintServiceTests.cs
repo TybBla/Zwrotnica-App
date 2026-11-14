@@ -759,6 +759,9 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     [InlineData("{{ADDRESS}} regulamin {{PAYOUT}}")]                                                                     // no name token
     [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin {{PAYOUT}} {{IBAN}}")]                                              // IBAN token, not a transfer
     [InlineData("{{FULL_NAME}} {{ADDRESS}} {{PAYOUT}} proszę o rozpatrzenie")]                                           // no carrier rules
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin, bilet 40,00 zł, zgodnie z 2021/782 {{PAYOUT}}")]                   // EU act by number
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin, bilet 40,00 zł, zgodnie z rozporządzeniem UE {{PAYOUT}}")]         // EU regulation, no article
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin i przepisy Rozporządzenia o prawach pasażerów {{PAYOUT}}")]         // capitalised
     public async Task UncoveredCase_InvalidAiOutput_FallsBackToTemplate(string body)
     {
         await MakeAnnaCaseUncoveredAsync(Verdict.NotCovered);
