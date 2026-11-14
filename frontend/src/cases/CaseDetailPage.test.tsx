@@ -58,6 +58,8 @@ describe('CaseDetailPage', () => {
       body: 'Szanowni Państwo,\nproszę o bon.',
       usedAi: false,
       missingFields: [],
+      deadlineStarted: false,
+      responseDueDate: null,
     })
     renderAt('/sprawy/7')
     expect(await screen.findByRole('heading', { level: 1, name: 'PKP Intercity EIC' })).toBeTruthy()
@@ -82,7 +84,7 @@ describe('CaseDetailPage', () => {
   it('prepares the complaint again for a regional train and for a covered train with nothing due', async () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'getCase').mockResolvedValueOnce({ ...item, carrier: 'Polregio', trainCategory: null, verdict: 'NotCovered', compensationAmount: 0 })
-    vi.spyOn(api, 'generateComplaint').mockResolvedValue({ subject: 'Reklamacja', body: 'wg regulaminu', usedAi: false, missingFields: [] })
+    vi.spyOn(api, 'generateComplaint').mockResolvedValue({ subject: 'Reklamacja', body: 'wg regulaminu', usedAi: false, missingFields: [], deadlineStarted: false, responseDueDate: null })
     const { unmount } = renderAt('/sprawy/7')
     await user.click(await screen.findByRole('button', { name: 'Przygotuj reklamację ponownie' }))
     expect(await screen.findByText(/wg regulaminu/)).toBeTruthy()
@@ -93,6 +95,51 @@ describe('CaseDetailPage', () => {
     await screen.findByText('Opóźnienie 45 min')
     expect(screen.getByRole('button', { name: 'Przygotuj reklamację ponownie' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Przygotuj pismo ponownie' })).toBeNull()
+  })
+
+  it('starts the response clock when the first letter of a new case is generated', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'generateComplaint').mockResolvedValue({
+      subject: 'Reklamacja',
+      body: 'Treść',
+      usedAi: false,
+      missingFields: [],
+      deadlineStarted: true,
+      responseDueDate: '2026-12-13T10:00:00Z',
+    })
+    vi.mocked(api.getCase)
+      .mockResolvedValueOnce(item)
+      .mockResolvedValueOnce({ ...item, status: 'Sent', filedAt: '2026-11-13T10:00:00Z', responseDueDate: '2026-12-13T10:00:00Z' })
+    renderAt('/sprawy/7')
+
+    await user.click(await screen.findByRole('button', { name: 'Przygotuj pismo ponownie' }))
+
+    expect(
+      await screen.findByText(
+        'Zakładamy, że wyślesz pismo dziś – termin odpowiedzi przewoźnika (do 13 grudnia 2026) liczymy od dziś. Status możesz zmienić w Moich sprawach.',
+      ),
+    ).toBeTruthy()
+    expect(await screen.findByText(/Odpowiedź do 13 grudnia 2026/)).toBeTruthy()
+    expect(api.getCase).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not claim a new deadline when the case was already sent', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'generateComplaint').mockResolvedValue({
+      subject: 'Reklamacja',
+      body: 'Treść ponownie',
+      usedAi: false,
+      missingFields: [],
+      deadlineStarted: false,
+      responseDueDate: '2026-11-20T10:00:00Z',
+    })
+    renderAt('/sprawy/7')
+
+    await user.click(await screen.findByRole('button', { name: 'Przygotuj pismo ponownie' }))
+
+    expect(await screen.findByText('Treść ponownie')).toBeTruthy()
+    expect(screen.queryByText(/Zakładamy, że wyślesz pismo dziś/)).toBeNull()
+    expect(api.getCase).toHaveBeenCalledTimes(1)
   })
 
   it('keeps focus on the page heading when the case finishes loading', async () => {

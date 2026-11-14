@@ -4,6 +4,8 @@ import type { ComplaintDto } from '../api/types'
 import { Button } from '../components/Button'
 import { AlertCircleIcon, CheckIcon, FileIcon } from '../components/icons'
 import { copyText } from '../lib/clipboard'
+import { warsawDate } from '../lib/deadline'
+import { formatDate } from '../lib/format'
 import { saveBlob } from '../lib/download'
 
 type Format = 'text' | 'pdf'
@@ -100,6 +102,12 @@ export function LetterChoice({ caseId, letter }: LetterChoiceProps) {
           Pismo jest gotowe
         </h3>
         <p className="letter__lead">Sprawa jest zapisana na Twoim koncie. Wyślij pismo przewoźnikowi – e-mailem, przez jego formularz reklamacyjny albo w kasie.</p>
+        {letter.deadlineStarted && letter.responseDueDate && (
+          <p className="letter__deadline">
+            Zakładamy, że wyślesz pismo dziś – termin odpowiedzi przewoźnika (do {formatDate(warsawDate(new Date(letter.responseDueDate)))})
+            liczymy od dziś. Status możesz zmienić w Moich sprawach.
+          </p>
+        )}
       </header>
 
       {missing.length > 0 && (

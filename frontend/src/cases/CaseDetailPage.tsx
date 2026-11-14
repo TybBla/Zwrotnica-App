@@ -103,6 +103,11 @@ function CaseDetail({ id }: { id: number | null }) {
         controller.signal,
       )
       setLetter(result)
+      // The letter moved the case to Sent: show the new status and countdown (a failed re-read keeps the old view).
+      if (result.deadlineStarted) {
+        const updated = await api.getCase(item.id).catch(() => null)
+        if (updated && !controller.signal.aborted) setLoad({ state: 'ready', item: updated })
+      }
     } catch (error) {
       if (controller.signal.aborted) return
       setLetterError(

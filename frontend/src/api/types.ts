@@ -155,6 +155,9 @@ export interface ComplaintDto {
   usedAi: boolean
   /** Polish labels of placeholders left in the letter for the user to fill in. */
   missingFields: string[]
+  /** True when this letter moved a new case to Sent: the carrier's month to answer starts today. */
+  deadlineStarted: boolean
+  responseDueDate: IsoDateTime | null
 }
 
 /** The (possibly user-edited) letter to render as PDF. */

@@ -49,6 +49,8 @@ const letter: ComplaintDto = {
   body: 'Szanowni Państwo,\n\nwnoszę o wypłatę odszkodowania.\n\nZ poważaniem\n[imię i nazwisko]\n[adres]',
   usedAi: true,
   missingFields: ['imię i nazwisko', 'adres'],
+  deadlineStarted: true,
+  responseDueDate: '2026-12-13T10:00:00Z',
 }
 
 const IBAN = 'PL61109010140000071219812874'
@@ -348,6 +350,11 @@ describe('ResultStep – save with inline sign-in', () => {
     await user.click(saveButton())
     expect(await screen.findByRole('heading', { name: /Pismo jest gotowe/ })).toBeTruthy()
     expect(screen.queryByRole('region', { name: /Zaloguj się/ })).toBeNull()
+    expect(
+      screen.getByText(
+        'Zakładamy, że wyślesz pismo dziś – termin odpowiedzi przewoźnika (do 13 grudnia 2026) liczymy od dziś. Status możesz zmienić w Moich sprawach.',
+      ),
+    ).toBeTruthy()
   })
 })
 

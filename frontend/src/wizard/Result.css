@@ -304,6 +304,11 @@
   color: var(--text-secondary);
 }
 
+.letter__deadline {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
 .letter__missing {
   padding-right: var(--space-4);
 }
