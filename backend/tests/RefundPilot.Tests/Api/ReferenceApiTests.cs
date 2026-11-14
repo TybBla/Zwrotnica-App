@@ -29,6 +29,7 @@ public sealed class ReferenceApiTests : IClassFixture<TestApiFactory>
         Assert.DoesNotContain(categories, c => c.GetProperty("code").GetString() == "IR");
         Assert.Contains(categories, c => c.GetProperty("code").GetString() == "TLK"
             && c.GetProperty("label").GetString() == "Twoje Linie Kolejowe");
+        Assert.Equal(new CompensationOptions().MinimumPayout, json.GetProperty("minimumPayout").GetDecimal());
     }
 
     [Fact]

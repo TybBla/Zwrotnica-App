@@ -13,7 +13,7 @@ public static class DependencyInjection
         services.AddSingleton(new CompensationOptions());
         services.AddSingleton<EligibilityService>();
         services.AddSingleton<CompensationCalculator>();
-        services.AddSingleton<ReferenceDataService>();
+        services.AddSingleton<IReferenceDataService, ReferenceDataService>();
         services.AddScoped<IAssessmentService, AssessmentService>();
         services.AddScoped<ICaseService, CaseService>();
         services.AddScoped<IProfileService, ProfileService>();
