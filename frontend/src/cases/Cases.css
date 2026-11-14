@@ -19,8 +19,9 @@
   gap: var(--space-2);
 }
 
+/* Phones: under the summary, full width (a thumb target); desktop: on the right of the title. */
 .cases-page__new {
-  align-self: flex-start;
+  align-self: stretch;
 }
 
 @media (min-width: 48rem) {

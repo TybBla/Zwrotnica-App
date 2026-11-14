@@ -117,28 +117,28 @@ function CaseDetail({ id }: { id: number | null }) {
   }
 
   return (
-    <div className="container page case-detail">
+    <div className="container container--wide page page--column case-detail">
       <Link to="/sprawy" className="page__back">
         <ArrowLeftIcon size={18} />
         Moje sprawy
       </Link>
 
+      {/* One h1 element in every state: the route focus lands on it while loading and stays when the data arrives. */}
+      <header className="page__head">
+        <h1 className="page__title" tabIndex={-1}>
+          {load.state === 'ready' ? caseTitle(load.item) : load.state === 'error' && load.notFound ? 'Nie znaleziono sprawy' : 'Sprawa'}
+        </h1>
+        {load.state === 'ready' && <CaseLead item={load.item} />}
+      </header>
+
       {load.state === 'loading' && (
-        <>
-          <h1 className="page__title" tabIndex={-1}>
-            Sprawa
-          </h1>
-          <p className="page__loading" role="status">
-            Wczytywanie sprawy…
-          </p>
-        </>
+        <p className="page__loading" role="status">
+          Wczytywanie sprawy…
+        </p>
       )}
 
       {load.state === 'error' && (
         <>
-          <h1 className="page__title" tabIndex={-1}>
-            {load.notFound ? 'Nie znaleziono sprawy' : 'Sprawa'}
-          </h1>
           <div className="page-error" role="alert" data-kind={load.notFound ? 'final' : undefined}>
             <AlertCircleIcon className="page-error__icon" />
             <div className="page-error__body">
@@ -265,20 +265,20 @@ function CaseDetail({ id }: { id: number | null }) {
   )
 }
 
-function Details({ item }: { item: CaseDto }) {
+function CaseLead({ item }: { item: CaseDto }) {
   const verdict = verdictStyle[caseVerdict(item)]
+  return (
+    <p className="case-detail__lead">
+      <Badge tone={verdict.tone}>{verdict.label}</Badge>
+      <span className="case-detail__amount mono tabular">{formatPln(item.compensationAmount)}</span>
+    </p>
+  )
+}
+
+function Details({ item }: { item: CaseDto }) {
   const route = caseRoute(item)
   return (
     <>
-      <header className="page__head">
-        <h1 className="page__title" tabIndex={-1}>
-          {caseTitle(item)}
-        </h1>
-        <p className="case-detail__lead">
-          <Badge tone={verdict.tone}>{verdict.label}</Badge>
-          <span className="case-detail__amount mono tabular">{formatPln(item.compensationAmount)}</span>
-        </p>
-      </header>
       <dl className="case-facts">
         <Fact term="Trasa">{route ?? <span className="case-row__unknown">trasa nieznana</span>}</Fact>
         <Fact term="Data przejazdu">{formatDate(item.travelDate)}</Fact>

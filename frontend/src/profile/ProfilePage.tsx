@@ -152,7 +152,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="container page profile-page">
+    <div className="container container--wide page page--column profile-page">
       <header className="page__head">
         <h1 className="page__title" tabIndex={-1}>
           Profil

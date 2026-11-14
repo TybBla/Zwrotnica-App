@@ -115,6 +115,38 @@ describe('CasesPage', () => {
     expect(screen.getByText(/Status zmieniony: Wysłana/)).toBeTruthy()
   })
 
+  it('keeps the latest choice when answers to two quick changes arrive out of order', async () => {
+    const user = userEvent.setup()
+    const toSent = deferred<CaseDto>()
+    const toPaid = deferred<CaseDto>()
+    vi.spyOn(api, 'setStatus').mockImplementation((_id, status) => (status === 'Sent' ? toSent.promise : toPaid.promise))
+    const statsAfterPaid = deferred<StatsDto>()
+    const statsAfterSent = deferred<StatsDto>()
+    vi.mocked(api.getStats)
+      .mockResolvedValueOnce(stats)
+      .mockReturnValueOnce(statsAfterPaid.promise)
+      .mockReturnValueOnce(statsAfterSent.promise)
+    renderPage()
+    const row = (await screen.findAllByRole('listitem'))[0]
+    const select = within(row).getByRole('combobox', { name: /Status/ }) as HTMLSelectElement
+    await user.selectOptions(select, 'Sent')
+    await user.selectOptions(select, 'Paid')
+
+    toPaid.resolve({ ...base, status: 'Paid' })
+    await waitFor(() => expect(api.getStats).toHaveBeenCalledTimes(2))
+    toSent.resolve({ ...base, status: 'Sent', responseDueDate: '2026-12-20T10:00:00Z' })
+    await waitFor(() => expect(api.getStats).toHaveBeenCalledTimes(3))
+    expect(select.value).toBe('Paid')
+
+    // The newest summary wins even if the older request answers last.
+    statsAfterSent.resolve({ recovered: 94.95, pending: 0, totalCases: 2 })
+    expect(await screen.findByText('94,95 zł')).toBeTruthy()
+    statsAfterPaid.resolve({ recovered: 1, pending: 1, totalCases: 2 })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(screen.getByText('94,95 zł')).toBeTruthy()
+    expect(screen.queryByText('1,00 zł')).toBeNull()
+  })
+
   it('deletes a case only after confirming in a dialog', async () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'deleteCase').mockResolvedValue(undefined)

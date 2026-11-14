@@ -26,11 +26,14 @@ export function useCases() {
   /** Polite announcement of the last change (status changed, case deleted). */
   const [announcement, setAnnouncement] = useState('')
   const active = useRef(true)
+  const statsRequest = useRef(0)
 
   const refreshStats = useCallback(() => {
+    // Only the newest request may set the summary: an older one answering last would show stale totals.
+    const request = ++statsRequest.current
     api
       .getStats()
-      .then((value) => active.current && setStats(value))
+      .then((value) => active.current && request === statsRequest.current && setStats(value))
       .catch(() => {
         // The summary is secondary: the list still works without it.
       })
@@ -82,7 +85,8 @@ export function useCases() {
     try {
       const saved = await api.setStatus(item.id, status)
       if (!active.current) return
-      patchCase(item.id, () => saved)
+      // A newer change on this row wins: its own answer applies the server state.
+      patchCase(item.id, (current) => (current.status === status ? saved : current))
       setAnnouncement(`Status zmieniony: ${statusLabels[status]}.`)
       refreshStats()
     } catch (error) {

@@ -1,0 +1,104 @@
+/*
+ * Shared page frame for the account pages (cases, case, profile, sign-in).
+ * Imported in main.tsx right after base.css, i.e. before every component stylesheet: a page's own
+ * modifier (e.g. .cases-page__head) has the same specificity and must win by coming later. Kept out of
+ * App.css, which the bundle emits after the page components imported by App.tsx.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-block: var(--space-8) var(--space-16);
+}
+
+.page__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Focused on navigation for screen readers; a heading is not a control, so no ring. */
+.page__title {
+  font-size: var(--text-3xl);
+  outline: none;
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+}
+
+#main h1[tabindex='-1']:focus {
+  outline: none;
+}
+
+.page__lead {
+  max-width: 38rem;
+  color: var(--text-secondary);
+}
+
+.page__loading {
+  color: var(--text-secondary);
+}
+
+.page__back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  margin-block: calc(-1 * var(--space-3)) calc(-1 * var(--space-2));
+  font-weight: var(--weight-medium);
+}
+
+/* Load/save failures: a 4 px signal bar on a tint, like the wizard's errors. */
+.page-error {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius-md);
+  background: var(--danger-tint);
+  color: var(--text);
+  outline: none;
+}
+
+.page-error[data-kind='final'] {
+  border-left-color: var(--neutral);
+  background: var(--neutral-tint);
+}
+
+.page-error__icon {
+  flex: none;
+  color: var(--danger);
+}
+
+.page-error[data-kind='final'] .page-error__icon {
+  color: var(--neutral);
+}
+
+.page-error__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.page-error__title {
+  font-weight: var(--weight-semibold);
+}
+
+/* Links styled as buttons (Link to a route) keep the underline off. */
+a.button {
+  text-decoration: none;
+}
+
+/* Single-column pages (profile, case, not found): left-aligned with the header and the cases list,
+   one reading column wide – like the wizard's form column. */
+/* :where() keeps this at one class, so a page's own width (e.g. .profile-form) still wins. */
+.page--column > :where(:not(dialog)) {
+  width: 100%;
+  max-width: var(--content-width);
+}
+
+.page--column > .page__back {
+  width: auto;
+}

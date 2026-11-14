@@ -5,7 +5,7 @@ import { usePageTitle } from './usePageTitle'
 export function NotFoundPage() {
   usePageTitle('Nie ma takiej strony')
   return (
-    <div className="container page">
+    <div className="container container--wide page page--column">
       <header className="page__head">
         <h1 className="page__title" tabIndex={-1}>
           Nie ma takiej strony

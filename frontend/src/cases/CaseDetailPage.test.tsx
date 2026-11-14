@@ -69,6 +69,17 @@ describe('CaseDetailPage', () => {
     expect(await screen.findByText(/proszę o bon/)).toBeTruthy()
   })
 
+  it('keeps focus on the page heading when the case finishes loading', async () => {
+    let resolve!: (value: CaseDto) => void
+    vi.mocked(api.getCase).mockReturnValue(new Promise((res) => (resolve = res)))
+    renderAt('/sprawy/7')
+    const heading = screen.getByRole('heading', { level: 1, name: 'Sprawa' })
+    heading.focus()
+    resolve(item)
+    await screen.findByRole('heading', { level: 1, name: 'PKP Intercity EIC' })
+    expect(document.activeElement).toBe(heading)
+  })
+
   it('says when the case does not exist', async () => {
     vi.mocked(api.getCase).mockRejectedValue(new ApiError(404, 'Nie znaleziono.'))
     renderAt('/sprawy/99')

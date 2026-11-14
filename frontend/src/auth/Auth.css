@@ -185,11 +185,9 @@ html:has(.auth-dialog[open]) {
 }
 
 /* ---------- /logowanie, /rejestracja: the panel as a page ---------- */
-.auth-page {
-  max-width: calc(28rem + 2 * var(--gutter));
-}
-
+/* Left-aligned like the other pages; one form column. */
 .auth-page .auth-panel {
+  max-width: 28rem;
   padding: var(--space-6);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

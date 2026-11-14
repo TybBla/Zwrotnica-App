@@ -26,7 +26,7 @@ export function AuthPage({ tab }: { tab: Tab }) {
   if (user) return <Navigate to={safeNext(params.get('next'))} replace />
 
   return (
-    <div className="container page auth-page">
+    <div className="container container--wide page page--column auth-page">
       {loading ? (
         <p className="page__loading" role="status">
           Sprawdzamy, czy jesteś zalogowany…
