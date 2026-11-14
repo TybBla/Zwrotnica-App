@@ -54,6 +54,13 @@ describe('filterAllowed', () => {
   it('upper-cases and keeps only ASCII letters, digits and spaces in an IBAN', () => {
     expect(filterAllowed('iban', 'pl61 1090-1014 ą')).toBe('PL61 10901014 ')
   })
+
+  // .NET's \p{L} sees a UTF-16 surrogate pair (category Cs), not a letter, so the API rejects these.
+  it('strips astral-plane letters (fancy-font text, U+10000–U+10FFFF) like the backend', () => {
+    expect(filterAllowed('fullName', '𝐀𝐧𝐧𝐚 Kowalska')).toBe(' Kowalska')
+    expect(filterAllowed('station', 'Kraków 𝔊łówny')).toBe('Kraków łówny')
+    expect(filterAllowed('notes', 'Opóźnienie 𝟕𝟓 min 𐐀')).toBe('Opóźnienie min ')
+  })
 })
 
 describe('finalizeText', () => {
@@ -70,6 +77,10 @@ describe('isAllowed', () => {
   it('accepts allowed text and rejects symbols', () => {
     expect(isAllowed('carrier', 'PKP Intercity')).toBe(true)
     expect(isAllowed('carrier', 'PKP Intercity ★')).toBe(false)
+  })
+
+  it('rejects astral-plane letters', () => {
+    expect(isAllowed('carrier', '𝐏𝐊𝐏 Intercity')).toBe(false)
   })
 })
 

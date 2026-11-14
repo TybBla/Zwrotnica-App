@@ -24,12 +24,17 @@ const classBodies: Record<TextField, string> = {
   notes: String.raw`\p{L}\p{N} \n.,;:!?\-()/'"%`,
 }
 
+// .NET regexes work on UTF-16 code units: a code point above U+FFFF is a surrogate pair (category Cs) and never
+// matches \p{L} or \p{N} there. JS with the `u` flag sees the code point itself, so "𝐀𝐧𝐧𝐚" (fancy-font letters)
+// would pass here and fail with a 400 on the server. Exclude the astral planes explicitly for parity.
+const ASTRAL = String.raw`\u{10000}-\u{10FFFF}`
+
 const disallowed = Object.fromEntries(
-  Object.entries(classBodies).map(([field, body]) => [field, new RegExp(`[^${body}]`, 'gu')]),
+  Object.entries(classBodies).map(([field, body]) => [field, new RegExp(`[^${body}]|[${ASTRAL}]`, 'gu')]),
 ) as Record<TextField, RegExp>
 
 const fullMatch = Object.fromEntries(
-  Object.entries(classBodies).map(([field, body]) => [field, new RegExp(`^[${body}]+$`, 'u')]),
+  Object.entries(classBodies).map(([field, body]) => [field, new RegExp(`^(?:(?![${ASTRAL}])[${body}])+$`, 'u')]),
 ) as Record<TextField, RegExp>
 
 const isMultiline = (field: TextField) => field === 'notes'
