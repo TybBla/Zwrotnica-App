@@ -498,16 +498,13 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.True(letter.UsedAi);
     }
 
-    [Theory]
-    [InlineData(Verdict.NotCovered, 0, 10)]
-    [InlineData(Verdict.Unknown, 0, 10)]
-    [InlineData(Verdict.Eligible, 0, 0)]
-    public async Task NotEligibleCase_ReturnsNotEligibleAndWritesNothing(Verdict verdict, int unused, int amount)
+    /// <summary>A covered train with nothing due (e.g. under 60 minutes late): there is nothing to ask for.</summary>
+    [Fact]
+    public async Task EligibleCaseWithNothingDue_ReturnsNotEligibleAndWritesNothing()
     {
-        _ = unused;
         var c = await _cases.GetAsync(_annaCaseId, Anna);
-        c!.Verdict = verdict;
-        c.CompensationAmount = verdict == Verdict.Eligible ? amount : 0m;
+        c!.CompensationAmount = 0m;
+        c.DelayMinutes = 30;
         await _cases.UpdateAsync(c);
         var ai = new FakeAi(ValidAiJson());
 
@@ -604,5 +601,145 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
 
         Assert.False(letter.UsedAi);
         Assert.Contains("Gdynia Główna", letter.Body);
+    }
+
+    // ---------- Carrier-rules complaint ("reklamacja") for trains outside the EU 25%/50% scheme ----------
+
+    /// <summary>Turns Anna's case into one with no EU amount: a regional carrier (NotCovered) or an unclear one (Unknown).</summary>
+    private async Task MakeAnnaCaseUncoveredAsync(Verdict verdict, IncidentType incident = IncidentType.Delay)
+    {
+        var c = await _cases.GetAsync(_annaCaseId, Anna);
+        c!.Carrier = "Polregio";
+        c.TrainCategory = null;
+        c.Verdict = verdict;
+        c.CompensationAmount = 0m;
+        c.IncidentType = incident;
+        c.DelayMinutes = incident == IncidentType.Cancellation ? 0 : 70;
+        await _cases.UpdateAsync(c);
+    }
+
+    private static string ValidCarrierRulesJson(
+        string body = "{{FULL_NAME}}\n{{ADDRESS}}\n\nSkładam reklamację: opóźnienie 70 min, bilet za 40,00 zł. Proszę o rozpatrzenie według regulaminu przewozu.\n\n{{PAYOUT}}\n\nZ poważaniem\n{{FULL_NAME}}") =>
+        JsonSerializer.Serialize(new { subject = "Reklamacja – opóźnienie pociągu Polregio", body });
+
+    [Theory]
+    [InlineData(Verdict.NotCovered)]
+    [InlineData(Verdict.Unknown)]
+    public async Task UncoveredCase_Template_IsAComplaintUnderTheCarriersRules(Verdict verdict)
+    {
+        await MakeAnnaCaseUncoveredAsync(verdict);
+
+        var result = await Service(Failing()).GenerateAsync(_annaCaseId, Req(PayoutPreference.Voucher), CancellationToken.None);
+
+        Assert.Equal(ComplaintStatus.Generated, result.Status);
+        var letter = result.Letter!;
+        Assert.False(letter.UsedAi);
+        Assert.Equal("Reklamacja – opóźnienie pociągu Polregio z dnia 01.11.2026", letter.Subject);
+        foreach (var expected in new[]
+                 { "Anna Kowalska", "ul. Lipowa 12/4, 80-001 Gdańsk", "Polregio", "Gdynia Główna", "Kraków Główny",
+                   "IC-4821-0093", "70 min", "40,00 zł", "regulamin", "pisemn" })
+            Assert.Contains(expected, letter.Body);
+        Assert.Contains("W przypadku przyznania rekompensaty proszę o jej wypłatę w formie bonu.", letter.Body);
+        foreach (var banned in new[] { "art. 19", "art. 18", "2021/782", "Wnoszę o", " 0,00 zł", "{{" })
+            Assert.DoesNotContain(banned, letter.Body);
+        Assert.Empty(letter.MissingFields);
+        Assert.Equal(PayoutPreference.Voucher, (await _cases.GetAsync(_annaCaseId, Anna))!.PayoutPreference);
+    }
+
+    [Fact]
+    public async Task UncoveredCancellation_Template_DescribesTheCancellation()
+    {
+        await MakeAnnaCaseUncoveredAsync(Verdict.NotCovered, IncidentType.Cancellation);
+
+        var letter = await GenerateAsync(Failing(), Req());
+
+        Assert.Equal("Reklamacja – odwołanie pociągu Polregio z dnia 01.11.2026", letter.Subject);
+        Assert.Contains("Pociąg został odwołany.", letter.Body);
+        Assert.Contains("W przypadku przyznania zwrotu należności lub rekompensaty proszę o wypłatę na rachunek bankowy lub kartę, z których opłacono bilet.", letter.Body);
+        Assert.DoesNotContain("0 min", letter.Body);
+    }
+
+    [Fact]
+    public async Task UncoveredCase_BankTransferWithoutIban_ReportsAccountNumberAsMissing()
+    {
+        var id = await AddCaseAsync(Empty);
+        var c = await _cases.GetAsync(id, Empty);
+        c!.Verdict = Verdict.NotCovered;
+        c.CompensationAmount = 0m;
+        await _cases.UpdateAsync(c);
+
+        var letter = await GenerateAsync(Failing(), Req(PayoutPreference.BankTransfer), Empty, id);
+
+        Assert.Contains("W przypadku przyznania rekompensaty proszę o jej wypłatę przelewem na rachunek nr [numer rachunku].", letter.Body);
+        Assert.Equal(["imię i nazwisko", "adres", "numer rachunku"], letter.MissingFields);
+    }
+
+    [Theory]
+    [InlineData(Verdict.NotCovered)]
+    [InlineData(Verdict.Unknown)]
+    public async Task UncoveredCase_ValidAiOutput_IsUsedWithTheServersConditionalPayout(Verdict verdict)
+    {
+        await MakeAnnaCaseUncoveredAsync(verdict);
+        var ai = new FakeAi(ValidCarrierRulesJson());
+
+        var letter = await GenerateAsync(ai, Req(PayoutPreference.Voucher));
+
+        Assert.True(letter.UsedAi);
+        Assert.Equal("Reklamacja – opóźnienie pociągu Polregio", letter.Subject);
+        Assert.Contains("W przypadku przyznania rekompensaty proszę o jej wypłatę w formie bonu.", letter.Body);
+        Assert.Contains("Anna Kowalska", letter.Body);
+        Assert.DoesNotContain("{{", letter.Body);
+    }
+
+    [Fact]
+    public async Task UncoveredCase_AiPrompt_AsksForCarrierRulesWithoutAmountOrPersonalData()
+    {
+        await MakeAnnaCaseUncoveredAsync(Verdict.NotCovered);
+        var ai = new FakeAi(ValidCarrierRulesJson());
+
+        await GenerateAsync(ai, Req(PayoutPreference.BankTransfer, "PL27114020040000300201355387"));
+
+        Assert.Contains("Polregio", ai.Prompt);
+        Assert.Contains("40,00 zł", ai.Prompt);
+        Assert.Contains("regulamin", ai.Prompt);
+        Assert.Contains("{{FULL_NAME}}", ai.Prompt);
+        Assert.DoesNotContain(" 0,00 zł", ai.Prompt);
+        Assert.DoesNotContain("Amount requested", ai.Prompt);
+        foreach (var secret in new[] { "Anna", "Kowalska", "Lipowa", Iban, "PL27" })
+            Assert.DoesNotContain(secret, ai.Prompt);
+    }
+
+    [Theory]
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin, bilet 40,00 zł, art. 19 rozporządzenia (UE) 2021/782 {{PAYOUT}}")] // EU entitlement
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin, zwrot na podstawie art. 18 {{PAYOUT}}")]                          // EU refund article
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin, wnoszę o 10,00 zł {{PAYOUT}}")]                                   // demanded amount
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin, bilet 40,00 zł i 20 zł {{PAYOUT}}")]                              // any other sum
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin {{PAYOUT}} Konto PL61 1090 1014 0000 0712 1981 2874")]               // IBAN-like
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin {{PAYOUT}} wyłącznie przelewem")]                                   // exclusive clause
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin {{PAYOUT}} nie przyjmę gotówki")]                                   // cash wording
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin, bilet 40,00 zł")]                                                  // no payout token
+    [InlineData("{{ADDRESS}} regulamin {{PAYOUT}}")]                                                                     // no name token
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} regulamin {{PAYOUT}} {{IBAN}}")]                                              // IBAN token, not a transfer
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} {{PAYOUT}} proszę o rozpatrzenie")]                                           // no carrier rules
+    public async Task UncoveredCase_InvalidAiOutput_FallsBackToTemplate(string body)
+    {
+        await MakeAnnaCaseUncoveredAsync(Verdict.NotCovered);
+
+        var letter = await GenerateAsync(new FakeAi(ValidCarrierRulesJson(body)), Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.StartsWith("Reklamacja – opóźnienie pociągu Polregio", letter.Subject);
+        Assert.Contains("regulamin", letter.Body);
+        Assert.DoesNotContain("art. 19", letter.Body);
+    }
+
+    [Fact]
+    public async Task EligibleCase_AiOutputWithoutAmountOrArticle_StillFallsBackToCompensationTemplate()
+    {
+        var letter = await GenerateAsync(new FakeAi(ValidCarrierRulesJson()), Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.StartsWith("Wniosek o wypłatę odszkodowania", letter.Subject);
+        Assert.Contains("art. 19", letter.Body);
     }
 }

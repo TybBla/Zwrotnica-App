@@ -163,14 +163,39 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
             (await owner.PostAsJsonAsync($"/api/cases/{id}/complaint/pdf", new { subject = new string('x', 201), body = "B" })).StatusCode);
     }
 
+    [Theory]
+    [InlineData("Polregio", null)]                // NotCovered: regional carrier
+    [InlineData("Nieznany Przewoźnik", "X")]      // Unknown: carrier not recognised
+    public async Task UncoveredCase_Returns200WithCarrierRulesComplaint(string carrier, string? category)
+    {
+        var client = await LoggedInClientAsync($"uncovered-{category ?? "none"}@test.pl");
+        var created = await client.PostAsJsonAsync("/api/cases", new
+        {
+            carrier, trainCategory = category, fromStation = "A", toStation = "B",
+            travelDate = "2026-11-01", ticketPrice = 40m, incidentType = "Delay", delayMinutes = 70,
+            isSeasonTicket = false,
+        });
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var response = await client.PostAsJsonAsync($"/api/cases/{id}/complaint", new { payout = "Voucher" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.StartsWith("Reklamacja – opóźnienie pociągu", json.GetProperty("subject").GetString());
+        Assert.Contains("regulamin", json.GetProperty("body").GetString());
+        Assert.DoesNotContain("art. 19", json.GetProperty("body").GetString());
+        var profile = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Voucher", profile.GetProperty("preferredPayout").GetString());
+    }
+
     [Fact]
-    public async Task NotEligibleCase_Returns409ProblemAndKeepsPayout()
+    public async Task CoveredCaseWithNothingDue_Returns409ProblemAndKeepsPayout()
     {
         var client = await LoggedInClientAsync("noelig@test.pl");
         var created = await client.PostAsJsonAsync("/api/cases", new
         {
-            carrier = "Nieznany Przewoźnik", trainCategory = "X", fromStation = "A", toStation = "B",
-            travelDate = "2026-11-01", ticketPrice = 40m, incidentType = "Delay", delayMinutes = 70,
+            carrier = "PKP Intercity", trainCategory = "IC", fromStation = "A", toStation = "B",
+            travelDate = "2026-11-01", ticketPrice = 40m, incidentType = "Delay", delayMinutes = 30,
             isSeasonTicket = false,
         });
         var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();

@@ -12,7 +12,10 @@ public sealed record ComplaintResult(ComplaintStatus Status, ComplaintDto? Lette
 
 public interface IComplaintService
 {
-    /// <summary>NotFound when the case does not exist or belongs to someone else; NotEligible when no compensation is due.</summary>
+    /// <summary>
+    /// NotFound when the case does not exist or belongs to someone else. NotEligible only for a covered train with nothing
+    /// due (e.g. under 60 minutes late); trains outside the EU scheme or unclear ones get a complaint under the carrier's rules.
+    /// </summary>
     Task<ComplaintResult> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct);
 
     /// <summary>Renders the posted (possibly edited) letter as PDF; null when the case is not the current user's. No AI, no writes.</summary>
@@ -51,19 +54,29 @@ public sealed partial class ComplaintService(
         if (currentUser.UserId is not { } userId || await cases.GetAsync(caseId, userId) is not { } refundCase)
             return new(ComplaintStatus.NotFound, null);
 
-        // A formal demand makes no sense without compensation due; nothing is written in that case.
-        if (refundCase.Verdict != Verdict.Eligible || refundCase.CompensationAmount <= 0)
+        // Eligible with money due: a formal demand under art. 19 / art. 18. Not covered or unclear: a complaint asking the
+        // carrier to decide under its own rules. A covered train with nothing due (e.g. under 60 minutes late) has
+        // nothing to ask for, so nothing is written.
+        var kind = refundCase.Verdict switch
+        {
+            Verdict.Eligible when refundCase.CompensationAmount > 0 => LetterKind.Compensation,
+            Verdict.NotCovered or Verdict.Unknown => LetterKind.CarrierRules,
+            _ => (LetterKind?)null,
+        };
+        if (kind is not { } letterKind)
             return new(ComplaintStatus.NotEligible, null);
 
         var profile = await profiles.GetAsync(userId) ?? new UserProfile(null, null, null, request.Payout);
         var oneTimeIban = Sanitize(request.OneTimeIban is { } raw && !string.IsNullOrWhiteSpace(raw) ? Domain.Iban.Normalize(raw) : null, MaxIban);
         var facts = ToFacts(refundCase);
 
-        var draft = ai.IsConfigured ? await TryAiDraftAsync(facts, request.Payout, ct) : null;
-        var (subject, body) = draft ?? ComplaintTemplate.Build(facts);
+        var draft = ai.IsConfigured ? await TryAiDraftAsync(letterKind, facts, request.Payout, ct) : null;
+        var (subject, body) = draft ?? (letterKind == LetterKind.Compensation
+            ? ComplaintTemplate.Build(facts)
+            : ComplaintTemplate.BuildCarrierRules(facts));
 
         var iban = oneTimeIban ?? Sanitize(profile.Iban, MaxIban);
-        var (finalBody, missing) = Fill(body, PayoutSentence(request.Payout, refundCase.IncidentType),
+        var (finalBody, missing) = Fill(body, PayoutSentence(letterKind, request.Payout, refundCase.IncidentType),
             Sanitize(profile.FullName, MaxName), Sanitize(profile.Address, MaxAddress), iban);
 
         await unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -85,12 +98,13 @@ public sealed partial class ComplaintService(
     }
 
     private async Task<(string Subject, string Body)?> TryAiDraftAsync(
-        ComplaintFacts facts, PayoutPreference payout, CancellationToken ct)
+        LetterKind kind, ComplaintFacts facts, PayoutPreference payout, CancellationToken ct)
     {
         try
         {
-            var raw = await ai.GenerateJsonAsync(BuildPrompt(facts), [], Schema, ct);
-            return Validate(raw, facts, payout);
+            var prompt = kind == LetterKind.Compensation ? BuildPrompt(facts) : BuildCarrierRulesPrompt(facts);
+            var raw = await ai.GenerateJsonAsync(prompt, [], Schema, ct);
+            return kind == LetterKind.Compensation ? Validate(raw, facts, payout) : ValidateCarrierRules(raw, facts, payout);
         }
         catch (Exception) when (!ct.IsCancellationRequested)
         {
@@ -154,7 +168,79 @@ public sealed partial class ComplaintService(
             """;
     }
 
+    /// <summary>Prompt for a train outside the EU 25%/50% scheme: facts only, no amount, the carrier's own rules decide.</summary>
+    internal static string BuildCarrierRulesPrompt(ComplaintFacts f)
+    {
+        var incident = f.Incident == IncidentType.Cancellation
+            ? "The train was cancelled."
+            : $"The train arrived at the destination {f.DelayMinutes} minutes late.";
+        var cause = f.CauseText is { } c ? $"\n- Cause of the delay (if relevant): {c}" : "";
+        return $"""
+            You write a formal complaint letter ("reklamacja") in Polish from a rail passenger to the railway carrier.
+            The EU compensation scheme of 25%/50% does not apply to this train (or it is unclear whether it does),
+            so the passenger asks the carrier to consider the complaint and grant compensation or a refund
+            under the carrier's own terms of carriage ("regulamin przewozu").
+
+            Case facts:
+            - Carrier: {f.Carrier}
+            - Train category: {f.TrainCategory ?? "not given"}
+            - Route: {Route(f)}
+            - Travel date: {f.DateText}
+            - Ticket number: {f.TicketNumber ?? "not given"}
+            - Ticket price: {f.PriceText}
+            - Incident: {incident}{cause}
+
+            Rules:
+            - Output JSON with "subject" and "body". Write in formal Polish, 120-220 words in the body.
+            - Ask the carrier to consider the complaint under its "regulamin przewozu" and to reply in writing.
+            - Do not demand any amount. The only sum you may mention is the ticket price "{f.PriceText}", as a fact.
+            - Do not cite any article of Regulation (EU) 2021/782 and do not claim a legal entitlement to compensation.
+            - Use these literal tokens, each at least once, and do not invent any other tokens:
+              {ComplaintTemplate.FullName} (passenger name, in the sender block and the signature),
+              {ComplaintTemplate.Address} (passenger address, in the sender block),
+              {ComplaintTemplate.Payout} (alone on its own line, where the passenger states how a granted payout should be made).
+            - Never write a name, address or bank account number yourself.
+            - Do not add legal claims beyond the facts given.{StationRules(f)}
+            """;
+    }
+
     private static (string Subject, string Body)? Validate(string raw, ComplaintFacts facts, PayoutPreference payout)
+    {
+        if (ParseDraft(raw) is not { } draft)
+            return null;
+        var (subject, body) = draft;
+
+        if (!body.Contains(facts.AmountText, StringComparison.Ordinal) || !body.Contains("2021/782", StringComparison.Ordinal))
+            return null;
+
+        // The legal basis must be the right one: art. 19 (compensation) for a delay, art. 18 (refund) for a cancellation.
+        var cited = CitedArticles(body);
+        var required = facts.Incident == IncidentType.Cancellation ? "18" : "19";
+        if (!cited.Contains(required) || (facts.Incident == IncidentType.Cancellation && cited.Contains("19")))
+            return null;
+
+        return PassesCommonChecks(body, facts, payout, facts.AmountText, facts.PriceText) ? (subject, body) : null;
+    }
+
+    /// <summary>
+    /// The carrier-rules complaint must not turn into an EU claim: no art. 18/19, no sum other than the ticket price,
+    /// and it has to point the carrier to its terms of carriage.
+    /// </summary>
+    private static (string Subject, string Body)? ValidateCarrierRules(string raw, ComplaintFacts facts, PayoutPreference payout)
+    {
+        if (ParseDraft(raw) is not { } draft)
+            return null;
+        var (subject, body) = draft;
+
+        var cited = CitedArticles(body);
+        if (cited.Contains("18") || cited.Contains("19") || !body.Contains("regulamin", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        return PassesCommonChecks(body, facts, payout, facts.PriceText) ? (subject, body) : null;
+    }
+
+    /// <summary>Subject and body from the AI's JSON, trimmed and within limits; null when the shape is wrong.</summary>
+    private static (string Subject, string Body)? ParseDraft(string raw)
     {
         using var document = JsonDocument.Parse(raw);
         var root = document.RootElement;
@@ -167,25 +253,24 @@ public sealed partial class ComplaintService(
         var body = b.GetString()!.Trim();
         if (subject.Length is 0 or > MaxSubject || body.Length is 0 or > MaxBody || subject.Contains("{{"))
             return null;
+        return (subject, body);
+    }
 
-        if (!body.Contains(facts.AmountText, StringComparison.Ordinal) || !body.Contains("2021/782", StringComparison.Ordinal))
-            return null;
+    private static HashSet<string> CitedArticles(string body) =>
+        ArticlePattern().Matches(body).Select(m => m.Groups[1].Value).ToHashSet();
 
-        // The legal basis must be the right one: art. 19 (compensation) for a delay, art. 18 (refund) for a cancellation.
-        var cited = ArticlePattern().Matches(body).Select(m => m.Groups[1].Value).ToHashSet();
-        var required = facts.Incident == IncidentType.Cancellation ? "18" : "19";
-        if (!cited.Contains(required) || (facts.Incident == IncidentType.Cancellation && cited.Contains("19")))
-            return null;
-
+    /// <summary>Checks shared by both letters: only the allowed sums, no account numbers, no exclusive wording, known tokens.</summary>
+    private static bool PassesCommonChecks(
+        string body, ComplaintFacts facts, PayoutPreference payout, params string[] allowedSums)
+    {
         // The AI is told to use only the supplied numbers; anything else (other sums, account numbers,
         // exclusive payout wording) means it improvised or was steered by case text, so the template is used.
-        var allowedMoney = new HashSet<string>
-            { NormalizeMoney(facts.AmountText), NormalizeMoney(facts.PriceText) };
+        var allowedMoney = allowedSums.Select(NormalizeMoney).ToHashSet();
         if (MoneyPattern().Matches(body).Any(m => !allowedMoney.Contains(NormalizeMoney(m.Value)))
             || IbanLike().IsMatch(body)
             || body.Contains("wyłącznie", StringComparison.OrdinalIgnoreCase)
             || body.Contains("gotówk", StringComparison.OrdinalIgnoreCase))
-            return null;
+            return false;
 
         var tokens = TokenPattern().Matches(body).Select(m => m.Value).ToHashSet();
         var allowed = new HashSet<string> { ComplaintTemplate.FullName, ComplaintTemplate.Address, ComplaintTemplate.Payout };
@@ -198,25 +283,34 @@ public sealed partial class ComplaintService(
         if (!tokens.IsSubsetOf(allowed)
             || !tokens.Contains(ComplaintTemplate.FullName) || !tokens.Contains(ComplaintTemplate.Address)
             || !tokens.Contains(ComplaintTemplate.Payout))
-            return null;
+            return false;
         // Any "{{" that is not a well-formed known token (e.g. "{{ X }}") is also rejected.
-        if (body.Split("{{").Length - 1 != TokenPattern().Matches(body).Count)
-            return null;
-
-        return (subject, body);
+        return body.Split("{{").Length - 1 == TokenPattern().Matches(body).Count;
     }
 
-    /// <summary>Compensation for a delay (art. 19), a refund of the ticket price for a cancellation (art. 18).</summary>
-    private static string PayoutSentence(PayoutPreference payout, IncidentType incident)
+    /// <summary>
+    /// Compensation for a delay (art. 19), a refund of the ticket price for a cancellation (art. 18). Under the
+    /// carrier's rules nothing is guaranteed, so the payout form is stated only for the case something is granted.
+    /// </summary>
+    private static string PayoutSentence(LetterKind kind, PayoutPreference payout, IncidentType incident)
     {
-        var ask = incident == IncidentType.Cancellation ? "zwrot należności" : "wypłatę odszkodowania";
-        return payout switch
+        var form = payout switch
         {
-            PayoutPreference.BankTransfer => $"Proszę o {ask} przelewem na rachunek nr {ComplaintTemplate.Iban}.",
-            PayoutPreference.Voucher => $"Proszę o {ask} w formie bonu.",
-            _ => $"Proszę o {ask} na rachunek bankowy lub kartę, z których opłacono bilet.",
+            PayoutPreference.BankTransfer => $"przelewem na rachunek nr {ComplaintTemplate.Iban}",
+            PayoutPreference.Voucher => "w formie bonu",
+            _ => "na rachunek bankowy lub kartę, z których opłacono bilet",
         };
+        if (kind == LetterKind.CarrierRules)
+            return incident == IncidentType.Cancellation
+                ? $"W przypadku przyznania zwrotu należności lub rekompensaty proszę o wypłatę {form}."
+                : $"W przypadku przyznania rekompensaty proszę o jej wypłatę {form}.";
+
+        var ask = incident == IncidentType.Cancellation ? "zwrot należności" : "wypłatę odszkodowania";
+        return $"Proszę o {ask} {form}.";
     }
+
+    /// <summary>Compensation: a demand under Reg. (EU) 2021/782. CarrierRules: a complaint the carrier decides under its own terms.</summary>
+    private enum LetterKind { Compensation, CarrierRules }
 
     private static (string Body, IReadOnlyList<string> Missing) Fill(
         string body, string payoutSentence, string? name, string? address, string? iban)

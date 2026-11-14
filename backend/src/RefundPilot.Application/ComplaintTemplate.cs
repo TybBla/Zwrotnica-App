@@ -96,4 +96,48 @@ public static class ComplaintTemplate
 
         return (subject, body);
     }
+
+    /// <summary>
+    /// A complaint ("reklamacja") for a train outside the EU 25%/50% scheme (Polish regional, suburban and urban
+    /// services are exempt) or one we could not classify: it states the facts and asks the carrier to decide under its
+    /// own terms of carriage. No amount is demanded and no EU article is claimed as an entitlement.
+    /// </summary>
+    public static (string Subject, string Body) BuildCarrierRules(ComplaintFacts f)
+    {
+        var cancelled = f.Incident == IncidentType.Cancellation;
+        var ticket = string.IsNullOrWhiteSpace(f.TicketNumber) ? "" : $" nr {f.TicketNumber}";
+        var category = string.IsNullOrWhiteSpace(f.TrainCategory) ? "" : $" kat. {f.TrainCategory}";
+
+        var subject = $"Reklamacja – {(cancelled ? "odwołanie" : "opóźnienie")} pociągu {f.Carrier} z dnia {f.DateText}";
+
+        var what = cancelled
+            ? "Pociąg został odwołany."
+            : $"Pociąg dotarł do stacji docelowej z opóźnieniem {f.DelayMinutes} min.";
+        if (f.CauseText is { } cause)
+            what += $" Przyczyna zdarzenia (według dostępnych informacji): {cause}.";
+
+        var body = $"""
+            {FullName}
+            {Address}
+
+            {f.Carrier}
+
+            Dotyczy: bilet{ticket}, przejazd relacją {f.FromText} – {f.ToText} w dniu {f.DateText}
+
+            Szanowni Państwo,
+
+            składam reklamację dotyczącą przejazdu w dniu {f.DateText} pociągiem{category} relacją {f.FromText} – {f.ToText}, odbytego na podstawie biletu{ticket}, za który zapłaciłem(-am) {f.PriceText}. {what}
+
+            Proszę o rozpatrzenie reklamacji i przyznanie rekompensaty lub zwrotu należności za bilet na zasadach określonych w Państwa regulaminie przewozu.
+
+            {Payout}
+
+            Proszę o pisemną odpowiedź na reklamację.
+
+            Z poważaniem
+            {FullName}
+            """;
+
+        return (subject, body);
+    }
 }
