@@ -171,7 +171,7 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
         var client = await LoggedInClientAsync($"uncovered-{category ?? "none"}@test.pl");
         var created = await client.PostAsJsonAsync("/api/cases", new
         {
-            carrier, trainCategory = category, fromStation = "A", toStation = "B",
+            carrier, trainCategory = category, fromStation = "A", toStation = "B", ticketNumber = "R-1",
             travelDate = "2026-11-01", ticketPrice = 40m, incidentType = "Delay", delayMinutes = 70,
             isSeasonTicket = false,
         });
@@ -194,7 +194,7 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
         var client = await LoggedInClientAsync("noelig@test.pl");
         var created = await client.PostAsJsonAsync("/api/cases", new
         {
-            carrier = "PKP Intercity", trainCategory = "IC", fromStation = "A", toStation = "B",
+            carrier = "PKP Intercity", trainCategory = "IC", fromStation = "A", toStation = "B", ticketNumber = "IC-1",
             travelDate = "2026-11-01", ticketPrice = 40m, incidentType = "Delay", delayMinutes = 30,
             isSeasonTicket = false,
         });
@@ -253,7 +253,7 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
         var client = await LoggedInClientAsync("nostationsletter@test.pl");
         var created = await client.PostAsJsonAsync("/api/cases", new
         {
-            carrier = "PKP Intercity", trainCategory = "IC", travelDate = "2026-11-01", ticketPrice = 40m,
+            carrier = "PKP Intercity", trainCategory = "IC", ticketNumber = "IC-1", travelDate = "2026-11-01", ticketPrice = 40m,
             incidentType = "Delay", delayMinutes = 70, isSeasonTicket = false,
         });
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);

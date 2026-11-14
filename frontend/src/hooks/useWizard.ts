@@ -157,7 +157,7 @@ export function todayIso(now = new Date()): IsoDate {
 }
 
 export interface TicketIssue {
-  field: 'carrier' | 'travelDate' | 'price'
+  field: 'carrier' | 'travelDate' | 'price' | 'ticketNumber'
   /** Polish, for the field's error line. */
   message: string
   /** True when the field is simply empty (shown as "still to fill", not as an error). */
@@ -166,7 +166,7 @@ export interface TicketIssue {
 
 const isRealDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
 
-/** What still blocks "Dalej": only carrier, travel date and price are required. */
+/** What still blocks "Dalej": carrier, travel date, price and the ticket number (it identifies the contract of carriage). */
 export function ticketIssues(ticket: TicketForm, today: IsoDate = todayIso()): TicketIssue[] {
   const issues: TicketIssue[] = []
 
@@ -184,6 +184,8 @@ export function ticketIssues(ticket: TicketForm, today: IsoDate = todayIso()): T
   else if (price === null) issues.push({ field: 'price', message: 'Wpisz kwotę, np. 49,90.', empty: false })
   else if (price <= 0) issues.push({ field: 'price', message: 'Cena musi być większa niż 0 zł.', empty: false })
   else if (price > 100_000) issues.push({ field: 'price', message: 'Ta kwota wygląda na zbyt wysoką – sprawdź ją.', empty: false })
+
+  if (ticket.ticketNumber.trim() === '') issues.push({ field: 'ticketNumber', message: 'Podaj numer biletu.', empty: true })
 
   return issues
 }
@@ -225,11 +227,12 @@ export function toAssessmentRequest(state: Pick<WizardState, 'ticket' | 'delay'>
 export function toCaseRequest(state: Pick<WizardState, 'ticket' | 'delay' | 'payout'>): CaseRequest | null {
   const ticket = toTicketFields(state.ticket)
   const { incidentType, minutes, cause, isSeasonTicket } = state.delay
-  if (!ticket.carrier || !ticket.travelDate || ticket.ticketPrice === null) return null
+  if (!ticket.carrier || !ticket.ticketNumber || !ticket.travelDate || ticket.ticketPrice === null) return null
   if (incidentType === 'Delay' && minutes === null) return null
   return {
     ...ticket,
     carrier: ticket.carrier,
+    ticketNumber: ticket.ticketNumber,
     travelDate: ticket.travelDate,
     ticketPrice: ticket.ticketPrice,
     incidentType,

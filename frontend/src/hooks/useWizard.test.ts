@@ -20,6 +20,7 @@ const filled: TicketForm = {
   carrierChoice: 'PKP Intercity',
   trainCategory: 'IC',
   fromStation: 'Kraków Główny ',
+  ticketNumber: ' IC-4821-0093',
   travelDate: '2026-11-10',
   price: '49,90',
 }
@@ -40,9 +41,12 @@ describe('parsePrice', () => {
 })
 
 describe('ticketIssues', () => {
-  it('requires carrier, travel date and price only', () => {
-    expect(ticketIssues(emptyTicket, today).map((issue) => issue.field)).toEqual(['carrier', 'travelDate', 'price'])
+  it('requires carrier, travel date, price and ticket number', () => {
+    expect(ticketIssues(emptyTicket, today).map((issue) => issue.field)).toEqual(['carrier', 'travelDate', 'price', 'ticketNumber'])
     expect(ticketIssues(filled, today)).toEqual([])
+    expect(ticketIssues({ ...filled, ticketNumber: '  ' }, today)).toEqual([
+      { field: 'ticketNumber', message: 'Podaj numer biletu.', empty: true },
+    ])
   })
 
   it('requires the other carrier name when "Inny" is chosen', () => {
@@ -63,7 +67,7 @@ describe('request mapping', () => {
       trainCategory: 'IC',
       fromStation: 'Kraków Główny',
       toStation: null,
-      ticketNumber: null,
+      ticketNumber: 'IC-4821-0093',
       travelDate: '2026-11-10',
       ticketPrice: 49.9,
     })
@@ -202,7 +206,7 @@ describe('result step state', () => {
       trainCategory: 'IC',
       fromStation: 'Kraków Główny',
       toStation: null,
-      ticketNumber: null,
+      ticketNumber: 'IC-4821-0093',
       travelDate: '2026-11-10',
       ticketPrice: 49.9,
       incidentType: 'Delay',
@@ -213,6 +217,7 @@ describe('result step state', () => {
       notes: null,
     })
     expect(toCaseRequest({ ...atResult, ticket: { ...filled, travelDate: '' } })).toBeNull()
+    expect(toCaseRequest({ ...atResult, ticket: { ...filled, ticketNumber: ' ' } })).toBeNull()
   })
 
   it('defaults the payout to the original payment method', () => {

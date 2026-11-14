@@ -89,7 +89,7 @@ export interface CaseRequest {
   trainCategory: string | null
   fromStation: string | null
   toStation: string | null
-  ticketNumber: string | null
+  ticketNumber: string
   travelDate: IsoDate
   ticketPrice: number
   incidentType: IncidentType

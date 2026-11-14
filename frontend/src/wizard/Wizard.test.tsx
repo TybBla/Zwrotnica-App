@@ -65,6 +65,7 @@ async function fillManualTicket(user: UserEvent) {
   await user.selectOptions(screen.getByLabelText(/^Kategoria pociągu/), 'IC')
   fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
   await user.type(screen.getByLabelText('Cena biletu'), '49,90')
+  await user.type(screen.getByLabelText('Numer biletu'), 'IC-4821-0093')
 }
 
 beforeEach(() => {
@@ -99,6 +100,23 @@ describe('Wizard – ticket step', () => {
     expect((await screen.findByLabelText(/^Stacja początkowa/)).getAttribute('maxlength')).toBe('200')
     expect(screen.getByLabelText(/^Numer biletu/).getAttribute('maxlength')).toBe('100')
     expect(screen.getByRole('heading', { level: 2, name: 'Dane z biletu' })).toBeTruthy()
+  })
+
+  it('requires the ticket number before "Dalej" and says where to find it', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    await user.selectOptions(await screen.findByLabelText('Przewoźnik'), 'PKP Intercity')
+    fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
+    await user.type(screen.getByLabelText('Cena biletu'), '49,90')
+
+    const ticketNumber = screen.getByLabelText('Numer biletu')
+    expect(description(ticketNumber)).toContain('Numer znajdziesz na bilecie (np. przy kodzie QR lub w e-mailu z biletem)')
+    expect(nextButton().disabled).toBe(true)
+    expect(description(nextButton())).toContain('Aby przejść dalej, podaj numer biletu.')
+
+    await user.type(ticketNumber, 'IC-4821-0093')
+    expect(nextButton().disabled).toBe(false)
   })
 
   it('switches to manual entry with a message on 502 and keeps what was typed', async () => {
@@ -162,13 +180,15 @@ describe('Wizard – ticket step', () => {
     expect(description(price)).toContain(missingHint)
     expect(description(screen.getByLabelText('Data przejazdu'))).toContain(missingHint)
     expect(description(screen.getByLabelText(/^Stacja docelowa/))).toContain(missingHint)
+    expect(description(screen.getByLabelText('Numer biletu'))).toContain(missingHint)
     expect(description(screen.getByLabelText('Przewoźnik'))).not.toContain(missingHint)
     expect(nextButton().disabled).toBe(true)
 
     fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
     await user.type(price, '120')
+    await user.type(screen.getByLabelText('Numer biletu'), 'IC-1')
 
-    // Stations and ticket number stay optional.
+    // Stations stay optional.
     expect(nextButton().disabled).toBe(false)
     expect(description(price)).not.toContain(missingHint)
   })
@@ -279,6 +299,7 @@ describe('Wizard – ticket step', () => {
 
     fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
     await user.type(screen.getByLabelText('Cena biletu'), '19,90')
+    await user.type(screen.getByLabelText('Numer biletu'), 'PR-1')
     expect(nextButton().disabled).toBe(false)
   })
 
@@ -289,7 +310,7 @@ describe('Wizard – ticket step', () => {
       trainCategory: 'IR',
       fromStation: null,
       toStation: null,
-      ticketNumber: null,
+      ticketNumber: 'IR-1',
       ticketPrice: 30,
       travelDate: '2025-06-01',
       missingFields: [],
@@ -305,7 +326,7 @@ describe('Wizard – ticket step', () => {
     expect(nextButton().disabled).toBe(false)
   })
 
-  it('blocks "Dalej" only while carrier, travel date or price are missing', async () => {
+  it('blocks "Dalej" only while carrier, travel date, price or ticket number are missing', async () => {
     const user = userEvent.setup()
     renderWizard()
     await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
@@ -317,6 +338,9 @@ describe('Wizard – ticket step', () => {
     expect(nextButton().disabled).toBe(true)
 
     await user.type(screen.getByLabelText('Cena biletu'), '49,90')
+    expect(nextButton().disabled).toBe(true)
+
+    await user.type(screen.getByLabelText('Numer biletu'), 'IC-1')
     expect(nextButton().disabled).toBe(false)
 
     await user.selectOptions(screen.getByLabelText('Przewoźnik'), 'Inny')
@@ -401,7 +425,7 @@ const readTicket: ExtractionDto = {
   trainCategory: null,
   fromStation: 'Gdynia Główna',
   toStation: null,
-  ticketNumber: null,
+  ticketNumber: 'PR-1',
   ticketPrice: 999,
   travelDate: '2025-01-01',
   missingFields: [],

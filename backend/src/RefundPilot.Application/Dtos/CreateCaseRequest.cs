@@ -10,7 +10,7 @@ public sealed record CreateCaseRequest(
     [property: JsonConverter(typeof(CanonicalTextConverter))] [MaxLength(50), AllowedCharacters(TextField.TrainCategory)] string? TrainCategory,
     [property: JsonConverter(typeof(CanonicalTextConverter))] [MaxLength(200), AllowedCharacters(TextField.Station)] string? FromStation,
     [property: JsonConverter(typeof(CanonicalTextConverter))] [MaxLength(200), AllowedCharacters(TextField.Station)] string? ToStation,
-    [property: JsonConverter(typeof(CanonicalTextConverter))] [MaxLength(100), AllowedCharacters(TextField.TicketNumber)] string? TicketNumber,
+    [property: JsonConverter(typeof(CanonicalTextConverter))] [Required(ErrorMessage = "Podaj numer biletu."), MaxLength(100), AllowedCharacters(TextField.TicketNumber)] string TicketNumber,
     [TravelDate] DateOnly TravelDate,
     [Range(0, 100000, ErrorMessage = "Cena biletu nie może być ujemna.")] decimal TicketPrice,
     IncidentType IncidentType,

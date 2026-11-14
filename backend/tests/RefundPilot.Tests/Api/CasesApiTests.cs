@@ -27,12 +27,13 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
     }
 
     private static object NewCase(string carrier = "PKP Intercity", string? category = "IC", int delay = 95,
-        decimal price = 40m, string? cause = null, bool season = false) => new
+        decimal price = 40m, string? cause = null, bool season = false, string? ticketNumber = "IC-1001-2026") => new
         {
             carrier,
             trainCategory = category,
             fromStation = "Warszawa Centralna",
             toStation = "Kraków Główny",
+            ticketNumber,
             travelDate = "2026-11-01",
             ticketPrice = price,
             incidentType = "Delay",
@@ -137,6 +138,22 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         Assert.Contains("problem+json", response.Content.Headers.ContentType!.MediaType);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public async Task PostAndPut_MissingTicketNumber_Returns400WithMessage(string? ticketNumber)
+    {
+        var client = await LoggedInClientAsync($"noticket-{ticketNumber?.Length ?? 0}@test.pl");
+        var id = (await CreateAsync(client, NewCase())).GetProperty("id").GetInt32();
+
+        var post = await client.PostAsJsonAsync("/api/cases", NewCase(ticketNumber: ticketNumber));
+        var put = await client.PutAsJsonAsync($"/api/cases/{id}", NewCase(ticketNumber: ticketNumber));
+
+        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+        Assert.Contains("Podaj numer biletu.", await post.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+    }
+
     [Fact]
     public async Task Post_NegativePrice_Returns400()
     {
@@ -153,7 +170,7 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         var client = await LoggedInClientAsync("intenum@test.pl");
         var body = new
         {
-            carrier = "PKP Intercity", fromStation = "A", toStation = "B", travelDate = "2026-11-01",
+            carrier = "PKP Intercity", fromStation = "A", toStation = "B", ticketNumber = "IC-1", travelDate = "2026-11-01",
             ticketPrice = 40, incidentType = "Delay", delayMinutes = 95, payoutPreference = 99,
         };
 
@@ -376,6 +393,7 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
             carrier = "PKP Intercity",
             fromStation = "Warszawa 😀",
             toStation = "Kraków Główny",
+            ticketNumber = "IC-1",
             travelDate = "2026-11-01",
             ticketPrice = 40m,
             incidentType = "Delay",
@@ -397,6 +415,7 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
             carrier = "PKP Intercity",
             fromStation = "Gdynia – Gdańsk",
             toStation = "Kraków Główny",
+            ticketNumber = "IC-1",
             travelDate = "2026-11-01",
             ticketPrice = 40m,
             incidentType = "Delay",
@@ -418,7 +437,7 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
 
         var json = await CreateAsync(client, new
         {
-            carrier = "PKP Intercity", trainCategory = "IC", travelDate = "2026-11-01", ticketPrice = 40m,
+            carrier = "PKP Intercity", trainCategory = "IC", ticketNumber = "IC-1", travelDate = "2026-11-01", ticketPrice = 40m,
             incidentType = "Delay", delayMinutes = 95, isSeasonTicket = false, payoutPreference = "BankTransfer",
         });
 
@@ -436,7 +455,7 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
 
         var cleared = await client.PutAsJsonAsync($"/api/cases/{id}", new
         {
-            carrier = "PKP Intercity", trainCategory = "IC", fromStation = "  ", toStation = "", travelDate = "2026-11-01",
+            carrier = "PKP Intercity", trainCategory = "IC", fromStation = "  ", toStation = "", ticketNumber = "IC-1", travelDate = "2026-11-01",
             ticketPrice = 40m, incidentType = "Delay", delayMinutes = 95, isSeasonTicket = false,
             payoutPreference = "BankTransfer",
         });
@@ -445,7 +464,7 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
 
         var bad = await client.PutAsJsonAsync($"/api/cases/{id}", new
         {
-            carrier = "PKP Intercity", fromStation = "Warszawa 😀", travelDate = "2026-11-01",
+            carrier = "PKP Intercity", fromStation = "Warszawa 😀", ticketNumber = "IC-1", travelDate = "2026-11-01",
             ticketPrice = 40m, incidentType = "Delay", delayMinutes = 95, payoutPreference = "BankTransfer",
         });
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);

@@ -28,13 +28,13 @@ public static class SeedData
             Build(userId, "PKP Intercity", "TLK", "Lublin Główny", "Warszawa Wschodnia", "TLK-2290-7741", 40,
                 IncidentType.Delay, 75, 64.00m, CaseStatus.Paid, DelayCause.Weather,
                 filedAt: paidFiledAt, dueDate: paidFiledAt.AddMonths(1)),
-            Build(userId, "Polregio", null, "Szczecin Główny", "Stargard", null, 3,
+            Build(userId, "Polregio", null, "Szczecin Główny", "Stargard", "PR-5518-0412", 3,
                 IncidentType.Delay, 70, 22.00m, CaseStatus.New, DelayCause.PersonsOnTrack));
 
         await db.SaveChangesAsync();
     }
 
-    private static RefundCase Build(string userId, string carrier, string? category, string from, string to, string? ticketNumber,
+    private static RefundCase Build(string userId, string carrier, string? category, string from, string to, string ticketNumber,
         int daysAgo, IncidentType type, int delayMinutes, decimal price, CaseStatus status, DelayCause? cause,
         DateTime? filedAt = null, DateTime? dueDate = null)
     {

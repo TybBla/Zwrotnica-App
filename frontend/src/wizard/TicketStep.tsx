@@ -27,6 +27,7 @@ interface TicketStepProps {
 }
 
 const MISSING_HINT = 'Uzupełnij – nie udało się odczytać'
+const TICKET_NUMBER_HINT = 'Numer znajdziesz na bilecie (np. przy kodzie QR lub w e-mailu z biletem).'
 
 /** A failed read never strands the user: say what happened in plain words and continue with manual entry. */
 function extractionNotice(error: unknown): string {
@@ -81,6 +82,7 @@ const requiredNames: Record<TicketIssue['field'], string> = {
   carrier: 'przewoźnika',
   travelDate: 'datę przejazdu',
   price: 'cenę biletu',
+  ticketNumber: 'numer biletu',
 }
 
 export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
@@ -164,7 +166,7 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
             ? 'Zrób zdjęcie biletu albo dodaj e-bilet w PDF. Odczytamy dane, a Ty je sprawdzisz.'
             : state.reviewing
               ? 'Odczytaliśmy, co się dało. AI może się pomylić – rzuć okiem i popraw, jeśli trzeba.'
-              : 'Wystarczą przewoźnik, data i cena. Resztę możesz pominąć.'}
+              : 'Wystarczą przewoźnik, data, cena i numer biletu. Resztę możesz pominąć.'}
         </p>
       </header>
 
@@ -348,6 +350,7 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
   const carrierAttention = attention('carrier', ticket.carrierChoice === OTHER_CARRIER ? ticket.otherCarrier : ticket.carrierChoice)
   const priceAttention = attention('ticketPrice', ticket.price)
   const dateAttention = attention('travelDate', ticket.travelDate)
+  const ticketNumberAttention = attention('ticketNumber', ticket.ticketNumber)
 
   return (
     <div className="ticket-form">
@@ -449,9 +452,13 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
 
       <Field
         label="Numer biletu"
-        optional
-        attention={attention('ticketNumber', ticket.ticketNumber)}
-        hint={attention('ticketNumber', ticket.ticketNumber) ? MISSING_HINT : 'Ułatwia przewoźnikowi znalezienie Twojej podróży.'}
+        required
+        attention={ticketNumberAttention}
+        hint={
+          ticketNumberAttention
+            ? `${MISSING_HINT}. ${TICKET_NUMBER_HINT}`
+            : TICKET_NUMBER_HINT
+        }
       >
         <TextInput
           field="ticketNumber"
