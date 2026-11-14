@@ -45,9 +45,9 @@ Nazwy projektów i przestrzeni nazw w kodzie (`RefundPilot.*`, `RefundPilot.sln`
 
 ## Zrzuty ekranu
 
-| Strona główna | Wynik | Pismo |
-|---|---|---|
-| ![Strona główna, jasny motyw](docs/screenshots/desktop-light-home-full.png) | ![Werdykt i kwota](docs/screenshots/desktop-light-result.jpg) | ![Pismo reklamacyjne](docs/screenshots/desktop-light-letter.jpg) |
+| Strona główna | Wynik | Werdykt końcowy | Pismo |
+|---|---|---|---|
+| ![Strona główna, jasny motyw](docs/screenshots/desktop-light-home-full.png) | ![Werdykt i kwota](docs/screenshots/desktop-light-result.jpg) | ![Werdykt końcowy z podstawą prawną](docs/screenshots/desktop-light-final-verdict.jpg) | ![Pismo reklamacyjne](docs/screenshots/desktop-light-letter.jpg) |
 
 | Sprawy (ciemny motyw) | Telefon – start | Telefon – ścieżka ręczna (ciemny) |
 |---|---|---|

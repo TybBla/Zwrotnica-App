@@ -60,6 +60,12 @@ await shot("delay");
 await page.getByRole("button", { name: /Zobacz wynik/ }).click();
 await page.getByText(/44,50/).first().waitFor({ timeout: 15000 });
 await shot("result");
+const verdict = page.getByRole("heading", { name: /Werdykt końcowy/ }).first();
+if (await verdict.count()) {
+  await verdict.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollBy(0, -80));
+  await shot("final-verdict");
+}
 
 await page.getByRole("button", { name: /Zapisz sprawę/ }).click();
 await page.getByLabel(/e-mail/i).first().fill(demo.e);
