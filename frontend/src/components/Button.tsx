@@ -27,20 +27,31 @@ export function Button({
   disabled,
   children,
   type = 'button',
+  onClick,
   ...props
 }: ButtonProps) {
   const classes = ['button', `button--${variant}`, `button--${size}`, block && 'button--block', className]
     .filter(Boolean)
     .join(' ')
 
+  // While loading the button stays focusable (a real `disabled` would drop focus to <body> mid-submit): it is
+  // aria-disabled and swallows presses, including the implicit submit of its form.
   return (
     <button
       {...props}
       type={type}
       className={classes}
-      disabled={disabled || loading}
+      disabled={disabled}
+      aria-disabled={loading || props['aria-disabled'] || undefined}
       aria-busy={loading || undefined}
       data-loading={loading || undefined}
+      onClick={(event) => {
+        if (loading) {
+          event.preventDefault()
+          return
+        }
+        onClick?.(event)
+      }}
     >
       <span className="button__content">
         {iconStart}

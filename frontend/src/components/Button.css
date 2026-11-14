@@ -38,8 +38,12 @@
   transition: opacity var(--duration-fast) ease;
 }
 
-.button:active:not(:disabled) {
+.button:active:not(:disabled, [data-loading]) {
   transform: scale(var(--press-scale));
+}
+
+.button[data-loading] {
+  cursor: progress;
 }
 
 .button:disabled {
@@ -59,7 +63,7 @@
   color: var(--text-on-brand);
 }
 
-.button--primary:active:not(:disabled) {
+.button--primary:active:not(:disabled, [data-loading]) {
   background: var(--brand-pressed);
 }
 
@@ -70,7 +74,7 @@
   color: var(--text);
 }
 
-.button--secondary:active:not(:disabled) {
+.button--secondary:active:not(:disabled, [data-loading]) {
   background: var(--surface-sunken);
 }
 
@@ -80,7 +84,7 @@
   color: var(--surface);
 }
 
-.button--danger:active:not(:disabled) {
+.button--danger:active:not(:disabled, [data-loading]) {
   background: color-mix(in srgb, var(--danger) 82%, var(--text));
 }
 
@@ -90,7 +94,7 @@
   color: var(--link);
 }
 
-.button--ghost:active:not(:disabled) {
+.button--ghost:active:not(:disabled, [data-loading]) {
   background: var(--brand-tint);
 }
 
