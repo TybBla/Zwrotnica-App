@@ -23,6 +23,7 @@ Demo online: **https://zwrotnica-d6a2hkftb7emcvc3.belgiumcentral-01.azurewebsite
 - **Kwoty:** 60-119 min to 25%, od 120 min 50%, odwołanie to zwrot 100% ceny. Ostrzeżenia o sile wyższej i minimalnej wypłacie (16 zł).
 - **Werdykt końcowy** formalnym językiem: podstawa prawna, kwota, termin, zastrzeżenia.
 - **Pismo reklamacyjne** jako tekst lub PDF, z listą danych do uzupełnienia. Aplikacja nigdy nie blokuje złożenia reklamacji (przy braku roszczenia z UE powstaje pismo wg regulaminu przewoźnika).
+- **Przewoźnicy regionalni:** poza unijnym systemem 25%/50%, więc można wpisać poniesione koszty (np. taksówka, nocleg) i dostać wniosek o ich zwrot z listą załączników.
 - **Trzy formy wypłaty:** zwrot na konto użyte do zakupu, inny rachunek, bon.
 - **Konta i lista spraw:** statusy, licznik kwot, odliczanie miesiąca na odpowiedź przewoźnika, jedno przypomnienie e-mail po terminie. Numer rachunku jest szyfrowany w bazie.
 - **Tryb gościa:** odczyt, werdykt i kwota bez logowania.
