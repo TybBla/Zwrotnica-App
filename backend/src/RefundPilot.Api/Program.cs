@@ -95,25 +95,41 @@ builder.Services.AddCors(o => o.AddPolicy(FrontendCorsPolicy, policy => policy
     .AllowCredentials()));
 
 // Behind Azure App Service's front end: take the client IP (rate limiter) and the https scheme from X-Forwarded-*.
-// The proxy's address is not known up front, so trust the single hop it adds (ForwardLimit = 1, the default).
-builder.Services.Configure<ForwardedHeadersOptions>(o =>
+// Only a proxy on a private/link-local address is trusted, and only for the one hop it appends, so a client
+// cannot forge its IP. Skipped when the framework's own ASPNETCORE_FORWARDEDHEADERS_ENABLED switch is set
+// (that would process the headers twice and trusts any sender).
+var useForwardedHeaders = builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled")
+    && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_FORWARDEDHEADERS_ENABLED"));
+if (useForwardedHeaders)
 {
-    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    o.KnownIPNetworks.Clear();
-    o.KnownProxies.Clear();
-});
+    builder.Services.Configure<ForwardedHeadersOptions>(o =>
+    {
+        o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        o.ForwardLimit = 1;
+        o.KnownProxies.Clear();
+        o.KnownIPNetworks.Clear();
+        foreach (var network in TrustedProxyNetworks)
+            o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+    });
+}
 
 var app = builder.Build();
+
+if (app.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keyRingPath)
+    StorageDirectory.Ensure(keyRingPath, "DataProtection__KeysPath", app.Logger);
 
 var seedEnabled = app.Configuration.GetValue("Seed:Enabled", defaultValue: true);
 await DatabaseInitializer.InitializeAsync(
     app.Services,
     seedEnabled ? app.Configuration["Seed:DemoEmail"] : null,
-    seedEnabled ? app.Configuration["Seed:DemoPassword"] : null);
+    seedEnabled ? app.Configuration["Seed:DemoPassword"] : null,
+    useRollbackJournal: !app.Environment.IsDevelopment());
+
+if (useForwardedHeaders)
+    app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseForwardedHeaders();
     app.UseHsts();
     app.UseHttpsRedirection();
 }
@@ -145,4 +161,12 @@ app.MapFallbackToFile("{*path:nonfile:regex(^(?!(api|swagger)(/|$)).*$)}", "inde
 
 app.Run();
 
-public partial class Program;
+public partial class Program
+{
+    /// <summary>Private, CGNAT, link-local and loopback ranges: where Azure's front end connects from.</summary>
+    private static readonly string[] TrustedProxyNetworks =
+    [
+        "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10", "127.0.0.0/8",
+        "::1/128", "fc00::/7", "fe80::/10",
+    ];
+}

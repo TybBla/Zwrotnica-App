@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -41,12 +42,14 @@ public sealed class ProductionApiFactory : WebApplicationFactory<Program>
     }
 
     // Production cookies are Secure-only, so talk to the app over https like Azure's front end does.
-    public HttpClient CreateHttpsClient() => CreateClient(new WebApplicationFactoryClientOptions
+    public HttpClient CreateHttpsClient() => CreateClient(HttpsClientOptions);
+
+    public static WebApplicationFactoryClientOptions HttpsClientOptions => new()
     {
         BaseAddress = new Uri("https://localhost"),
         HandleCookies = true,
         AllowAutoRedirect = false,
-    });
+    };
 
     protected override void Dispose(bool disposing)
     {
@@ -117,6 +120,61 @@ public sealed class ProductionHostingTests : IClassFixture<ProductionApiFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    /// <summary>TestServer has no peer address; this sets one per request before the app's pipeline runs.</summary>
+    private sealed class RemoteIpFromTestHeader : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, nextMiddleware) =>
+            {
+                if (context.Request.Headers.TryGetValue("X-Test-Remote-Ip", out var ip))
+                    context.Connection.RemoteIpAddress = IPAddress.Parse(ip.ToString());
+                return nextMiddleware(context);
+            });
+            next(app);
+        };
+    }
+
+    private HttpClient OneExtractionPerMinuteClient() => _factory
+        .WithWebHostBuilder(b =>
+        {
+            b.UseSetting("RateLimiting:ExtractionsPerMinute", "1");
+            b.ConfigureTestServices(s => s.AddSingleton<IStartupFilter, RemoteIpFromTestHeader>());
+        })
+        .CreateClient(ProductionApiFactory.HttpsClientOptions);
+
+    private static async Task<HttpStatusCode> ExtractFrom(HttpClient client, string remoteIp, string? forwardedFor)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/extractions") { Content = new MultipartFormDataContent() };
+        request.Headers.Add("X-Test-Remote-Ip", remoteIp);
+        if (forwardedFor is not null)
+            request.Headers.Add("X-Forwarded-For", forwardedFor);
+        return (await client.SendAsync(request)).StatusCode;
+    }
+
+    [Fact]
+    public async Task RateLimit_BehindTrustedProxy_KeysOnTheEntryTheProxyAppended()
+    {
+        var client = OneExtractionPerMinuteClient();
+        const string proxy = "169.254.129.3";
+
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, await ExtractFrom(client, proxy, "1.2.3.4, 9.9.9.9"));
+        // A forged leftmost entry does not create a new client: still 9.9.9.9.
+        Assert.Equal(HttpStatusCode.TooManyRequests, await ExtractFrom(client, proxy, "5.6.7.8, 9.9.9.9"));
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, await ExtractFrom(client, proxy, "1.2.3.4, 8.8.8.8"));
+    }
+
+    [Fact]
+    public async Task RateLimit_FromUntrustedAddress_IgnoresForwardedFor()
+    {
+        var client = OneExtractionPerMinuteClient();
+        const string direct = "203.0.113.7";
+
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, await ExtractFrom(client, direct, "9.9.9.9"));
+        // Not rewritten: a new X-Forwarded-For value does not escape the limit of the real peer address.
+        Assert.Equal(HttpStatusCode.TooManyRequests, await ExtractFrom(client, direct, "4.4.4.4"));
     }
 
     [Fact]

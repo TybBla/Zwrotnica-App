@@ -3,23 +3,29 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using RefundPilot.Domain;
 
 namespace RefundPilot.Infrastructure;
 
 public static class DatabaseInitializer
 {
-    /// <summary>Creates the schema and, when demo credentials are configured, the demo user with its cases.</summary>
-    public static async Task InitializeAsync(IServiceProvider services, string? demoEmail, string? demoPassword)
+    /// <summary>
+    /// Creates the schema and, when demo credentials are configured, the demo user with its cases.
+    /// <paramref name="useRollbackJournal"/> is for hosted file databases: Azure App Service keeps /home on an
+    /// SMB share, where WAL's shared-memory index is unreliable and the rollback journal is not.
+    /// </summary>
+    public static async Task InitializeAsync(
+        IServiceProvider services, string? demoEmail, string? demoPassword, bool useRollbackJournal = false)
     {
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var databaseFile = DatabaseFile(db.Database.GetConnectionString());
         if (databaseFile is not null)
-            Directory.CreateDirectory(Path.GetDirectoryName(databaseFile)!);
+            StorageDirectory.Ensure(Path.GetDirectoryName(databaseFile)!, "ConnectionStrings__Default",
+                scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DatabaseInitializer)));
         await db.Database.EnsureCreatedAsync();
-        // Azure App Service keeps /home on an SMB share, where WAL's shared-memory index is unreliable; the rollback journal is not.
-        if (databaseFile is not null)
+        if (databaseFile is not null && useRollbackJournal)
             await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=DELETE;");
 
         if (string.IsNullOrWhiteSpace(demoEmail) || string.IsNullOrWhiteSpace(demoPassword))
