@@ -899,8 +899,22 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.Equal(CaseStatus.Sent, stored.Status);
         Assert.Equal(Now, stored.FiledAt);
         Assert.Equal(Now.AddMonths(1), stored.ResponseDueDate);
+        Assert.Null(stored.ReminderSentAt);
         Assert.True(result.Letter!.DeadlineStarted);
         Assert.Equal(Now.AddMonths(1), result.Letter.ResponseDueDate);
+    }
+
+    [Fact]
+    public async Task ProfileWriteFromTheLetter_KeepsTheRemindersOptOut()
+    {
+        var profile = await _store.GetAsync(Anna);
+        await _store.UpdateAsync(Anna, profile! with { EmailReminders = false });
+
+        await GenerateAsync(Failing(), Req(PayoutPreference.Voucher));
+
+        var after = await _store.GetAsync(Anna);
+        Assert.Equal(PayoutPreference.Voucher, after!.PreferredPayout);
+        Assert.False(after.EmailReminders);
     }
 
     [Theory]

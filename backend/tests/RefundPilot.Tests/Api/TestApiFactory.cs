@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using RefundPilot.Application.Abstractions;
 
 namespace RefundPilot.Tests.Api;
 
@@ -16,6 +17,9 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>
 {
     public const string DemoEmail = "demo@zwrotnica.test";
     public const string DemoPassword = "Demo!2026pass";
+
+    /// <summary>Stands in for the outbox/SMTP sender: nothing is written to disk or sent.</summary>
+    public RecordingEmailSender Emails { get; } = new();
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 13, 10, 0, 0, TimeSpan.Zero));
 
@@ -36,9 +40,14 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("RateLimiting:ExtractionsPerMinute", "100000");
         builder.UseSetting("Seed:DemoEmail", DemoEmail);
         builder.UseSetting("Seed:DemoPassword", DemoPassword);
+        builder.UseSetting("Reminders:Enabled", "false");
         builder.ConfigureServices(services => services.AddSingleton<TimeProvider>(Time));
         // One in-memory key ring shared by every host built from this factory (they share the database).
-        builder.ConfigureTestServices(services => services.AddSingleton<IDataProtectionProvider>(_dataProtection));
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<IDataProtectionProvider>(_dataProtection);
+            services.AddSingleton<IEmailSender>(Emails);
+        });
     }
 
     public HttpClient CreateCookieClient() =>
@@ -49,5 +58,17 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>
         base.Dispose(disposing);
         if (disposing)
             _sentinel.Dispose();
+    }
+}
+
+public sealed class RecordingEmailSender : IEmailSender
+{
+    public List<(string To, string Subject, string Text, string Html)> Sent { get; } = [];
+
+    public Task SendAsync(string to, string subject, string textBody, string htmlBody, CancellationToken ct)
+    {
+        lock (Sent)
+            Sent.Add((to, subject, textBody, htmlBody));
+        return Task.CompletedTask;
     }
 }

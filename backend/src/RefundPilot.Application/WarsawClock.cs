@@ -5,8 +5,11 @@ public static class WarsawClock
 {
     private static readonly TimeZoneInfo Zone = Resolve();
 
-    public static DateOnly Today(TimeProvider clock) =>
-        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), Zone).DateTime);
+    public static DateOnly Today(TimeProvider clock) => DateOf(clock.GetUtcNow().UtcDateTime);
+
+    /// <summary>The Warsaw calendar date of a UTC instant.</summary>
+    public static DateOnly DateOf(DateTime utc) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone));
 
     private static TimeZoneInfo Resolve()
     {

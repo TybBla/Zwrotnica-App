@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using RefundPilot.Api;
 using RefundPilot.Application;
 using RefundPilot.Application.Abstractions;
+using RefundPilot.Application.Services;
 using RefundPilot.Infrastructure;
 
 const string FrontendCorsPolicy = "Frontend";
@@ -59,6 +60,20 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddApplication();
+
+// Reminder e-mails one month after filing: SMTP when Email:Smtp:Host is set, otherwise .eml files in a local outbox.
+builder.Services.AddEmail(builder.Configuration, builder.Environment.ContentRootPath);
+var publicBaseUrl = builder.Configuration["PublicBaseUrl"];
+builder.Services.AddSingleton(new ReminderOptions(
+    string.IsNullOrWhiteSpace(publicBaseUrl) ? "http://localhost:5173" : publicBaseUrl.Trim()));
+if (builder.Configuration.GetValue("Reminders:Enabled", defaultValue: true))
+{
+    var intervalMinutes = builder.Configuration.GetValue("Reminders:IntervalMinutes", defaultValue: 60);
+    builder.Services.AddHostedService(sp => new ReminderBackgroundService(
+        sp.GetRequiredService<IServiceScopeFactory>(),
+        TimeSpan.FromMinutes(intervalMinutes > 0 ? intervalMinutes : 60),
+        sp.GetRequiredService<ILogger<ReminderBackgroundService>>()));
+}
 
 // Anonymous extraction calls the paid AI API: limit per client IP (fixed window, default 5/min, configurable).
 // In a commercial version the quota would depend on the user's plan (free vs paid).
@@ -117,6 +132,9 @@ var app = builder.Build();
 
 if (app.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keyRingPath)
     StorageDirectory.Ensure(keyRingPath, "DataProtection__KeysPath", app.Logger);
+
+if (!app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(publicBaseUrl))
+    app.Logger.LogWarning("PublicBaseUrl is not set: links in reminder e-mails point to http://localhost:5173.");
 
 var seedEnabled = app.Configuration.GetValue("Seed:Enabled", defaultValue: true);
 await DatabaseInitializer.InitializeAsync(

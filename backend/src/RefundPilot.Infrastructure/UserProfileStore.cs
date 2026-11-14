@@ -13,9 +13,10 @@ public sealed class UserProfileStore(AppDbContext db, IDataProtectionProvider da
     {
         var row = await db.Users.AsNoTracking()
             .Where(u => u.Id == userId)
-            .Select(u => new { u.FullName, u.Address, u.Iban, u.PreferredPayout })
+            .Select(u => new { u.FullName, u.Address, u.Iban, u.PreferredPayout, u.EmailReminders })
             .FirstOrDefaultAsync();
-        return row is null ? null : new UserProfile(row.FullName, row.Address, _cipher.Unprotect(row.Iban), row.PreferredPayout);
+        return row is null ? null : new UserProfile(row.FullName, row.Address, _cipher.Unprotect(row.Iban), row.PreferredPayout,
+            row.EmailReminders);
     }
 
     public async Task<bool> UpdateAsync(string userId, UserProfile profile)
@@ -25,6 +26,7 @@ public sealed class UserProfileStore(AppDbContext db, IDataProtectionProvider da
             .SetProperty(u => u.FullName, profile.FullName)
             .SetProperty(u => u.Address, profile.Address)
             .SetProperty(u => u.Iban, encryptedIban)
-            .SetProperty(u => u.PreferredPayout, profile.PreferredPayout)) > 0;
+            .SetProperty(u => u.PreferredPayout, profile.PreferredPayout)
+            .SetProperty(u => u.EmailReminders, profile.EmailReminders)) > 0;
     }
 }

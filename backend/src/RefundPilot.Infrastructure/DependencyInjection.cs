@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RefundPilot.Application.Abstractions;
 using RefundPilot.Infrastructure.Ai;
+using RefundPilot.Infrastructure.Email;
 using RefundPilot.Infrastructure.Pdf;
 
 namespace RefundPilot.Infrastructure;
@@ -18,6 +19,37 @@ public static class DependencyInjection
         services.AddSingleton<IComplaintPdfRenderer, ComplaintPdfRenderer>();
         return services;
     }
+
+    /// <summary>
+    /// SMTP when Email:Smtp:Host is set; otherwise .eml files in Email:OutboxPath (default data/outbox under the
+    /// content root), so reminders work locally with no mail account.
+    /// </summary>
+    public static IServiceCollection AddEmail(this IServiceCollection services, IConfiguration configuration, string contentRoot)
+    {
+        var smtp = configuration.GetSection("Email:Smtp");
+        var options = new EmailOptions
+        {
+            From = NonEmpty(configuration["Email:From"]) ?? new EmailOptions().From,
+            FromName = NonEmpty(configuration["Email:FromName"]) ?? new EmailOptions().FromName,
+            Smtp = new SmtpOptions
+            {
+                Host = NonEmpty(smtp["Host"]),
+                Port = int.TryParse(smtp["Port"], out var port) && port > 0 ? port : new SmtpOptions().Port,
+                User = NonEmpty(smtp["User"]),
+                Password = smtp["Password"],
+                EnableSsl = !bool.TryParse(smtp["EnableSsl"], out var ssl) || ssl,
+            },
+        };
+
+        if (options.Smtp.Host is not null)
+            services.AddSingleton<IEmailSender>(new SmtpEmailSender(options));
+        else
+            services.AddSingleton<IEmailSender>(new FileEmailSender(options,
+                Path.Combine(contentRoot, NonEmpty(configuration["Email:OutboxPath"]) ?? Path.Combine("data", "outbox"))));
+        return services;
+    }
+
+    private static string? NonEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>
     /// Registers Gemini when a key is present (Gemini:ApiKey or the GEMINI_API_KEY environment variable),

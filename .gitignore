@@ -15,3 +15,6 @@ dist/
 .claude/
 .superpowers/
 instrucions.md
+
+# reminder e-mails written locally when no SMTP host is configured
+**/data/outbox/

@@ -9,4 +9,5 @@ public sealed class AppUser : IdentityUser
     public string? Address { get; set; }
     public string? Iban { get; set; }
     public PayoutPreference PreferredPayout { get; set; }
+    public bool EmailReminders { get; set; } = true;
 }

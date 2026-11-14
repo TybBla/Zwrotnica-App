@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IExtractionService, ExtractionService>();
         services.AddScoped<IComplaintService, ComplaintService>();
+        services.AddScoped<IReminderService, ReminderService>();
         return services;
     }
 }

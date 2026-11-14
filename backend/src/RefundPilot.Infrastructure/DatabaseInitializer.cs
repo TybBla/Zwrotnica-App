@@ -25,6 +25,7 @@ public static class DatabaseInitializer
             StorageDirectory.Ensure(Path.GetDirectoryName(databaseFile)!, "ConnectionStrings__Default",
                 scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DatabaseInitializer)));
         await db.Database.EnsureCreatedAsync();
+        await SchemaUpgrade.ApplyAsync(db);
         if (databaseFile is not null && useRollbackJournal)
             await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=DELETE;");
 

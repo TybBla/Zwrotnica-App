@@ -37,6 +37,8 @@ public sealed class ProductionApiFactory : WebApplicationFactory<Program>
         builder.UseSetting(WebHostDefaults.WebRootKey, Path.Combine(_root, "wwwroot"));
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
         builder.UseSetting("DataProtection:KeysPath", Path.Combine(_root, "keys"));
+        builder.UseSetting("Email:OutboxPath", Path.Combine(_root, "outbox"));
+        builder.UseSetting("Reminders:Enabled", "false");
         builder.ConfigureTestServices(services =>
             services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider()));
     }

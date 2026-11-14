@@ -25,14 +25,20 @@ public sealed class RefundCase
     public CaseStatus Status { get; set; }
     public DateTime? FiledAt { get; set; }
     public DateTime? ResponseDueDate { get; set; }
+    /// <summary>When the one follow-up e-mail after ResponseDueDate went out; null until then.</summary>
+    public DateTime? ReminderSentAt { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    /// <summary>Marks the case as sent at <paramref name="filedAt"/> and starts the carrier's month to respond.</summary>
+    /// <summary>
+    /// Marks the case as sent at <paramref name="filedAt"/> and starts the carrier's month to respond.
+    /// A new filing earns its own reminder, so one sent for an earlier filing is forgotten.
+    /// </summary>
     public void MarkSent(DateTime filedAt)
     {
         Status = CaseStatus.Sent;
         FiledAt = filedAt;
         ResponseDueDate = filedAt.AddMonths(ResponseMonths);
+        ReminderSentAt = null;
     }
 }

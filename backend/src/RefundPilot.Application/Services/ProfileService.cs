@@ -27,12 +27,12 @@ public sealed class ProfileService(ICurrentUser currentUser, IUserProfileStore s
             return null;
 
         var profile = new UserProfile(Clean(request.FullName), Clean(request.Address), NormalizeIban(request.Iban),
-            request.PreferredPayout);
+            request.PreferredPayout, request.EmailReminders);
         return await store.UpdateAsync(userId, profile) ? ToDto(profile) : null;
     }
 
     private ProfileDto ToDto(UserProfile p) =>
-        new(currentUser.Email ?? string.Empty, p.FullName, p.Address, p.Iban, p.PreferredPayout);
+        new(currentUser.Email ?? string.Empty, p.FullName, p.Address, p.Iban, p.PreferredPayout, p.EmailReminders);
 
     private static string? NormalizeIban(string? value) => string.IsNullOrWhiteSpace(value) ? null : Domain.Iban.Normalize(value);
 

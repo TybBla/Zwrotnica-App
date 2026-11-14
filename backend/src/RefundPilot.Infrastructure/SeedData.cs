@@ -16,6 +16,8 @@ public static class SeedData
 
         var filedAt = Today.AddDays(-10);
         var paidFiledAt = Today.AddDays(-45);
+        // Past its deadline and not reminded yet: the first reminder run writes an e-mail for it (local outbox).
+        var overdueFiledAt = Today.AddDays(-35);
 
         db.Cases.AddRange(
             Build(userId, "PKP Intercity", "IC", "Gdynia Główna", "Kraków Główny", "IC-4821-0093", 12,
@@ -29,7 +31,10 @@ public static class SeedData
                 IncidentType.Delay, 75, 64.00m, CaseStatus.Paid, DelayCause.Weather,
                 filedAt: paidFiledAt, dueDate: paidFiledAt.AddMonths(1)),
             Build(userId, "Polregio", null, "Szczecin Główny", "Stargard", "PR-5518-0412", 3,
-                IncidentType.Delay, 70, 22.00m, CaseStatus.New, DelayCause.PersonsOnTrack));
+                IncidentType.Delay, 70, 22.00m, CaseStatus.New, DelayCause.PersonsOnTrack),
+            Build(userId, "PKP Intercity", "EIP", "Kraków Główny", "Gdańsk Główny", "EIP-6120-3358", 37,
+                IncidentType.Delay, 125, 219.00m, CaseStatus.Sent, DelayCause.Technical,
+                filedAt: overdueFiledAt, dueDate: overdueFiledAt.AddMonths(1)));
 
         await db.SaveChangesAsync();
     }

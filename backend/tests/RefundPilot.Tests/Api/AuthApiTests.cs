@@ -45,7 +45,7 @@ public sealed class AuthApiTests : IClassFixture<TestApiFactory>
     }
 
     [Fact]
-    public async Task SeededDemoUser_CanLogin_AndOwnsFiveCases()
+    public async Task SeededDemoUser_CanLogin_AndOwnsSixCases()
     {
         var client = _factory.CreateCookieClient();
         var login = await client.PostAsJsonAsync("/api/auth/login?useCookies=true",
@@ -57,6 +57,6 @@ public sealed class AuthApiTests : IClassFixture<TestApiFactory>
             .FindByEmailAsync(TestApiFactory.DemoEmail);
         Assert.NotNull(user);
         var cases = await scope.ServiceProvider.GetRequiredService<ICaseRepository>().ListAsync(user.Id);
-        Assert.Equal(5, cases.Count);
+        Assert.Equal(6, cases.Count);
     }
 }

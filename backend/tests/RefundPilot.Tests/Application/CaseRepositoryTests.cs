@@ -105,14 +105,14 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Seeding_Twice_YieldsExactlyFiveCases()
+    public async Task Seeding_Twice_YieldsExactlySixCases()
     {
         await SeedData.EnsureSeededAsync(_db, UserA);
         await SeedData.EnsureSeededAsync(_db, UserA);
 
         var cases = await _repository.ListAsync(UserA);
 
-        Assert.Equal(5, cases.Count);
+        Assert.Equal(6, cases.Count);
         Assert.Contains(cases, c => c.Status == CaseStatus.Paid);
         Assert.Contains(cases, c => c.Verdict == Verdict.NotCovered && c.CompensationAmount == 0m);
         Assert.Null(Assert.Single(cases, c => c.Carrier == "Polregio").TrainCategory);
