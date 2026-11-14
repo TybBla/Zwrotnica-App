@@ -2,7 +2,7 @@ import { useId, type ReactNode } from 'react'
 import { CheckIcon, ShieldIcon } from '../components/icons'
 import type { TicketSource } from '../hooks/useWizard'
 import { TicketStartOptions } from '../wizard/StartChoice'
-import { faq, preparation, rules } from './content'
+import { faq, preparation, rules, safety, type PrepItem } from './content'
 import './Home.css'
 
 /** The home page is the tool: it opens on the start panel, then gives the rules, what to prepare and real answers. */
@@ -48,18 +48,16 @@ export function Home({ onStart }: { onStart: (source: TicketSource) => void }) {
         </p>
       </HomeSection>
 
+      <HomeSection
+        id="bezpieczenstwo"
+        title="Bezpieczeństwo i oszustwa"
+        lead="Krążą fałszywe wiadomości o odszkodowaniach za opóźnione pociągi. Oto, jak je rozpoznać."
+      >
+        <PrepList items={safety} />
+      </HomeSection>
+
       <HomeSection id="co-przygotowac" title="Co przygotować" lead="Zanim zaczniesz, miej pod ręką:">
-        <dl className="prep-list">
-          {preparation.map((item) => (
-            <div key={item.title} className="prep-list__item">
-              <dt className="prep-list__title">
-                {item.title}
-                {item.optional && <span className="prep-list__optional">opcjonalnie</span>}
-              </dt>
-              <dd className="prep-list__text">{item.text}</dd>
-            </div>
-          ))}
-        </dl>
+        <PrepList items={preparation} />
       </HomeSection>
 
       <HomeSection id="pytania" title="Najczęstsze pytania">
@@ -73,6 +71,22 @@ export function Home({ onStart }: { onStart: (source: TicketSource) => void }) {
         </div>
       </HomeSection>
     </>
+  )
+}
+
+function PrepList({ items }: { items: PrepItem[] }) {
+  return (
+    <dl className="prep-list">
+      {items.map((item) => (
+        <div key={item.title} className="prep-list__item">
+          <dt className="prep-list__title">
+            {item.title}
+            {item.optional && <span className="prep-list__optional">opcjonalnie</span>}
+          </dt>
+          <dd className="prep-list__text">{item.text}</dd>
+        </div>
+      ))}
+    </dl>
   )
 }
 

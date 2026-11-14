@@ -54,12 +54,47 @@ export const preparation: PrepItem[] = [
   },
 ]
 
+/** "Bezpieczeństwo i oszustwa": what Zwrotnica never does and how to spot a fake message. Calm, only facts we can stand behind. */
+export const safety: PrepItem[] = [
+  {
+    title: 'Zwrotnica nie jest przewoźnikiem',
+    text: 'Zwrotnica nie wypłaca odszkodowań i nie pośredniczy w wypłacie. Pomaga policzyć kwotę i przygotować pismo – pieniądze wypłaca przewoźnik.',
+  },
+  {
+    title: 'Nie prosimy o dane karty ani o opłatę',
+    text: 'Zwrotnica nigdy nie prosi o dane karty, o opłatę ani o logowanie do banku. Numer rachunku podajesz tylko wtedy, gdy chcesz przelew: trafia do treści Twojego pisma, a zapisany w profilu jest szyfrowany.',
+  },
+  {
+    title: 'Pismo wysyłasz sam',
+    text: 'Gotowe pismo wysyłasz sam do przewoźnika jego oficjalnymi kanałami: przez formularz na jego stronie, e-mailem, pocztą albo w kasie biletowej.',
+  },
+  {
+    title: 'Uważaj na SMS-y z linkiem',
+    text: 'Odszkodowanie wypłaca się na wniosek pasażera. Przewoźnicy nie wysyłają SMS-ów z linkiem, pod którym trzeba podać dane, żeby je otrzymać. Jeśli dostaniesz taką wiadomość, nie podawaj danych i sprawdź adres strony w przeglądarce.',
+  },
+  {
+    title: 'W razie wątpliwości',
+    text: 'Skontaktuj się z przewoźnikiem przez jego oficjalną stronę internetową – wpisz jej adres samodzielnie zamiast otwierać link z wiadomości.',
+  },
+]
+
 export interface FaqItem {
   question: string
   answer: ReactNode
 }
 
 export const faq: FaqItem[] = [
+  {
+    question: 'Jak rozpoznać oszustwo?',
+    answer: (
+      <p>
+        Zwrotnica nie jest przewoźnikiem i nie wypłaca odszkodowań. Nigdy nie prosi o dane karty, o opłatę ani o logowanie
+        do banku. Odszkodowanie wypłaca się na wniosek pasażera, więc SMS z linkiem do „odebrania odszkodowania” to sygnał
+        ostrzegawczy: nie podawaj pod takim linkiem danych i sprawdź adres strony. W razie wątpliwości wejdź na oficjalną
+        stronę przewoźnika, wpisując jej adres samodzielnie.
+      </p>
+    ),
+  },
   {
     question: 'Komu przysługuje odszkodowanie?',
     answer: (
