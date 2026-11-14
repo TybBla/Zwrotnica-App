@@ -19,7 +19,8 @@ public sealed class CompensationCalculator(CompensationOptions options)
             return new(0m, 0, false, false, "Opóźnienie poniżej 60 minut nie daje prawa do rekompensaty.");
 
         var amount = Math.Round(ticketPrice * percent / 100m, 2, MidpointRounding.AwayFromZero);
-        var belowMinimum = amount < options.MinimumPayout;
+        // The carrier minimum payout applies to art. 19 delay compensation only, never to the art. 18 refund.
+        var belowMinimum = type != IncidentType.Cancellation && amount < options.MinimumPayout;
         var reason = belowMinimum
             ? $"{percent}% ceny biletu, ale kwota jest poniżej minimalnej wypłaty ({options.MinimumPayout:0.##} zł) – przewoźnik może jej nie wypłacić."
             : type == IncidentType.Cancellation

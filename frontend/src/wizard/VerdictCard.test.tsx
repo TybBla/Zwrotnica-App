@@ -44,6 +44,12 @@ describe('VerdictCard', () => {
     expect(screen.getByText(/poniżej progu/i).textContent).toMatch(/16 zł/)
   })
 
+
+  it('never shows the below-minimum notice for a cancellation refund', () => {
+    render(<VerdictCard assessment={{ ...base, percent: 100, compensationAmount: 10, belowMinimum: true }} cancelled />)
+    expect(screen.queryByText(/poniżej progu/i)).toBeNull()
+  })
+
   it('uses the minimum payout from the reference data when given', () => {
     render(<VerdictCard assessment={{ ...base, compensationAmount: 12.48, belowMinimum: true }} minimumPayout={18.5} />)
     expect(screen.getByText(/poniżej progu/i).textContent).toMatch(/18,5 zł/)

@@ -43,7 +43,8 @@ export function VerdictCard({ assessment, details = [], minimumPayout = DEFAULT_
   const Icon = verdictIcon[verdict]
   const showAmount = verdict === 'Eligible'
   // The server's reason already mentions the threshold; the notice below says it in full, so keep the reason short.
-  const reason = assessment.belowMinimum ? `${assessment.percent}% ceny zapłaconego biletu.` : assessment.reason
+  const belowMinimum = assessment.belowMinimum && !cancelled
+  const reason = belowMinimum ? `${assessment.percent}% ceny zapłaconego biletu.` : assessment.reason
 
   return (
     <section className="verdict" data-tone={style.tone} aria-labelledby={`${id}-title`}>
@@ -67,9 +68,9 @@ export function VerdictCard({ assessment, details = [], minimumPayout = DEFAULT_
 
         <p className="verdict__reason">{reason}</p>
 
-        {(assessment.belowMinimum || assessment.priceRequired || assessment.refusalRisk) && (
+        {(belowMinimum || assessment.priceRequired || assessment.refusalRisk) && (
           <ul className="verdict__notes">
-            {assessment.belowMinimum && (
+            {belowMinimum && (
               <li className="verdict__note">
                 <WarningIcon size={18} />
                 <span>

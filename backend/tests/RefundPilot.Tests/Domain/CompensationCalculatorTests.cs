@@ -66,4 +66,22 @@ public class CompensationCalculatorTests
 
         Assert.Equal(2.53m, result.Amount);
     }
+
+    [Fact]
+    public void Calculate_CancellationBelowMinimum_IsRefundWithoutWarning()
+    {
+        var result = _calculator.Calculate(IncidentType.Cancellation, 0, 10m);
+
+        Assert.Equal(10.00m, result.Amount);
+        Assert.False(result.BelowMinimum);
+    }
+
+    [Fact]
+    public void Calculate_DelayBelowMinimum_StillFlagged()
+    {
+        var result = _calculator.Calculate(IncidentType.Delay, 60, 40m);
+
+        Assert.Equal(10.00m, result.Amount);
+        Assert.True(result.BelowMinimum);
+    }
 }
