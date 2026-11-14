@@ -23,7 +23,6 @@ const reference: ReferenceDataDto = {
     { code: 'EIC', label: 'Express InterCity' },
     { code: 'IC', label: 'InterCity' },
     { code: 'TLK', label: 'Twoje Linie Kolejowe' },
-    { code: 'IR', label: 'InterRegio' },
   ],
 }
 
@@ -88,6 +87,17 @@ describe('Wizard – ticket step', () => {
     expect(within(steps).getByText('Wynik')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Wgraj bilet/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Wpisz ręcznie/ })).toBeTruthy()
+  })
+
+
+  it('has one page heading and limits text inputs to what the API accepts', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+    expect(screen.getByRole('heading', { level: 1, name: 'Sprawdź odszkodowanie za przejazd' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    expect((await screen.findByLabelText(/^Stacja początkowa/)).getAttribute('maxlength')).toBe('200')
+    expect(screen.getByLabelText(/^Numer biletu/).getAttribute('maxlength')).toBe('100')
+    expect(screen.getByRole('heading', { level: 2, name: 'Dane z biletu' })).toBeTruthy()
   })
 
   it('switches to manual entry with a message on 502 and keeps what was typed', async () => {

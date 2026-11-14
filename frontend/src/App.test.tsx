@@ -72,7 +72,7 @@ describe('routing', () => {
     renderAt('/')
     await user.click(await screen.findByRole('button', { name: /Wpisz ręcznie/ }))
     expect(screen.getByTestId('location').textContent).toBe('/sprawdz?bilet=reczne')
-    await waitFor(() => expect(document.activeElement?.classList.contains('wizard-step__title')).toBe(true))
+    await waitFor(() => expect(document.activeElement?.tagName === 'H1').toBe(true))
   })
 
   it('offers "Moje sprawy" and "Profil" in the account menu', async () => {

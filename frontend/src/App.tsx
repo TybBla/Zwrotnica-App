@@ -112,7 +112,7 @@ function WizardPage() {
 }
 
 /**
- * A client-side page change starts at the top with focus on the new page's heading (h1; the wizard's step heading),
+ * A client-side page change starts at the top with focus on the new page's heading (h1),
  * so screen readers announce where the user landed. The very first load keeps the browser's default.
  */
 function useRouteFocus(pathname: string) {
@@ -124,7 +124,7 @@ function useRouteFocus(pathname: string) {
     }
     window.scrollTo({ top: 0 })
     const main = document.getElementById('main')
-    const target = main?.querySelector<HTMLElement>('h1, .wizard-step__title') ?? main
+    const target = main?.querySelector<HTMLElement>('h1') ?? main
     if (target && !target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1')
     target?.focus({ preventScroll: true })
   }, [pathname])

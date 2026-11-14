@@ -309,6 +309,7 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
         <Field label="Nazwa przewoźnika" required error={errorFor('carrier')}>
           <TextInput
             field="carrier"
+            maxLength={200}
             value={ticket.otherCarrier}
             onValueChange={(otherCarrier) => onChange({ otherCarrier })}
             onBlur={() => touch('carrier')}
@@ -369,7 +370,7 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
           attention={attention('fromStation', ticket.fromStation)}
           hint={attention('fromStation', ticket.fromStation) ? MISSING_HINT : undefined}
         >
-          <TextInput field="station" value={ticket.fromStation} onValueChange={(fromStation) => onChange({ fromStation })} placeholder="np. Kraków Główny" autoComplete="off" />
+          <TextInput field="station" maxLength={200} value={ticket.fromStation} onValueChange={(fromStation) => onChange({ fromStation })} placeholder="np. Kraków Główny" autoComplete="off" />
         </Field>
         <Field
           label="Stacja docelowa"
@@ -377,7 +378,7 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
           attention={attention('toStation', ticket.toStation)}
           hint={attention('toStation', ticket.toStation) ? MISSING_HINT : undefined}
         >
-          <TextInput field="station" value={ticket.toStation} onValueChange={(toStation) => onChange({ toStation })} placeholder="np. Warszawa Centralna" autoComplete="off" />
+          <TextInput field="station" maxLength={200} value={ticket.toStation} onValueChange={(toStation) => onChange({ toStation })} placeholder="np. Warszawa Centralna" autoComplete="off" />
         </Field>
       </div>
 
@@ -389,6 +390,7 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
       >
         <TextInput
           field="ticketNumber"
+          maxLength={100}
           value={ticket.ticketNumber}
           onValueChange={(ticketNumber) => onChange({ ticketNumber })}
           autoComplete="off"

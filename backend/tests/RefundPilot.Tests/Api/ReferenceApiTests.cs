@@ -12,7 +12,7 @@ public sealed class ReferenceApiTests : IClassFixture<TestApiFactory>
     public ReferenceApiTests(TestApiFactory factory) => _factory = factory;
 
     [Fact]
-    public async Task Get_IsAnonymousCacheableAndListsPkpIntercityWithFiveCategories()
+    public async Task Get_IsAnonymousCacheableAndListsPkpIntercityWithFourCategories()
     {
         var response = await _factory.CreateCookieClient().GetAsync("/api/reference");
 
@@ -22,10 +22,11 @@ public sealed class ReferenceApiTests : IClassFixture<TestApiFactory>
         var pkp = json.GetProperty("carriers").EnumerateArray()
             .Single(c => c.GetProperty("name").GetString() == "PKP Intercity");
         Assert.Equal("Eligible", pkp.GetProperty("coverage").GetString());
-        Assert.Equal(["EIP", "EIC", "IC", "TLK", "IR"],
+        Assert.Equal(["EIP", "EIC", "IC", "TLK"],
             pkp.GetProperty("categories").EnumerateArray().Select(c => c.GetString()!).ToArray());
         var categories = json.GetProperty("categories").EnumerateArray().ToList();
-        Assert.Equal(5, categories.Count);
+        Assert.Equal(4, categories.Count);
+        Assert.DoesNotContain(categories, c => c.GetProperty("code").GetString() == "IR");
         Assert.Contains(categories, c => c.GetProperty("code").GetString() == "TLK"
             && c.GetProperty("label").GetString() == "Twoje Linie Kolejowe");
     }

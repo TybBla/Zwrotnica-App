@@ -21,7 +21,6 @@ public static class CarrierCatalog
         new("EIC", "Express InterCity"),
         new("IC", "InterCity"),
         new("TLK", "Twoje Linie Kolejowe"),
-        new("IR", "InterRegio"),
     ];
 
     // Poland exempts urban, suburban and regional services from the 25%/50% scheme
@@ -89,6 +88,10 @@ public static class CarrierCatalog
 
     internal static bool HasIntercityCategory(string normalizedCategory) =>
         Categories.Any(c => ContainsKey(normalizedCategory, Normalize(c.Code).Trim()));
+
+    /// <summary>InterRegio is run by Polregio, not PKP Intercity, so it is deliberately not a catalogue category.</summary>
+    internal static bool IsInterRegio(string normalizedCategory) =>
+        ContainsKey(normalizedCategory, "ir") || ContainsKey(normalizedCategory, "interregio");
 
     internal static bool HasInternationalMarker(string normalized) =>
         InternationalMarkers.Any(normalized.Contains);

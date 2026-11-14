@@ -58,6 +58,7 @@ export function Wizard({ onOpenCases, initialSource }: WizardProps = {}) {
 
   return (
     <section ref={rootRef} className="wizard" aria-label="Kreator reklamacji">
+      <h1 className="page__title">Sprawdź odszkodowanie za przejazd</h1>
       <StepIndicator current={indicatorIndex[state.step]} />
       <div className="wizard__body" key={state.step} data-direction={state.direction}>
         {state.step === 'start' && <StartChoice onChoose={(source) => dispatch({ type: 'start', source })} />}

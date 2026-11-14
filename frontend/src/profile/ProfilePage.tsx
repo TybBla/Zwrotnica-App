@@ -214,6 +214,7 @@ export function ProfilePage() {
             <TextInput
               ref={ibanRef}
               field="iban"
+              maxLength={50}
               value={form.iban}
               onValueChange={(iban) => update({ iban })}
               onBlur={checkIban}

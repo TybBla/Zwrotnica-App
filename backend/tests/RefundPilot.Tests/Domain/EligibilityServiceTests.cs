@@ -10,11 +10,29 @@ public class EligibilityServiceTests
     [InlineData("PKP Intercity", "EIC")]
     [InlineData("PKP Intercity", "IC")]
     [InlineData("pkp intercity", "tlk")]
-    [InlineData("PKP Intercity", "IR")]
     [InlineData("PKP Intercity", "EIP")]
     public void Assess_PkpIntercityCategory_IsEligible(string carrier, string category)
     {
         Assert.Equal(Verdict.Eligible, _service.Assess(carrier, category).Verdict);
+    }
+
+    [Theory]
+    [InlineData("PKP Intercity", "IR")]
+    [InlineData("PKP Intercity", "ir")]
+    [InlineData("PKP Intercity", "InterRegio")]
+    [InlineData("Deutsche Bahn", "IR")]
+    public void Assess_InterRegio_IsUnknownBecausePolregioRunsIt(string carrier, string category)
+    {
+        var result = _service.Assess(carrier, category);
+
+        Assert.Equal(Verdict.Unknown, result.Verdict);
+        Assert.Contains("Polregio", result.Reason);
+    }
+
+    [Fact]
+    public void Assess_InterRegioOfRegionalCarrier_StaysNotCovered()
+    {
+        Assert.Equal(Verdict.NotCovered, _service.Assess("Polregio", "IR").Verdict);
     }
 
     [Theory]

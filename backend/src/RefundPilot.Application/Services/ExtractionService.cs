@@ -20,7 +20,7 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         Extract only what is clearly visible. Return null for anything that is not clearly visible; never guess.
         Fields:
         - carrier: railway operator printed on the ticket (e.g. "PKP Intercity", "Polregio").
-        - trainCategory: one of EIP, EIC, IC, TLK, IR, or the category exactly as printed.
+        - trainCategory: one of EIP, EIC, IC, TLK, or the category exactly as printed.
         - fromStation / toStation: departure and destination station names.
         - ticketNumber: the ticket or reservation number.
         - ticketPrice: the total amount actually paid, in PLN, as a number (no currency symbol).

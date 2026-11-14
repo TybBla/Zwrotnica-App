@@ -105,6 +105,7 @@ export function PayoutChoice(props: PayoutChoiceProps) {
             <TextInput
               ref={ibanRef}
               field="iban"
+              maxLength={50}
               value={iban}
               onValueChange={onIbanChange}
               onBlur={onIbanBlur}
