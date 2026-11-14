@@ -61,11 +61,13 @@ Dalej w **Settings → Configuration → General settings**:
 
 - **HTTPS Only:** **On** (zwykle domyślnie włączone). Aplikacja w produkcji wysyła ciasteczko logowania tylko przez HTTPS.
 - **Always on:** na F1 niedostępne. Aplikacja „zasypia” po ok. 20 minutach bez ruchu, a pierwsze wejście potem trwa 10–30 sekund (zimny start). To normalne na darmowym planie.
-- **SCM Basic Auth Publishing Credentials:** **On** (wymagane do publish profile w kroku 4). Kliknij **Save**.
+- **SCM Basic Auth Publishing Credentials:** **On** (wymagane do publish profile w kroku 4). W nowych aplikacjach jest **domyślnie wyłączone**. Przełącz na On, kliknij **Save**, a potem odśwież stronę (F5). Dopiero wtedy przycisk „Download publish profile” zacznie działać.
+
+**Nie dodawaj** ustawienia `ASPNETCORE_FORWARDEDHEADERS_ENABLED`. Aplikacja sama obsługuje nagłówki `X-Forwarded-*` (ufa tylko adresom prywatnym, z których łączy się front-end Azure). To ustawienie włącza wbudowany mechanizm .NET, który ufa każdemu nadawcy. Gdy jest ustawione, aplikacja wyłącza własną obsługę, żeby nie przetwarzać nagłówków dwa razy. Jeśli je widzisz na liście App settings, usuń je.
 
 ## Krok 4. Publish profile → sekret w GitHubie
 
-1. W zasobie App Service, na stronie **Overview**, kliknij **Download publish profile**. Pobierze się plik `zwrotnica-demo.PublishSettings`. To jest hasło do wdrażania: nie commituj go i nie wysyłaj nikomu. Jeżeli przycisk jest nieaktywny, włącz „SCM Basic Auth Publishing Credentials” (krok 3) i odśwież stronę.
+1. Upewnij się, że „SCM Basic Auth Publishing Credentials” jest włączone i zapisane (krok 3), a strona odświeżona. W zasobie App Service, na stronie **Overview**, kliknij **Download publish profile**. Pobierze się plik `zwrotnica-demo.PublishSettings`. To jest hasło do wdrażania: nie commituj go i nie wysyłaj nikomu. Jeżeli przycisk jest nieaktywny, włącz „SCM Basic Auth Publishing Credentials” (krok 3) i odśwież stronę.
 2. Na GitHubie wypchnij repozytorium (jeśli jeszcze go nie ma) i wejdź w **Settings → Secrets and variables → Actions**:
    - zakładka **Secrets** → **New repository secret**: nazwa `AZURE_WEBAPP_PUBLISH_PROFILE`, wartość: **cała zawartość** pobranego pliku (otwórz go w Notatniku, zaznacz wszystko, skopiuj),
    - zakładka **Variables** → **New repository variable**: nazwa `AZURE_WEBAPP_NAME`, wartość: nazwa aplikacji z kroku 2 (np. `zwrotnica-demo`). Może też być sekretem o tej samej nazwie.
@@ -75,11 +77,12 @@ Dalej w **Settings → Configuration → General settings**:
 
 1. Na GitHubie: **Actions → Deploy to Azure App Service → Run workflow** (gałąź `main`) → **Run workflow**. Workflow uruchamia się też sam przy każdym pushu do `main`.
 2. Workflow:
-   1. buduje frontend (`npm ci && npm run build` w `frontend/`),
-   2. publikuje API (`dotnet publish backend/src/RefundPilot.Api -c Release -o publish -r linux-x64`),
-   3. kopiuje `frontend/dist/*` do `publish/wwwroot/`,
-   4. wdraża folder `publish` akcją `azure/webapps-deploy@v3`.
-3. Zielony znaczek przy zadaniu = wdrożone (3–5 minut). Jeżeli sekrety nie są ustawione, workflow kończy się na zielono z adnotacją „Set AZURE_WEBAPP_NAME and AZURE_WEBAPP_PUBLISH_PROFILE”, bez wdrażania.
+   1. uruchamia lint i testy frontendu oraz build i testy backendu (błąd zatrzymuje wdrożenie),
+   2. buduje frontend (`npm ci && npm run build` w `frontend/`),
+   3. publikuje API (`dotnet publish backend/src/RefundPilot.Api -c Release -o publish -r linux-x64`),
+   4. kopiuje `frontend/dist/*` do `publish/wwwroot/`,
+   5. wdraża folder `publish` akcją `azure/webapps-deploy@v3`.
+3. Zielony znaczek przy zadaniu = wdrożone (5–8 minut). Jeżeli sekrety nie są ustawione, workflow kończy się na zielono z adnotacją „Set AZURE_WEBAPP_NAME and AZURE_WEBAPP_PUBLISH_PROFILE”, bez wdrażania.
 
 ## Krok 6. Sprawdzenie
 
@@ -126,4 +129,4 @@ Jeżeli w Twoim regionie lub planie nie da się wybrać .NET 10:
 
 - W repozytorium nie ma żadnych sekretów. Klucz Gemini i hasło demo są tylko w ustawieniach App Service, a publish profile tylko w sekretach GitHuba.
 - W produkcji: HTTPS (HSTS, przekierowanie, ciasteczko `Secure` + `HttpOnly` + `SameSite=Lax`), Swagger wyłączony, CORS niepotrzebny (jeden origin).
-- Aplikacja stoi za front-endem Azure, więc czyta prawdziwy adres IP klienta i schemat `https` z nagłówków `X-Forwarded-For` / `X-Forwarded-Proto`. Dzięki temu limit odczytów AI liczy się per użytkownik, a nie wspólnie dla wszystkich.
+- Aplikacja stoi za front-endem Azure, więc czyta prawdziwy adres IP klienta i schemat `https` z nagłówków `X-Forwarded-For` / `X-Forwarded-Proto` (`ForwardedHeaders:Enabled` w `appsettings.Production.json`). Ufa tylko połączeniom z adresów prywatnych, CGNAT, link-local i loopback i bierze tylko jeden, ostatni wpis, dopisany przez Azure. Podrobiony wpis z lewej strony nagłówka niczego nie zmienia. Dzięki temu limit odczytów AI liczy się per użytkownik, a nie wspólnie dla wszystkich.

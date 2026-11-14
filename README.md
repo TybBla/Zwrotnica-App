@@ -178,7 +178,7 @@ To lokalne dane testowe z `appsettings.Development.json` (fikcyjna osoba, 5 fikc
 ### 7. Testy
 
 ```bash
-dotnet test backend/RefundPilot.sln     # 361 testów: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
+dotnet test backend/RefundPilot.sln     # 363 testy: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
 cd frontend
 npm run test                             # 170 testów (Vitest + Testing Library)
 npm run build                            # tsc + build produkcyjny
@@ -198,8 +198,9 @@ Testy backendu i frontendu uruchamia też GitHub Actions (`.github/workflows/ci.
 | `Seed:Enabled` | `true` (produkcyjnie `false`) | Czy w ogóle tworzyć konto demo. |
 | `DataProtection:KeysPath` | domyślny katalog użytkownika (produkcyjnie `/home/data/keys`) | Gdzie trzymać klucze szyfrujące IBAN. |
 | `ConnectionStrings:Default` | `DataSource=refundpilot.db` (produkcyjnie `/home/data/zwrotnica.db`) | Plik bazy SQLite. |
+| `ForwardedHeaders:Enabled` | `false` (produkcyjnie `true`) | Czytanie IP klienta i schematu z `X-Forwarded-*` od proxy z adresu prywatnego (jeden przeskok). |
 
-Wartości produkcyjne są w `appsettings.Production.json`. Zmienne środowiskowe używają `__` zamiast `:` (np. `Seed__DemoEmail`).
+Wartości produkcyjne są w `appsettings.Production.json`. Zmienne środowiskowe używają `__` zamiast `:` (np. `Seed__DemoEmail`). Katalog `/home/data` istnieje tylko na Azure App Service: uruchamiając wersję produkcyjną gdzie indziej, ustaw `ConnectionStrings__Default` (np. `DataSource=/var/lib/zwrotnica/zwrotnica.db`) i `DataProtection__KeysPath` na zapisywalne ścieżki.
 
 ### Rozwiązywanie problemów
 
@@ -271,8 +272,8 @@ Głównym narzędziem był **Claude Code** (modele Claude Opus i Sonnet). Pracow
 - **Brak weryfikacji e-maila i resetu hasła** (świadomie poza zakresem MVP).
 - **Klucze Data Protection są per maszyna i użytkownik** (domyślny katalog lub `DataProtection:KeysPath`). Baza przeniesiona na inną maszynę nie odszyfruje rachunków. Produkcyjnie: HTTPS, wspólny magazyn kluczy (np. Key Vault) i ich rotacja.
 - Typ pliku jest rozpoznawany po nagłówku `Content-Type`, bez sprawdzania sygnatury pliku.
-- **Limit na adres IP za reverse proxy:** poza trybem Development aplikacja ufa jednemu przeskokowi `X-Forwarded-For` (front-end Azure). Za inną liczbą proxy trzeba dopasować `ForwardedHeadersOptions`, inaczej użytkownicy dzielą jeden limit odczytów AI.
-- **SQLite na Azure App Service:** baza leży na udziale sieciowym `/home` (tryb dziennika `DELETE` zamiast WAL). Wystarcza na jedną instancję i ruch demo; przy skalowaniu na kilka instancji trzeba by przejść na serwerową bazę.
+- **Limit na adres IP za reverse proxy:** z `ForwardedHeaders:Enabled` (produkcyjnie włączone) aplikacja ufa jednemu przeskokowi `X-Forwarded-For` od proxy z adresu prywatnego (front-end Azure). Za inną liczbą proxy lub proxy z publicznego adresu trzeba dopasować `ForwardedHeadersOptions`, inaczej użytkownicy dzielą jeden limit odczytów AI.
+- **SQLite na Azure App Service:** baza leży na udziale sieciowym `/home` (poza trybem Development dziennik `DELETE` zamiast WAL). Wystarcza na jedną instancję i ruch demo; przy skalowaniu na kilka instancji trzeba by przejść na serwerową bazę.
 
 ### Kierunki rozwoju i model biznesowy
 
