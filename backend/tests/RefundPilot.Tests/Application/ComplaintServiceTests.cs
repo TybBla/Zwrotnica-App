@@ -873,7 +873,7 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
                      "Pociąg dotarł do stacji docelowej z opóźnieniem 70 min.",
                      $"W związku z opóźnieniem pociągu poniosłem(-am) następujące koszty: {Taxi}.",
                      "Na podstawie przepisów prawa przewozowego oraz Kodeksu cywilnego, a także regulaminu przewozu wnoszę o zwrot " +
-                     "udokumentowanych kosztów w kwocie 85,00 zł. Koszty te poniosłem(-am) jako bezpośrednie następstwo opóźnienia pociągu.",
+                     "udokumentowanych kosztów w kwocie 85,00 zł. Koszty te są bezpośrednim następstwem opóźnienia pociągu.",
                      "Proszę o przekazanie zwrotu kosztów w formie bonu.",
                      Attachments,
                      "Proszę o rozpatrzenie wniosku i pisemną odpowiedź.",
@@ -894,7 +894,7 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.Equal("Wniosek o zwrot kosztów poniesionych w związku z odwołaniem pociągu – bilet nr IC-4821-0093", letter.Subject);
         Assert.Contains("Pociąg został odwołany.", letter.Body);
         Assert.Contains("W związku z odwołaniem pociągu poniosłem(-am) następujące koszty: Nocleg w hotelu; Taksówka rano.", letter.Body);
-        Assert.Contains("jako bezpośrednie następstwo odwołania pociągu.", letter.Body);
+        Assert.Contains("Koszty te są bezpośrednim następstwem odwołania pociągu.", letter.Body);
         Assert.Contains("Proszę o przekazanie zwrotu kosztów na rachunek bankowy lub kartę, z których opłacono bilet.", letter.Body);
     }
 
@@ -911,6 +911,41 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.Contains("Poniesione koszty: [opis poniesionych kosztów].", ai.Body);
         foreach (var letter in new[] { template, ai })
             Assert.Equal(["opis kosztów", "załączniki – rachunki"], letter.MissingFields);
+    }
+
+    [Theory]
+    [InlineData("...")]
+    [InlineData("!?;:")]
+    [InlineData(" . \n ; ")]
+    public async Task RegionalCaseWithPunctuationOnlyDescription_UsesAPlaceholder(string description)
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync(description: description);
+
+        var template = await GenerateAsync(Failing(), Req());
+        var ai = await GenerateAsync(new FakeAi(CostsJson()), Req());
+
+        Assert.Contains("następujące koszty: [opis poniesionych kosztów].", template.Body);
+        foreach (var letter in new[] { template, ai })
+            Assert.Equal(["opis kosztów", "załączniki – rachunki"], letter.MissingFields);
+    }
+
+    [Theory]
+    [InlineData("Taksówka!", "Taksówka")]
+    [InlineData("Taksówka?", "Taksówka")]
+    [InlineData("Taksówka:", "Taksówka")]
+    [InlineData("Taksówka;\nNocleg!", "Taksówka; Nocleg")]
+    public void ExpensesText_StripsTrailingPunctuation(string description, string expected) =>
+        Assert.Equal(expected, RefundPilot.Application.ComplaintTemplate.ExpensesText(description));
+
+    [Fact]
+    public async Task RegionalCaseWithCosts_AiOutputWithTheDescriptionTokenTwice_FallsBackToTheTemplate()
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync();
+
+        var letter = await GenerateAsync(new FakeAi(CostsJson(ValidCostsBody + " {{EXPENSE_DESCRIPTION}}")), Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.Contains($"następujące koszty: {Taxi}.", letter.Body);
     }
 
     [Fact]

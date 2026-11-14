@@ -12,4 +12,4 @@ public sealed record AssessmentRequest(
     [Range(0, 100000, ErrorMessage = "Cena biletu nie może być ujemna.")] decimal TicketPrice,
     DelayCause? DelayCause,
     bool IsSeasonTicket,
-    [Range(0.01, 100000, ErrorMessage = ExpenseRules.AmountMessage)] decimal? ExpenseAmount = null);
+    [Range(0.01, ExpenseRules.MaxAmount, ErrorMessage = ExpenseRules.AmountMessage), MaxDecimalPlaces(2, ErrorMessage = ExpenseRules.DecimalsMessage)] decimal? ExpenseAmount = null);

@@ -190,7 +190,7 @@ public static class ComplaintTemplate
 
             W związku {withIncident} poniosłem(-am) następujące koszty: {ExpensesText(f.ExpenseDescription)}.
 
-            Na podstawie przepisów prawa przewozowego oraz Kodeksu cywilnego, a także regulaminu przewozu wnoszę o zwrot udokumentowanych kosztów w kwocie {f.ExpenseAmountText}. Koszty te poniosłem(-am) jako bezpośrednie następstwo {ofIncident}.
+            Na podstawie przepisów prawa przewozowego oraz Kodeksu cywilnego, a także regulaminu przewozu wnoszę o zwrot udokumentowanych kosztów w kwocie {f.ExpenseAmountText}. Koszty te są bezpośrednim następstwem {ofIncident}.
 
             {Payout}
 
@@ -205,7 +205,7 @@ public static class ComplaintTemplate
         return (subject, body);
     }
 
-    /// <summary>The passenger's description on one line (lines joined with "; "), without a closing full stop.</summary>
+    /// <summary>The passenger's description on one line (lines joined with "; "), without a closing full stop; the placeholder when only punctuation is left.</summary>
     public static string ExpensesText(string? description)
     {
         if (string.IsNullOrWhiteSpace(description))
@@ -213,7 +213,9 @@ public static class ComplaintTemplate
         // Allowlisted on input already; braces are dropped anyway so the text can never form a token.
         description = description.Replace("{", "").Replace("}", "");
         var lines = description.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(line => line.TrimEnd('.', ';', ','));
-        return string.Join("; ", lines);
+            .Select(line => line.TrimEnd('.', ';', ',', '!', '?', ':', ' '))
+            .Where(line => line.Length > 0);
+        var text = string.Join("; ", lines);
+        return text.Length == 0 ? ExpensePlaceholder : text;
     }
 }

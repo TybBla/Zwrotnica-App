@@ -361,7 +361,7 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
         liveNote
         note={
           regional
-            ? `${carrier.name} to przewoźnik regionalny – nie obejmują go automatyczne odszkodowania z rozporządzenia (UE) 2021/782 (25% / 50% ceny biletu). Tacy przewoźnicy zwykle uwzględniają jedynie roszczenia o zwrot udowodnionej szkody, np. kosztów taksówki lub noclegu. Jeśli poniosłeś takie koszty, przygotujemy wniosek o ich zwrot.`
+            ? `${carrier.name} to przewoźnik regionalny – nie obejmują go automatyczne odszkodowania z rozporządzenia (UE) 2021/782 (25% / 50% ceny biletu). Tacy przewoźnicy zwykle uwzględniają jedynie roszczenia o zwrot udowodnionej szkody, np. kosztów taksówki lub noclegu. Jeśli poniesiono takie koszty, przygotujemy wniosek o ich zwrot.`
             : undefined
         }
       >

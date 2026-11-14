@@ -20,4 +20,4 @@ public sealed record UpdateCaseRequest(
     PayoutPreference PayoutPreference,
     [property: JsonConverter(typeof(CanonicalMultilineTextConverter))] [MaxLength(2000), AllowedCharacters(TextField.Notes)] string? Notes,
     [property: JsonConverter(typeof(CanonicalMultilineTextConverter))] [MaxLength(ExpenseRules.MaxDescription), AllowedCharacters(TextField.ExpenseDescription)] string? ExpenseDescription = null,
-    [Range(0.01, ExpenseRules.MaxAmount, ErrorMessage = ExpenseRules.AmountMessage)] decimal? ExpenseAmount = null);
+    [Range(0.01, ExpenseRules.MaxAmount, ErrorMessage = ExpenseRules.AmountMessage), MaxDecimalPlaces(2, ErrorMessage = ExpenseRules.DecimalsMessage)] decimal? ExpenseAmount = null);

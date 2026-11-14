@@ -80,7 +80,7 @@ export const faq: FaqItem[] = [
         Nie. Polska wyłączyła pociągi miejskie, podmiejskie i regionalne z unijnego systemu 25%/50% (art. 3a ustawy o
         transporcie kolejowym). Dotyczy to polskich przewoźników regionalnych, m.in. Polregio (także jego pociągów
         InterRegio), Kolei Mazowieckich, Kolei Śląskich, Kolei Dolnośląskich, SKM i WKD. Tacy przewoźnicy zwykle
-        uwzględniają tylko roszczenia o zwrot udowodnionej szkody, czyli kosztów, które poniosłeś przez opóźnienie lub
+        uwzględniają tylko roszczenia o zwrot udowodnionej szkody, czyli kosztów poniesionych przez opóźnienie lub
         odwołanie pociągu – np. taksówki, noclegu albo biletu na inne połączenie. Jeśli je wpiszesz, Zwrotnica przygotuje
         wniosek o zwrot tych kosztów; dołącz do niego rachunki. Bez kosztów przygotujemy reklamację według regulaminu
         przewoźnika, bez żądania konkretnej kwoty. Jeśli znasz tylko kategorię InterRegio (IR), a przewoźnik jest inny

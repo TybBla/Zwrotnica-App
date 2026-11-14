@@ -5,5 +5,6 @@ public static class ExpenseRules
 {
     public const int MaxDescription = 500;
     public const double MaxAmount = 100000;
+    public const string DecimalsMessage = "Kwota kosztów może mieć najwyżej dwa miejsca po przecinku.";
     public const string AmountMessage = "Kwota kosztów musi być większa od zera i nie większa niż 100 000 zł.";
 }

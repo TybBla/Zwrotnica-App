@@ -531,7 +531,7 @@ function NextSteps({ state, dispatch }: { state: WizardState; dispatch: Dispatch
   if (assessment.verdict === 'NotCovered') {
     items.push('Ten przewoźnik nie wypłaca odszkodowań wg przepisów UE – sprawdź jego regulamin.')
     items.push(
-      state.expenses.amount.trim() !== ''
+      letterKind(assessment, toCaseRequest(state)?.expenseAmount ?? null) === 'documentedCosts'
         ? 'Przygotujemy poniżej wniosek o zwrot poniesionych kosztów. Wyślesz go przewoźnikowi e-mailem, przez jego formularz albo w kasie – z kopiami rachunków.'
         : 'Możesz złożyć reklamację – przygotujemy ją poniżej. Wyślesz ją przewoźnikowi e-mailem, przez jego formularz albo w kasie.',
     )

@@ -346,6 +346,9 @@ public sealed partial class ComplaintService(
             return null;
         if (CitedArticles(body).Count > 0 || MentionsEuRegulation(subject) || MentionsEuRegulation(body))
             return null;
+        // The description goes in once: a repeated token would repeat the passenger's text.
+        if (body.Split(ComplaintTemplate.ExpenseDescription).Length != 2)
+            return null;
 
         return PassesCommonChecks(body, facts, payout, [facts.ExpenseAmountText, facts.PriceText],
                 ComplaintTemplate.Attachments, ComplaintTemplate.ExpenseDescription)
@@ -468,7 +471,7 @@ public sealed partial class ComplaintService(
     private static (string Body, IReadOnlyList<string> Missing) Fill(
         string body, string payoutSentence, string? name, string? address, string? iban, string? expenseDescription)
     {
-        var expensesMissing = string.IsNullOrWhiteSpace(expenseDescription)
+        var expensesMissing = ComplaintTemplate.ExpensesText(expenseDescription) == ComplaintTemplate.ExpensePlaceholder
             && (body.Contains(ComplaintTemplate.ExpenseDescription) || body.Contains(ComplaintTemplate.ExpensePlaceholder));
         // Payout wording is chosen by the server so it is always exactly as agreed, whatever the AI wrote.
         body = body.Replace(ComplaintTemplate.Payout, payoutSentence);

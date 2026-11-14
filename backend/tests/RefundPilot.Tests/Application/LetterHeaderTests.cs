@@ -33,6 +33,15 @@ public sealed class LetterHeaderTests
     [InlineData("Gdańsk Przymorze-Uniwersytet", "Gdańsk")]
     [InlineData("Warszawa Zachodnia", "Warszawa")]
     [InlineData("kraków główny", "kraków")]
+    [InlineData("Warszawa Gdańska", "Warszawa")]
+    [InlineData("Warszawa Wileńska", "Warszawa")]
+    [InlineData("Szczecin Dąbie", "Szczecin")]
+    [InlineData("Kraków Bieżanów", "Kraków")]
+    [InlineData("Katowice Zachodnie", "Katowice")]
+    [InlineData("Kielce Miasto", "Kielce")]
+    [InlineData("Nowe Miasto Lubawskie", "Nowe Miasto Lubawskie")]
+    [InlineData("Nowe Miasto", "Nowe Miasto")]
+    [InlineData("Stare Miasto", "Stare Miasto")]
     [InlineData("Główna", "Główna")]                       // nothing left after stripping: the full name
     [InlineData("Lotnisko Chopina", "Lotnisko Chopina")]
     [InlineData("Kraków Gł. (peron 3)", "[miejscowość]")]  // not only letters, spaces and hyphens

@@ -42,8 +42,21 @@ public static partial class LetterHeader
         "Główny", "Główna", "Główne", "Centralna", "Centralny", "Wschodnia", "Zachodnia", "Wschód", "Zachód",
         "Północ", "Południe", "Lotnisko", "Chopina", "Płaszów", "Wrzeszcz", "Oliwa", "Fabryczna", "Kaliska",
         "Leśnica", "Miasto", "Osobowa", "Przymorze-Uniwersytet", "Stadion", "Śródmieście", "Zachodni", "Wschodni",
-        "Gdański",
+        "Gdański", "Gdańska", "Wileńska", "Ochota", "Północna", "Północny", "Południowa", "Południowy",
+        "Dąbie", "Bieżanów", "Wschodnie", "Zachodnie", "Stare", "Nowe",
     };
+
+    private static bool IsStrippable(List<string> words)
+    {
+        var last = words[^1];
+        if (!StationDescriptors.Contains(last))
+            return false;
+        // "Miasto" is a station suffix ("Kielce Miasto") but also part of town names ("Nowe Miasto Lubawskie", "Stare Miasto").
+        if (last.Equals("Miasto", StringComparison.OrdinalIgnoreCase))
+            return words.Count > 1 && !words[^2].Equals("Nowe", StringComparison.OrdinalIgnoreCase)
+                && !words[^2].Equals("Stare", StringComparison.OrdinalIgnoreCase);
+        return true;
+    }
 
     /// <summary>
     /// Town of a station: trailing descriptor words are stripped one by one ("Zielona Góra Główna" → "Zielona Góra");
@@ -58,7 +71,7 @@ public static partial class LetterHeader
         if (!CityLike().IsMatch(full))
             return PlacePlaceholder;
 
-        while (words.Count > 0 && StationDescriptors.Contains(words[^1]))
+        while (words.Count > 0 && IsStrippable(words))
             words.RemoveAt(words.Count - 1);
         return words.Count == 0 ? full : string.Join(' ', words);
     }

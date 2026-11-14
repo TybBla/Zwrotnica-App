@@ -317,9 +317,9 @@ function Details({ item }: { item: CaseDto }) {
             <span className="mono">{item.ticketNumber}</span>
           </Fact>
         )}
-        {item.expenseAmount !== null && (
+        {(item.expenseAmount !== null || item.expenseDescription) && (
           <Fact term="Poniesione koszty">
-            <span className="mono tabular">{formatPln(item.expenseAmount)}</span>
+            {item.expenseAmount !== null && <span className="mono tabular">{formatPln(item.expenseAmount)}</span>}
             {item.expenseDescription && <span className="case-facts__detail">{item.expenseDescription}</span>}
           </Fact>
         )}

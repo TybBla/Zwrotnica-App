@@ -528,6 +528,7 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
     [InlineData("Taksówka", 0)]
     [InlineData("Taksówka", -5)]
     [InlineData("Taksówka", 100000.01)]
+    [InlineData("Taksówka", 10.005)]
     [InlineData("Taksówka 🚕", 50)]
     [InlineData("Taksówka {{IBAN}}", 50)]
     public async Task Post_InvalidExpenses_Returns400(string description, double amount)
@@ -535,6 +536,17 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         var client = await LoggedInClientAsync($"expenses-bad-{Guid.NewGuid():N}@test.pl");
 
         var response = await client.PostAsJsonAsync("/api/cases", RegionalCase(description, (decimal)amount));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Assessment_ExpenseAmountWithThreeDecimals_Returns400()
+    {
+        var response = await _factory.CreateClient().PostAsJsonAsync("/api/assessments", new
+        {
+            carrier = "Polregio", incidentType = "Delay", delayMinutes = 95, ticketPrice = 40m, isSeasonTicket = false, expenseAmount = 10.005m,
+        });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
