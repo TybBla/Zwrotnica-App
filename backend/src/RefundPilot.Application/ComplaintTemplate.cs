@@ -6,7 +6,8 @@ namespace RefundPilot.Application;
 /// <summary>Case facts that go into a letter. Deliberately contains no personal data about the passenger.</summary>
 public sealed record ComplaintFacts(
     string Carrier, string? TrainCategory, string? From, string? To, DateOnly TravelDate, string? TicketNumber,
-    decimal TicketPrice, decimal Amount, IncidentType Incident, int DelayMinutes, DelayCause? Cause)
+    decimal TicketPrice, decimal Amount, IncidentType Incident, int DelayMinutes, DelayCause? Cause,
+    string? ExpenseDescription = null, decimal? ExpenseAmount = null)
 {
     /// <summary>Station name, or the token the service later turns into a placeholder when the station is unknown.</summary>
     public string FromText => string.IsNullOrWhiteSpace(From) ? ComplaintTemplate.FromStation : From;
@@ -15,6 +16,7 @@ public sealed record ComplaintFacts(
     public bool ToMissing => string.IsNullOrWhiteSpace(To);
 
     public string AmountText => FormatMoney(Amount);
+    public string ExpenseAmountText => FormatMoney(ExpenseAmount ?? 0m);
     public string PriceText => FormatMoney(TicketPrice);
     public string DateText => TravelDate.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
 
@@ -45,6 +47,10 @@ public static class ComplaintTemplate
     public const string Payout = "{{PAYOUT}}";
     public const string FromStation = "{{FROM_STATION}}";
     public const string ToStation = "{{TO_STATION}}";
+    public const string Attachments = "{{ATTACHMENTS}}";
+
+    public const string AttachmentsLine = "Do wniosku załączam: [kopie rachunków / paragonów potwierdzających poniesione koszty]";
+    public const string ExpensePlaceholder = "[opis poniesionych kosztów]";
 
     /// <summary>
     /// Legal basis in Reg. (EU) 2021/782: a cancelled train means reimbursement of the ticket (art. 18),
@@ -141,5 +147,69 @@ public static class ComplaintTemplate
             """;
 
         return (subject, body);
+    }
+
+    /// <summary>
+    /// A claim for reimbursement of documented costs (taxi, overnight stay…) from a regional carrier, which is outside
+    /// the EU 25%/50% scheme but usually accepts proven damage. The legal basis is stated cautiously, without article
+    /// numbers; the amount is the one the passenger entered. Contains the extra token {{ATTACHMENTS}}.
+    /// </summary>
+    public static (string Subject, string Body) BuildDocumentedCosts(ComplaintFacts f)
+    {
+        var cancelled = f.Incident == IncidentType.Cancellation;
+        var ticket = string.IsNullOrWhiteSpace(f.TicketNumber) ? "" : $" nr {f.TicketNumber}";
+        var category = string.IsNullOrWhiteSpace(f.TrainCategory) ? "" : $" kat. {f.TrainCategory}";
+        var withIncident = cancelled ? "z odwołaniem pociągu" : "z opóźnieniem pociągu";
+        var ofIncident = cancelled ? "odwołania pociągu" : "opóźnienia pociągu";
+
+        var subject = $"Wniosek o zwrot kosztów poniesionych w związku {withIncident} – " +
+            (string.IsNullOrWhiteSpace(f.TicketNumber) ? $"przejazd z dnia {f.DateText}" : $"bilet nr {f.TicketNumber}");
+
+        var what = cancelled
+            ? "Pociąg został odwołany."
+            : $"Pociąg dotarł do stacji docelowej z opóźnieniem {f.DelayMinutes} min.";
+        if (f.CauseText is { } cause)
+            what += $" Przyczyna zdarzenia (według dostępnych informacji): {cause}.";
+        var trip = cancelled ? $"Wniosek dotyczy przejazdu w dniu {f.DateText}" : $"W dniu {f.DateText} odbyłem(-am) podróż";
+
+        var body = $"""
+            {FullName}
+            {Address}
+
+            {f.Carrier}
+
+            Dotyczy: bilet{ticket}, przejazd relacją {f.FromText} – {f.ToText} w dniu {f.DateText}
+
+            Szanowni Państwo,
+
+            zwracam się z wnioskiem o zwrot kosztów poniesionych w związku {withIncident}.
+
+            {trip} pociągiem{category} relacją {f.FromText} – {f.ToText} na podstawie biletu{ticket}, za który zapłaciłem(-am) {f.PriceText}. {what}
+
+            W związku {withIncident} poniosłem(-am) następujące koszty: {ExpensesText(f.ExpenseDescription)}.
+
+            Na podstawie przepisów prawa przewozowego oraz Kodeksu cywilnego, a także regulaminu przewozu wnoszę o zwrot udokumentowanych kosztów w kwocie {f.ExpenseAmountText}. Koszty te poniosłem(-am) jako bezpośrednie następstwo {ofIncident}.
+
+            {Payout}
+
+            {Attachments}
+
+            Proszę o rozpatrzenie wniosku i pisemną odpowiedź.
+
+            Z poważaniem
+            {FullName}
+            """;
+
+        return (subject, body);
+    }
+
+    /// <summary>The passenger's description on one line (lines joined with "; "), without a closing full stop.</summary>
+    private static string ExpensesText(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return ExpensePlaceholder;
+        var lines = description.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line => line.TrimEnd('.', ';', ','));
+        return string.Join("; ", lines);
     }
 }

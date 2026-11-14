@@ -836,6 +836,174 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.Contains("art. 19", letter.Body);
     }
 
+    // ---------- Regional carrier with documented costs: a claim for reimbursement of proven damage ----------
+
+    private const string Taxi = "Taksówka z Gdyni do Krakowa po opóźnieniu pociągu";
+    private const string Attachments = "Do wniosku załączam: [kopie rachunków / paragonów potwierdzających poniesione koszty]";
+
+    private async Task MakeAnnaCaseRegionalWithCostsAsync(
+        IncidentType incident = IncidentType.Delay, string? description = Taxi, decimal? amount = 85m)
+    {
+        await MakeAnnaCaseUncoveredAsync(Verdict.NotCovered, incident);
+        var c = await _cases.GetAsync(_annaCaseId, Anna);
+        c!.ExpenseDescription = description;
+        c.ExpenseAmount = amount;
+        await _cases.UpdateAsync(c);
+    }
+
+    private const string ValidCostsBody =
+        "{{FULL_NAME}}\n{{ADDRESS}}\n\nSzanowni Państwo,\nwnoszę o zwrot udokumentowanych kosztów w kwocie 85,00 zł, poniesionych " +
+        "w związku z opóźnieniem pociągu o 70 minut (bilet za 40,00 zł).\n\n{{PAYOUT}}\n\n{{ATTACHMENTS}}\n\nZ poważaniem\n{{FULL_NAME}}";
+
+    private static string CostsJson(string body = ValidCostsBody) =>
+        JsonSerializer.Serialize(new { subject = "Wniosek o zwrot kosztów – opóźnienie pociągu Polregio", body });
+
+    [Fact]
+    public async Task RegionalCaseWithCosts_Template_ClaimsTheDocumentedCosts()
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync();
+
+        var letter = await GenerateAsync(Failing(), Req(PayoutPreference.Voucher));
+
+        Assert.False(letter.UsedAi);
+        Assert.Equal("Wniosek o zwrot kosztów poniesionych w związku z opóźnieniem pociągu – bilet nr IC-4821-0093", letter.Subject);
+        foreach (var expected in new[]
+                 {
+                     "Anna Kowalska", "Polregio", "Gdynia Główna", "Kraków Główny", "40,00 zł",
+                     "Pociąg dotarł do stacji docelowej z opóźnieniem 70 min.",
+                     $"W związku z opóźnieniem pociągu poniosłem(-am) następujące koszty: {Taxi}.",
+                     "Na podstawie przepisów prawa przewozowego oraz Kodeksu cywilnego, a także regulaminu przewozu wnoszę o zwrot " +
+                     "udokumentowanych kosztów w kwocie 85,00 zł. Koszty te poniosłem(-am) jako bezpośrednie następstwo opóźnienia pociągu.",
+                     "Proszę o przekazanie zwrotu kosztów w formie bonu.",
+                     Attachments,
+                     "Proszę o rozpatrzenie wniosku i pisemną odpowiedź.",
+                 })
+            Assert.Contains(expected, letter.Body);
+        foreach (var banned in new[] { "2021/782", "rozporządzeni", "art.", "25%", "50%", "W przypadku przyznania", "{{" })
+            Assert.DoesNotContain(banned, letter.Body);
+        Assert.Equal(["załączniki – rachunki"], letter.MissingFields);
+    }
+
+    [Fact]
+    public async Task RegionalCaseWithCosts_Cancellation_TemplateSpeaksOfTheCancellation()
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync(IncidentType.Cancellation, "Nocleg w hotelu.\nTaksówka rano");
+
+        var letter = await GenerateAsync(Failing(), Req());
+
+        Assert.Equal("Wniosek o zwrot kosztów poniesionych w związku z odwołaniem pociągu – bilet nr IC-4821-0093", letter.Subject);
+        Assert.Contains("Pociąg został odwołany.", letter.Body);
+        Assert.Contains("W związku z odwołaniem pociągu poniosłem(-am) następujące koszty: Nocleg w hotelu; Taksówka rano.", letter.Body);
+        Assert.Contains("jako bezpośrednie następstwo odwołania pociągu.", letter.Body);
+        Assert.Contains("Proszę o przekazanie zwrotu kosztów na rachunek bankowy lub kartę, z których opłacono bilet.", letter.Body);
+    }
+
+    [Fact]
+    public async Task RegionalCaseWithCostsButNoDescription_UsesAPlaceholder()
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync(description: null);
+
+        var letter = await GenerateAsync(new FakeAi(CostsJson()), Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.Contains("następujące koszty: [opis poniesionych kosztów].", letter.Body);
+        Assert.Equal(["opis kosztów", "załączniki – rachunki"], letter.MissingFields);
+    }
+
+    [Fact]
+    public async Task RegionalCaseWithoutCosts_ComplaintReservesTheRightToClaimCosts()
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync(description: "Taksówka", amount: null);
+
+        var template = await GenerateAsync(Failing(), Req());
+        var ai = await GenerateAsync(new FakeAi(ValidCarrierRulesJson()), Req());
+
+        foreach (var letter in new[] { template, ai })
+        {
+            Assert.StartsWith("Reklamacja", letter.Subject);
+            Assert.Contains("Jednocześnie zastrzegam sobie prawo do dochodzenia zwrotu udokumentowanych kosztów poniesionych " +
+                            "w związku z opóźnieniem pociągu.", letter.Body);
+            Assert.DoesNotContain("85,00 zł", letter.Body);
+        }
+        Assert.True(ai.UsedAi);
+    }
+
+    [Fact]
+    public async Task UnclearCase_ComplaintHasNoCostReservation()
+    {
+        await MakeAnnaCaseUncoveredAsync(Verdict.Unknown);
+
+        var letter = await GenerateAsync(Failing(), Req());
+
+        Assert.DoesNotContain("zastrzegam", letter.Body);
+    }
+
+    [Fact]
+    public async Task RegionalCaseWithCosts_AiPrompt_HasTheExactAmountAndNoPersonalData()
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync();
+        var ai = new FakeAi(CostsJson());
+
+        await GenerateAsync(ai, Req(PayoutPreference.BankTransfer, "PL27114020040000300201355387"));
+
+        foreach (var expected in new[] { "Polregio", "85,00 zł", "40,00 zł", Taxi, "verbatim", "{{ATTACHMENTS}}", "Polish diacritics" })
+            Assert.Contains(expected, ai.Prompt);
+        foreach (var secret in new[] { "Anna", "Kowalska", "Lipowa", Iban, "PL27" })
+            Assert.DoesNotContain(secret, ai.Prompt);
+    }
+
+    [Fact]
+    public async Task RegionalCaseWithCosts_ValidAiOutput_IsUsedAndFilledByTheServer()
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync();
+
+        var letter = await GenerateAsync(new FakeAi(CostsJson()), Req(PayoutPreference.Voucher));
+
+        Assert.True(letter.UsedAi);
+        Assert.Equal("Wniosek o zwrot kosztów – opóźnienie pociągu Polregio", letter.Subject);
+        Assert.Contains("Proszę o przekazanie zwrotu kosztów w formie bonu.", letter.Body);
+        Assert.Contains(Attachments, letter.Body);
+        Assert.Contains("Anna Kowalska", letter.Body);
+        Assert.DoesNotContain("{{", letter.Body);
+        Assert.Equal(["załączniki – rachunki"], letter.MissingFields);
+    }
+
+    [Theory]
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów poniesionych przeze mnie {{PAYOUT}} {{ATTACHMENTS}}")]                 // no amount
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł oraz 20,00 zł {{PAYOUT}} {{ATTACHMENTS}}")]                  // other sum
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85 zł {{PAYOUT}} {{ATTACHMENTS}}")]                                   // amount not verbatim
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł, art. 19 {{PAYOUT}} {{ATTACHMENTS}}")]                       // EU article
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł na podstawie art. 471 Kodeksu cywilnego {{PAYOUT}} {{ATTACHMENTS}}")] // any article
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł zgodnie z 2021/782 {{PAYOUT}} {{ATTACHMENTS}}")]             // EU act
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł według rozporządzenia UE {{PAYOUT}} {{ATTACHMENTS}}")]       // EU regulation
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł {{PAYOUT}} {{ATTACHMENTS}} Konto PL61 1090 1014 0000 0712 1981 2874")] // IBAN-like
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł {{PAYOUT}}")]                                                // no attachments token
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł {{ATTACHMENTS}}")]                                           // no payout token
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł {{PAYOUT}} {{ATTACHMENTS}} {{IBAN}}")]                       // IBAN token, not a transfer
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} Prosze o zwrot kosztów 85,00 zł {{PAYOUT}} {{ATTACHMENTS}}")]                       // no diacritics
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot kosztów 85,00 zł wyłącznie przelewem {{PAYOUT}} {{ATTACHMENTS}}")]            // exclusive clause
+    public async Task RegionalCaseWithCosts_InvalidAiOutput_FallsBackToTheCostsTemplate(string body)
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync();
+
+        var letter = await GenerateAsync(new FakeAi(CostsJson(body)), Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.StartsWith("Wniosek o zwrot kosztów poniesionych w związku z opóźnieniem pociągu", letter.Subject);
+        Assert.Contains("w kwocie 85,00 zł", letter.Body);
+    }
+
+    [Fact]
+    public async Task RegionalCaseWithCosts_AiCopyingTheDescription_IsNotRejectedForItsSpelling()
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync(description: "Taxi do Krakowa, prosze o zwrot");
+        var body = ValidCostsBody.Replace("(bilet za 40,00 zł).", "(bilet za 40,00 zł). Koszty: Taxi do Krakowa, prosze o zwrot.");
+
+        var letter = await GenerateAsync(new FakeAi(CostsJson(body)), Req());
+
+        Assert.True(letter.UsedAi);
+    }
+
     // ---------- Correct Polish: an AI letter without diacritics ("z tytulu", "prosze") falls back to the template ----------
 
     private const string LongAsciiCompensationBody =
