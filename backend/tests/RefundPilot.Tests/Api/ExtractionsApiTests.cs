@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -135,6 +136,7 @@ public sealed class ExtractionsApiTests : IClassFixture<TestApiFactory>
         var limited = await client.PostAsync("/api/extractions", Upload(("application/pdf", "t.pdf", 100)));
 
         Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
-        Assert.Contains("Zbyt wiele", await limited.Content.ReadAsStringAsync());
+        var problem = await limited.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Zbyt wiele zapytań. Spróbuj ponownie za minutę.", problem.GetProperty("detail").GetString());
     }
 }

@@ -83,7 +83,7 @@ builder.Services.AddRateLimiter(o =>
         {
             Status = StatusCodes.Status429TooManyRequests,
             Title = "Too Many Requests",
-            Detail = "Zbyt wiele zapytaĹ„. SprĂłbuj ponownie za minutÄ™.",
+            Detail = "Zbyt wiele zapytań. Spróbuj ponownie za minutę.",
         }, (JsonSerializerOptions?)null, "application/problem+json", ct);
     };
 });
