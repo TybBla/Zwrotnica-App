@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using RefundPilot.Application.Abstractions;
 using RefundPilot.Application.Dtos;
 using RefundPilot.Application.Services;
@@ -121,8 +122,11 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     private readonly FakePdf _pdf = new();
     private readonly List<UserProfile> _profileWrites = [];
 
+    private static readonly DateTime Now = new(2026, 11, 13, 10, 0, 0, DateTimeKind.Utc);
+    private readonly FakeTimeProvider _clock = new(new DateTimeOffset(Now));
+
     private ComplaintService Service(IAiClient ai, string userId = Anna) =>
-        new(_cases, new RecordingStore(_store, _profileWrites), new FakeUser(userId), ai, new EfUnitOfWork(_db), _pdf);
+        new(_cases, new RecordingStore(_store, _profileWrites), new FakeUser(userId), ai, new EfUnitOfWork(_db), _pdf, _clock);
 
     private static FakeAi Failing() => new(fail: new AiUnavailableException("down"));
 
@@ -883,5 +887,42 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         await GenerateAsync(ai, Req());
 
         Assert.Contains("Polish diacritics", ai.Prompt);
+    }
+
+    /// <summary>We assume the letter goes out the day it is generated: the carrier's month starts now.</summary>
+    [Fact]
+    public async Task FirstLetterForNewCase_MarksItSent_AndStartsTheResponseClock()
+    {
+        var result = await Service(Failing()).GenerateAsync(_annaCaseId, Req(), CancellationToken.None);
+
+        var stored = await _db.Cases.AsNoTracking().SingleAsync(c => c.Id == _annaCaseId);
+        Assert.Equal(CaseStatus.Sent, stored.Status);
+        Assert.Equal(Now, stored.FiledAt);
+        Assert.Equal(Now.AddMonths(1), stored.ResponseDueDate);
+        Assert.True(result.Letter!.DeadlineStarted);
+        Assert.Equal(Now.AddMonths(1), result.Letter.ResponseDueDate);
+    }
+
+    [Theory]
+    [InlineData(CaseStatus.Sent)]
+    [InlineData(CaseStatus.Paid)]
+    [InlineData(CaseStatus.Rejected)]
+    public async Task RegeneratingLetter_ForCaseAlreadyPastNew_KeepsStatusAndDates(CaseStatus status)
+    {
+        var filedAt = Now.AddDays(-10);
+        var c = await _cases.GetAsync(_annaCaseId, Anna);
+        c!.Status = status;
+        c.FiledAt = filedAt;
+        c.ResponseDueDate = filedAt.AddMonths(1);
+        await _cases.UpdateAsync(c);
+
+        var result = await Service(Failing()).GenerateAsync(_annaCaseId, Req(), CancellationToken.None);
+
+        var stored = await _db.Cases.AsNoTracking().SingleAsync(x => x.Id == _annaCaseId);
+        Assert.Equal(status, stored.Status);
+        Assert.Equal(filedAt, stored.FiledAt);
+        Assert.Equal(filedAt.AddMonths(1), stored.ResponseDueDate);
+        Assert.False(result.Letter!.DeadlineStarted);
+        Assert.Equal(filedAt.AddMonths(1), result.Letter.ResponseDueDate);
     }
 }

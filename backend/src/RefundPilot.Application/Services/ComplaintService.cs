@@ -29,7 +29,7 @@ public interface IComplaintService
 /// </summary>
 public sealed partial class ComplaintService(
     ICaseRepository cases, IUserProfileStore profiles, ICurrentUser currentUser, IAiClient ai, IUnitOfWork unitOfWork,
-    IComplaintPdfRenderer pdf)
+    IComplaintPdfRenderer pdf, TimeProvider clock)
     : IComplaintService
 {
     internal const string Schema = """
@@ -86,8 +86,13 @@ public sealed partial class ComplaintService(
         var (finalBody, missing) = Fill(body, PayoutSentence(letterKind, request.Payout, refundCase.IncidentType),
             Sanitize(profile.FullName, MaxName), Sanitize(profile.Address, MaxAddress), iban);
 
+        // Assumption agreed with the user: the letter is sent the day it is generated, so the carrier's month starts now.
+        // Only from New: regenerating a letter for a case already sent or settled never moves its dates.
+        var deadlineStarted = refundCase.Status == CaseStatus.New;
         await unitOfWork.ExecuteInTransactionAsync(async () =>
         {
+            if (deadlineStarted)
+                refundCase.MarkSent(clock.GetUtcNow().UtcDateTime);
             refundCase.PayoutPreference = request.Payout;
             await cases.UpdateAsync(refundCase);
 
@@ -101,7 +106,8 @@ public sealed partial class ComplaintService(
                 await profiles.UpdateAsync(userId, updated);
         }, ct);
 
-        return new(ComplaintStatus.Generated, new ComplaintDto(subject, finalBody, UsedAi: draft is not null, missing));
+        return new(ComplaintStatus.Generated, new ComplaintDto(subject, finalBody, UsedAi: draft is not null, missing,
+            deadlineStarted, refundCase.ResponseDueDate));
     }
 
     private async Task<(string Subject, string Body)?> TryAiDraftAsync(

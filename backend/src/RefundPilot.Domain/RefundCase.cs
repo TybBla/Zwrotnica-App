@@ -2,6 +2,9 @@ namespace RefundPilot.Domain;
 
 public sealed class RefundCase
 {
+    /// <summary>Regulation (EU) 2021/782: the carrier answers a complaint within one month.</summary>
+    public const int ResponseMonths = 1;
+
     public int Id { get; set; }
     public string UserId { get; set; } = string.Empty;
     public string Carrier { get; set; } = string.Empty;
@@ -24,4 +27,12 @@ public sealed class RefundCase
     public DateTime? ResponseDueDate { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>Marks the case as sent at <paramref name="filedAt"/> and starts the carrier's month to respond.</summary>
+    public void MarkSent(DateTime filedAt)
+    {
+        Status = CaseStatus.Sent;
+        FiledAt = filedAt;
+        ResponseDueDate = filedAt.AddMonths(ResponseMonths);
+    }
 }

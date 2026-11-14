@@ -64,11 +64,7 @@ public sealed class CaseService(
 
         // Leaving Sent keeps FiledAt/ResponseDueDate as history; re-saving Sent does not restart the clock.
         if (status == CaseStatus.Sent && refundCase.Status != CaseStatus.Sent)
-        {
-            var now = clock.GetUtcNow().UtcDateTime;
-            refundCase.FiledAt = now;
-            refundCase.ResponseDueDate = now.AddMonths(1);
-        }
+            refundCase.MarkSent(clock.GetUtcNow().UtcDateTime);
         refundCase.Status = status;
 
         await repository.UpdateAsync(refundCase);

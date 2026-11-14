@@ -84,6 +84,9 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
         Assert.Equal("Voucher", profile.GetProperty("preferredPayout").GetString());
         var stored = await (await client.GetAsync($"/api/cases/{id}")).Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Voucher", stored.GetProperty("payoutPreference").GetString());
+        Assert.Equal("Sent", stored.GetProperty("status").GetString());
+        Assert.True(json.GetProperty("deadlineStarted").GetBoolean());
+        Assert.Equal(stored.GetProperty("responseDueDate").GetDateTime(), json.GetProperty("responseDueDate").GetDateTime());
     }
 
     [Fact]
