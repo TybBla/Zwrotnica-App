@@ -220,7 +220,8 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
           <div className="wizard-notes">
             <p>
               <ShieldIcon size={16} />
-              Nie zapisujemy plików – służą tylko do odczytania danych z biletu.
+              Nie zapisujemy plików – służą tylko do odczytania danych z biletu. Dane osobowe na zdjęciu możesz zasłonić, nie są
+              potrzebne.
             </p>
           </div>
           <p className="visually-hidden" role="status">
