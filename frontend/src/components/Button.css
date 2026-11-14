@@ -74,6 +74,16 @@
   background: var(--surface-sunken);
 }
 
+/* Danger – confirms a destructive action; solid muted red, surface-colored text (7.9:1 light, 8.1:1 dark). */
+.button--danger {
+  background: var(--danger);
+  color: var(--surface);
+}
+
+.button--danger:active:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 82%, var(--text));
+}
+
 /* Ghost – text-weight actions. */
 .button--ghost {
   background: transparent;
@@ -92,6 +102,10 @@
   .button--secondary:hover:not(:disabled) {
     border-color: var(--text-secondary);
     background: var(--surface-sunken);
+  }
+
+  .button--danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 90%, var(--text));
   }
 
   .button--ghost:hover:not(:disabled) {

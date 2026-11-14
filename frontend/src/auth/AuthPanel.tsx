@@ -3,7 +3,7 @@ import { LoginForm } from './LoginForm'
 import { RegisterForm } from './RegisterForm'
 import './Auth.css'
 
-type Tab = 'login' | 'register'
+export type Tab = 'login' | 'register'
 
 const tabs: { id: Tab; label: string }[] = [
   { id: 'login', label: 'Logowanie' },
@@ -21,13 +21,17 @@ interface AuthPanelProps {
   titleId?: string
   /** Inline panels are a labelled region; inside a dialog the dialog itself is the landmark. */
   as?: 'section' | 'div'
+  /** The sign-in pages use the panel title as the page's h1. */
+  titleAs?: 'h1' | 'h2' | 'h3'
+  /** /rejestracja opens on the registration tab. */
+  initialTab?: Tab
 }
 
-/** Sign in or create an account (tabs share the e-mail). Used inline in the wizard and in the header dialog. */
-export function AuthPanel({ title, description, onSuccess, focus = 'heading', titleId, as: Element = 'section' }: AuthPanelProps) {
+/** Sign in or create an account (tabs share the e-mail). Used inline in the wizard, in the header dialog and on /logowanie. */
+export function AuthPanel({ title, description, onSuccess, focus = 'heading', titleId, as: Element = 'section', titleAs, initialTab = 'login' }: AuthPanelProps) {
   // Inside a dialog the panel title is the dialog's own heading.
-  const Heading = Element === 'div' ? 'h2' : 'h3'
-  const [tab, setTab] = useState<Tab>('login')
+  const Heading = titleAs ?? (Element === 'div' ? 'h2' : 'h3')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [email, setEmail] = useState('')
   const id = useId()
   const headingId = titleId ?? `${id}-title`

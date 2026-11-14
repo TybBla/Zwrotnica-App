@@ -1,0 +1,96 @@
+/* Confirmation dialog: same shape as the sign-in dialog – a bottom sheet on phones, centred from 36rem. */
+.confirm-dialog {
+  width: 100%;
+  max-width: 100%;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-raised);
+  animation: confirm-sheet-in var(--duration-base) var(--ease-out) both;
+}
+
+.confirm-dialog::backdrop {
+  background: var(--scrim);
+}
+
+.confirm-dialog__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--gutter) max(var(--space-6), env(safe-area-inset-bottom));
+}
+
+.confirm-dialog__title {
+  font-size: var(--text-xl);
+}
+
+.confirm-dialog__body {
+  color: var(--text-secondary);
+}
+
+.confirm-dialog__error {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius-md);
+  background: var(--danger-tint);
+  font-size: var(--text-sm);
+}
+
+.confirm-dialog__error svg {
+  flex: none;
+  color: var(--danger);
+}
+
+/* Phones: stacked, the confirming action on top (thumb reach); desktop: side by side, confirm on the right. */
+.confirm-dialog__actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+@media (min-width: 36rem) {
+  .confirm-dialog {
+    width: min(28rem, calc(100% - 2 * var(--gutter)));
+    margin: auto;
+    border-radius: var(--radius-lg);
+    animation-name: confirm-dialog-in;
+  }
+
+  .confirm-dialog__content {
+    padding: var(--space-8);
+  }
+
+  .confirm-dialog__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
+@keyframes confirm-sheet-in {
+  from {
+    transform: translateY(var(--sheet-shift, 24px));
+  }
+}
+
+@keyframes confirm-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--enter-scale));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog {
+    --sheet-shift: 0px;
+  }
+}
+
+html:has(.confirm-dialog[open]) {
+  overflow: hidden;
+}

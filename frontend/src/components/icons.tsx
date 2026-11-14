@@ -4,6 +4,7 @@ import {
   Camera,
   Check,
   ChevronDown,
+  ChevronRight,
   CircleAlert,
   CircleCheck,
   CircleMinus,
@@ -19,6 +20,7 @@ import {
   ShieldCheck,
   Sun,
   Ticket,
+  Trash2,
   TriangleAlert,
   Upload,
   User,
@@ -66,3 +68,5 @@ export const PencilIcon = icon(Pencil)
 /** Reading the ticket (AI extraction): a document being scanned, not a "magic" sparkle. */
 export const ScanIcon = icon(ScanText)
 export const ExternalLinkIcon = icon(ExternalLink)
+export const TrashIcon = icon(Trash2)
+export const ChevronRightIcon = icon(ChevronRight)

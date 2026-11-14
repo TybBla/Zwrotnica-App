@@ -1,4 +1,5 @@
 import { StrictMode } from 'react'
+import { BrowserRouter } from 'react-router'
 import { createRoot } from 'react-dom/client'
 // IBM Plex, self-hosted (no third-party font requests): Sans 400–700 and Mono 400–500, latin + latin-ext only.
 import '@fontsource/ibm-plex-sans/latin-400.css'
@@ -20,8 +21,10 @@ import { AuthProvider } from './auth/AuthProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
   </StrictMode>,
 )

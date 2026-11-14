@@ -12,12 +12,14 @@ export interface AccountMenuItem {
 
 interface AccountMenuProps {
   onSignIn: () => void
-  /** Extra entries above "Wyloguj się" (profile, cases — wired up with routing). */
+  /** Extra entries above "Wyloguj się" (Moje sprawy, Profil). */
   items?: AccountMenuItem[]
+  /** Called right before signing out (e.g. leave a page that needs an account). */
+  onLogout?: () => void
 }
 
 /** Header account control: "Zaloguj się" when signed out, otherwise an avatar with a small menu. */
-export function AccountMenu({ onSignIn, items = [] }: AccountMenuProps) {
+export function AccountMenu({ onSignIn, items = [], onLogout }: AccountMenuProps) {
   const { user, loading, logout } = useAuth()
   const [open, setOpen] = useState(false)
   const menuId = useId()
@@ -89,7 +91,14 @@ export function AccountMenu({ onSignIn, items = [] }: AccountMenuProps) {
               </li>
             ))}
             <li>
-              <button type="button" className="account-menu__item" onClick={select(() => void logout())}>
+              <button
+                type="button"
+                className="account-menu__item"
+                onClick={select(() => {
+                  onLogout?.()
+                  void logout()
+                })}
+              >
                 <LogOutIcon size={18} />
                 Wyloguj się
               </button>

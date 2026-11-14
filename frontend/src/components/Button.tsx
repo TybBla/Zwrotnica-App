@@ -1,7 +1,8 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 import './Button.css'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost'
+/** `danger` only for the confirming button of a destructive dialog (delete). */
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
@@ -12,6 +13,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   block?: boolean
   iconStart?: ReactNode
   iconEnd?: ReactNode
+  ref?: Ref<HTMLButtonElement>
 }
 
 export function Button({

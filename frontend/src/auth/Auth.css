@@ -183,3 +183,28 @@ section.auth-panel {
 html:has(.auth-dialog[open]) {
   overflow: hidden;
 }
+
+/* ---------- /logowanie, /rejestracja: the panel as a page ---------- */
+.auth-page {
+  max-width: calc(28rem + 2 * var(--gutter));
+}
+
+.auth-page .auth-panel {
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.auth-page .auth-panel__title {
+  font-size: var(--text-2xl);
+}
+
+@media (max-width: 35.99rem) {
+  /* Phones: the page is the panel, no box inside a box. */
+  .auth-page .auth-panel {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+}

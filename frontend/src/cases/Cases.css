@@ -1,0 +1,413 @@
+/* Cases list and case page: rows and a definition list, not cards. Tokens only. */
+
+/* ---------- Page head + summary ---------- */
+.cases-page__head {
+  gap: var(--space-4);
+}
+
+@media (min-width: 48rem) {
+  .cases-page__head {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.page__titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cases-page__new {
+  align-self: flex-start;
+}
+
+@media (min-width: 48rem) {
+  .cases-page__new {
+    align-self: auto;
+  }
+}
+
+.cases-stats {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+  min-height: 1.55em;
+  color: var(--text-secondary);
+}
+
+.cases-stats__value {
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+/* Phones: one figure per line reads better than a wrapped run with stray separators. */
+@media (max-width: 29.99rem) {
+  .cases-stats {
+    flex-direction: column;
+  }
+
+  .cases-stats__sep {
+    display: none;
+  }
+}
+
+/* ---------- Rows ---------- */
+.case-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.case-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'main money'
+    'controls controls'
+    'error error';
+  gap: var(--space-3) var(--space-4);
+  padding-block: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 48rem) {
+  .case-row {
+    grid-template-columns: minmax(0, 1fr) 9rem auto;
+    grid-template-areas:
+      'main money controls'
+      'error error error';
+    align-items: start;
+    column-gap: var(--space-6);
+  }
+}
+
+.case-row__main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  grid-area: main;
+  min-width: 0;
+}
+
+.case-row__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.75rem;
+  margin-block: calc(-1 * var(--space-2)) calc(-1 * var(--space-1));
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.case-row__title svg {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .case-row__title:hover {
+    color: var(--link);
+    text-decoration: underline;
+  }
+}
+
+.case-row__meta {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.case-row__unknown {
+  font-style: italic;
+}
+
+.case-row__money {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  grid-area: money;
+}
+
+@media (min-width: 48rem) {
+  .case-row__money {
+    padding-top: var(--space-1);
+  }
+}
+
+.case-row__amount {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.case-row__controls {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  grid-area: controls;
+}
+
+.case-row__controls .status-select {
+  flex: 1;
+}
+
+@media (min-width: 48rem) {
+  .case-row__controls .status-select {
+    flex: none;
+    width: 11rem;
+  }
+}
+
+.case-row__delete {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-secondary);
+  transition:
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    transform var(--duration-press) var(--ease-out);
+}
+
+.case-row__delete:active {
+  transform: scale(var(--press-scale));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .case-row__delete:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+}
+
+.case-row__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  grid-area: error;
+  padding: var(--space-2) var(--space-3);
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius-xs);
+  background: var(--danger-tint);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.case-row__error svg {
+  flex: none;
+  margin-top: 0.1em;
+  color: var(--danger);
+}
+
+/* ---------- Status select ---------- */
+.status-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.status-select__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+/* ---------- Deadline ---------- */
+.deadline {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--neutral-tint);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+  color: var(--neutral);
+}
+
+.deadline svg {
+  flex: none;
+  margin-top: 0.15em;
+}
+
+.deadline--overdue {
+  background: var(--warning-tint);
+  color: var(--warning);
+}
+
+.deadline__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  color: inherit;
+  font-weight: var(--weight-semibold);
+}
+
+/* ---------- Loading and empty ---------- */
+.case-row--skeleton {
+  pointer-events: none;
+}
+
+/* Static placeholders: no shimmer (motion only answers the user). */
+.skeleton {
+  display: block;
+  border-radius: var(--radius-xs);
+  background: var(--surface-sunken);
+}
+
+.skeleton--title {
+  width: min(14rem, 70%);
+  height: 1.375rem;
+}
+
+.skeleton--line {
+  width: min(20rem, 90%);
+  height: 1rem;
+  margin-top: var(--space-2);
+}
+
+.skeleton--amount {
+  width: 5rem;
+  height: 1.375rem;
+}
+
+.cases-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  max-width: 38rem;
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.cases-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  background: var(--brand-tint);
+  color: var(--brand-tint-text);
+}
+
+.cases-empty__title {
+  font-size: var(--text-xl);
+}
+
+.cases-empty__text {
+  color: var(--text-secondary);
+}
+
+.cases-empty .button {
+  margin-top: var(--space-2);
+}
+
+/* ---------- Case page ---------- */
+.case-detail__lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* The amount on the signal-yellow plate, as on the wizard's result. */
+.case-detail__amount {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+}
+
+.case-facts {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.case-facts__row {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 36rem) {
+  .case-facts__row {
+    grid-template-columns: 11rem minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+.case-facts__term {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.case-facts__value {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.case-detail__note {
+  padding: var(--space-3) var(--space-4);
+  border-left: 4px solid var(--warning);
+  border-radius: var(--radius-md);
+  background: var(--warning-tint);
+  font-size: var(--text-sm);
+}
+
+.case-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.case-detail__subtitle {
+  font-size: var(--text-xl);
+}
+
+.case-detail__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+}
+
+.case-detail__status .status-select {
+  width: min(100%, 14rem);
+}
+
+.case-detail__status .deadline {
+  margin-bottom: var(--space-2);
+}
+
+.case-detail__hint {
+  max-width: 38rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

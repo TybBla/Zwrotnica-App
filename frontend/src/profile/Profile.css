@@ -1,0 +1,35 @@
+/* Profile: one form column, GOV.UK-like spacing. Tokens only. */
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 30rem;
+}
+
+.profile-form__payout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+.profile-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.profile-form__saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--weight-medium);
+  color: var(--success);
+}
+
+/* The read-only e-mail looks settled, not like a disabled control. */
+.profile-form input[readonly] {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
