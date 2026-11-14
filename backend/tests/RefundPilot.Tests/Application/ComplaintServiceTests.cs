@@ -169,8 +169,22 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
 
         var letter = await GenerateAsync(Failing(), Req());
 
-        Assert.Contains("Pociąg został odwołany i zrezygnowałem(-am) z podróży.", letter.Body);
-        Assert.DoesNotContain("0 min", letter.Body);
+        // The wizard never asks whether the passenger travelled another way, so the letter states neither.
+        Assert.Contains(
+            "Wniosek dotyczy przejazdu w dniu 01.11.2026 pociągiem kat. IC relacją Gdynia Główna – Kraków Główny na podstawie " +
+            "biletu nr IC-4821-0093, za który zapłaciłem(-am) 40,00 zł. Pociąg został odwołany.", letter.Body);
+        foreach (var claim in new[] { "odbyłem", "zrezygnow", "0 min" })
+            Assert.DoesNotContain(claim, letter.Body);
+    }
+
+    [Fact]
+    public async Task Template_Delay_StillSaysThePassengerTravelled()
+    {
+        var letter = await GenerateAsync(Failing(), Req());
+
+        Assert.Contains(
+            "W dniu 01.11.2026 odbyłem(-am) podróż pociągiem kat. IC relacją Gdynia Główna – Kraków Główny na podstawie " +
+            "biletu nr IC-4821-0093, za który zapłaciłem(-am) 40,00 zł. Pociąg dotarł do stacji docelowej z opóźnieniem 70 min.", letter.Body);
     }
 
     private async Task MakeAnnaCaseCancellationAsync()
@@ -220,7 +234,7 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         await GenerateAsync(ai, Req());
 
         Assert.Contains("art. 18", ai.Prompt);
-        Assert.Contains("The train was cancelled and the passenger gave up the journey.", ai.Prompt);
+        Assert.Contains("The train was cancelled. Do not state whether the passenger travelled or gave up the journey.", ai.Prompt);
         Assert.DoesNotContain("art. 19", ai.Prompt);
     }
 
@@ -693,9 +707,23 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         var letter = await GenerateAsync(Failing(), Req());
 
         Assert.Equal("Reklamacja – odwołanie pociągu Polregio z dnia 01.11.2026", letter.Subject);
-        Assert.Contains("Pociąg został odwołany.", letter.Body);
+        Assert.Contains(
+            "składam reklamację dotyczącą przejazdu w dniu 01.11.2026 pociągiem relacją Gdynia Główna – Kraków Główny na podstawie " +
+            "biletu nr IC-4821-0093, za który zapłaciłem(-am) 40,00 zł. Pociąg został odwołany.", letter.Body);
+        Assert.DoesNotContain("odbytego", letter.Body);
         Assert.Contains("W przypadku przyznania zwrotu należności lub rekompensaty proszę o wypłatę na rachunek bankowy lub kartę, z których opłacono bilet.", letter.Body);
         Assert.DoesNotContain("0 min", letter.Body);
+    }
+
+    [Fact]
+    public async Task UncoveredCancellation_AiPrompt_DoesNotAssumeWhatThePassengerDid()
+    {
+        await MakeAnnaCaseUncoveredAsync(Verdict.NotCovered, IncidentType.Cancellation);
+        var ai = new FakeAi(ValidCarrierRulesJson());
+
+        await GenerateAsync(ai, Req());
+
+        Assert.Contains("- Incident: The train was cancelled. Do not state whether the passenger travelled or gave up the journey.", ai.Prompt);
     }
 
     [Fact]

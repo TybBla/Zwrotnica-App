@@ -47,6 +47,10 @@ public sealed partial class ComplaintService(
         "Write the subject and the body in correct Polish with all Polish diacritics (ą, ć, ę, ł, ń, ó, ś, ź, ż), " +
         "e.g. \"z tytułu\", \"proszę\", \"pociągu\"; never replace them with plain ASCII letters.";
 
+    // The wizard never asks whether the passenger travelled another way, so the letter must not say either.
+    private const string CancelledIncident =
+        "The train was cancelled. Do not state whether the passenger travelled or gave up the journey.";
+
     private const int MaxName = 200, MaxAddress = 300, MaxIban = 34, MaxSubject = 200, MaxBody = 6000;
 
     public async Task<byte[]?> RenderPdfAsync(int caseId, ComplaintPdfRequest request) =>
@@ -137,7 +141,7 @@ public sealed partial class ComplaintService(
     internal static string BuildPrompt(ComplaintFacts f)
     {
         var incident = f.Incident == IncidentType.Cancellation
-            ? "The train was cancelled and the passenger gave up the journey."
+            ? CancelledIncident
             : $"The train arrived at the destination {f.DelayMinutes} minutes late.";
         var cause = f.CauseText is { } c ? $"\n- Cause of the delay (if relevant): {c}" : "";
         var article = ComplaintTemplate.Article(f.Incident);
@@ -176,7 +180,7 @@ public sealed partial class ComplaintService(
     internal static string BuildCarrierRulesPrompt(ComplaintFacts f)
     {
         var incident = f.Incident == IncidentType.Cancellation
-            ? "The train was cancelled."
+            ? CancelledIncident
             : $"The train arrived at the destination {f.DelayMinutes} minutes late.";
         var cause = f.CauseText is { } c ? $"\n- Cause of the delay (if relevant): {c}" : "";
         return $"""

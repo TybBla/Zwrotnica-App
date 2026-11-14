@@ -64,12 +64,13 @@ public static class ComplaintTemplate
             ? $"Wniosek o zwrot należności za bilet – odwołanie pociągu {f.Carrier} z dnia {f.DateText}"
             : $"Wniosek o wypłatę odszkodowania – opóźnienie pociągu {f.Carrier} z dnia {f.DateText}";
 
-        // The art. 18 refund applies when the passenger gives up the journey, which is what this letter claims.
         var what = cancelled
-            ? "Pociąg został odwołany i zrezygnowałem(-am) z podróży."
+            ? "Pociąg został odwołany."
             : $"Pociąg dotarł do stacji docelowej z opóźnieniem {f.DelayMinutes} min.";
         if (f.CauseText is { } cause)
             what += $" Przyczyna zdarzenia (według dostępnych informacji): {cause}.";
+        // A cancelled train: the wizard never asks whether the passenger travelled another way, so say neither.
+        var trip = cancelled ? $"Wniosek dotyczy przejazdu w dniu {f.DateText}" : $"W dniu {f.DateText} odbyłem(-am) podróż";
 
         var body = $"""
             {FullName}
@@ -83,7 +84,7 @@ public static class ComplaintTemplate
 
             zwracam się z wnioskiem o {claim} na podstawie {Article(f.Incident)} rozporządzenia (UE) 2021/782 Parlamentu Europejskiego i Rady z dnia 29 kwietnia 2021 r. w sprawie praw i obowiązków pasażerów kolejowych.
 
-            W dniu {f.DateText} odbyłem(-am) podróż pociągiem{category} relacją {f.FromText} – {f.ToText} na podstawie biletu{ticket}, za który zapłaciłem(-am) {f.PriceText}. {what}
+            {trip} pociągiem{category} relacją {f.FromText} – {f.ToText} na podstawie biletu{ticket}, za który zapłaciłem(-am) {f.PriceText}. {what}
 
             Wnoszę o {claim} w wysokości {f.AmountText}.
 
@@ -127,7 +128,7 @@ public static class ComplaintTemplate
 
             Szanowni Państwo,
 
-            składam reklamację dotyczącą przejazdu w dniu {f.DateText} pociągiem{category} relacją {f.FromText} – {f.ToText}, odbytego na podstawie biletu{ticket}, za który zapłaciłem(-am) {f.PriceText}. {what}
+            składam reklamację dotyczącą przejazdu w dniu {f.DateText} pociągiem{category} relacją {f.FromText} – {f.ToText}{(cancelled ? "" : ", odbytego")} na podstawie biletu{ticket}, za który zapłaciłem(-am) {f.PriceText}. {what}
 
             Proszę o rozpatrzenie reklamacji i przyznanie rekompensaty lub zwrotu należności za bilet na zasadach określonych w Państwa regulaminie przewozu.
 
