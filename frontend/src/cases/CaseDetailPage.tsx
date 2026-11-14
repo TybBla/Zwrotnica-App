@@ -106,7 +106,7 @@ function CaseDetail({ id }: { id: number | null }) {
       if (controller.signal.aborted) return
       setLetterError(
         error instanceof ApiError && error.status === 409
-          ? 'Dla tej sprawy nie należy się odszkodowanie, więc pisma nie przygotujemy.'
+          ? 'W sprawie brakuje ceny biletu, więc pisma nie przygotujemy.'
           : error instanceof ApiError
             ? error.detail
             : 'Nie udało się przygotować pisma. Spróbuj ponownie.',

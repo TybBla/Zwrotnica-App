@@ -498,19 +498,57 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.True(letter.UsedAi);
     }
 
-    /// <summary>A covered train with nothing due (e.g. under 60 minutes late): there is nothing to ask for.</summary>
+    /// <summary>A covered train with nothing due under the EU rules (e.g. 45 minutes late) still gets a carrier-rules complaint.</summary>
     [Fact]
-    public async Task EligibleCaseWithNothingDue_ReturnsNotEligibleAndWritesNothing()
+    public async Task EligibleCaseWithNothingDue_GetsCarrierRulesComplaint()
     {
         var c = await _cases.GetAsync(_annaCaseId, Anna);
         c!.CompensationAmount = 0m;
-        c.DelayMinutes = 30;
+        c.DelayMinutes = 45;
+        await _cases.UpdateAsync(c);
+
+        var result = await Service(Failing()).GenerateAsync(_annaCaseId, Req(PayoutPreference.Voucher), CancellationToken.None);
+
+        Assert.Equal(ComplaintStatus.Generated, result.Status);
+        var letter = result.Letter!;
+        Assert.Equal("Reklamacja – opóźnienie pociągu PKP Intercity z dnia 01.11.2026", letter.Subject);
+        Assert.Contains("45 min", letter.Body);
+        Assert.Contains("regulamin", letter.Body);
+        Assert.Contains("W przypadku przyznania rekompensaty proszę o jej wypłatę w formie bonu.", letter.Body);
+        foreach (var banned in new[] { "art. 19", "art. 18", "2021/782", " 0,00 zł" })
+            Assert.DoesNotContain(banned, letter.Body);
+        Assert.Equal(PayoutPreference.Voucher, (await _cases.GetAsync(_annaCaseId, Anna))!.PayoutPreference);
+    }
+
+    [Fact]
+    public async Task EligibleCaseWithNothingDue_AiDraftIsValidatedAsCarrierRules()
+    {
+        var c = await _cases.GetAsync(_annaCaseId, Anna);
+        c!.CompensationAmount = 0m;
+        c.DelayMinutes = 45;
+        await _cases.UpdateAsync(c);
+        var ai = new FakeAi(ValidCarrierRulesJson());
+
+        var letter = await GenerateAsync(ai, Req());
+
+        Assert.True(letter.UsedAi);
+        Assert.Contains("regulamin", ai.Prompt);
+        Assert.DoesNotContain("Amount requested", ai.Prompt);
+    }
+
+    /// <summary>Without a ticket price there is nothing to describe: the only input the letter refuses (409).</summary>
+    [Fact]
+    public async Task CaseWithoutTicketPrice_ReturnsPriceRequiredAndWritesNothing()
+    {
+        var c = await _cases.GetAsync(_annaCaseId, Anna);
+        c!.CompensationAmount = 0m;
+        c.TicketPrice = 0m;
         await _cases.UpdateAsync(c);
         var ai = new FakeAi(ValidAiJson());
 
         var result = await Service(ai).GenerateAsync(_annaCaseId, Req(PayoutPreference.Voucher, "PL27114020040000300201355387", true), CancellationToken.None);
 
-        Assert.Equal(ComplaintStatus.NotEligible, result.Status);
+        Assert.Equal(ComplaintStatus.PriceRequired, result.Status);
         Assert.Null(result.Letter);
         Assert.Null(ai.Prompt);
         Assert.Equal(PayoutPreference.OriginalPayment, (await _cases.GetAsync(_annaCaseId, Anna))!.PayoutPreference);

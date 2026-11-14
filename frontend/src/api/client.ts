@@ -197,7 +197,7 @@ export const api = {
 
   getStats: () => json<StatsDto>('/stats'),
 
-  /** 409 when the case is not eligible for compensation. */
+  /** 409 when the case has no ticket price (nothing to describe). */
   generateComplaint: (id: number, request: ComplaintRequest, signal?: AbortSignal) =>
     json<ComplaintDto>(`/cases/${id}/complaint`, 'POST', request, signal),
 

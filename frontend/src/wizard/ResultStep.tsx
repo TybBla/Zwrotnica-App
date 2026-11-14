@@ -54,7 +54,7 @@ const SESSION_EXPIRED = 'Sesja wygasła. Zaloguj się ponownie i potwierdź form
 type SaveError =
   /** Something the user can fix in an earlier step (the API rejected a field). */
   | { kind: 'fix'; messages: string[]; step: Extract<WizardStep, 'ticket' | 'delay'> }
-  /** The case does not qualify (409): nothing to retry. */
+  /** The API refuses the letter (409, e.g. no ticket price): nothing to retry. */
   | { kind: 'final'; message: string }
   /** Temporary trouble (AI down, timeout, network): try again. */
   | { kind: 'retry'; message: string }
@@ -513,6 +513,7 @@ function NextSteps({ state, dispatch }: { state: WizardState; dispatch: Dispatch
   } else if (verdict === 'NotCovered') {
     items.push('Odszkodowanie przysługuje od 60 minut opóźnienia na stacji docelowej.')
     items.push('Jeśli pociąg przyjechał później, niż wpisałeś, popraw opóźnienie.')
+    items.push('Możesz też złożyć reklamację – przygotujemy ją poniżej, a przewoźnik rozpatrzy ją według swojego regulaminu.')
     fix = 'delay'
   } else {
     items.push('Nie rozpoznaliśmy przewoźnika lub kategorii pociągu – od nich zależy, czy należy się odszkodowanie.')

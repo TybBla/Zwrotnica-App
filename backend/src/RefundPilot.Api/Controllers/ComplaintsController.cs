@@ -18,8 +18,8 @@ public sealed class ComplaintsController(IComplaintService complaints) : Control
         return result.Status switch
         {
             ComplaintStatus.Generated => Ok(result.Letter),
-            ComplaintStatus.NotEligible => Problem(
-                "Ta sprawa nie kwalifikuje się do odszkodowania – nie można wygenerować pisma.",
+            ComplaintStatus.PriceRequired => Problem(
+                "Podaj cenę biletu w sprawie, aby przygotować pismo.",
                 statusCode: StatusCodes.Status409Conflict),
             _ => NotFound(),
         };

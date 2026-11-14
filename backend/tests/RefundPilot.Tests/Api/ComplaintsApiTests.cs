@@ -189,13 +189,33 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
     }
 
     [Fact]
-    public async Task CoveredCaseWithNothingDue_Returns409ProblemAndKeepsPayout()
+    public async Task CoveredCaseWithNothingDue_Returns200WithCarrierRulesComplaint()
     {
         var client = await LoggedInClientAsync("noelig@test.pl");
         var created = await client.PostAsJsonAsync("/api/cases", new
         {
             carrier = "PKP Intercity", trainCategory = "IC", fromStation = "A", toStation = "B", ticketNumber = "IC-1",
-            travelDate = "2026-11-01", ticketPrice = 40m, incidentType = "Delay", delayMinutes = 30,
+            travelDate = "2026-11-01", ticketPrice = 40m, incidentType = "Delay", delayMinutes = 45,
+            isSeasonTicket = false,
+        });
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var response = await client.PostAsJsonAsync($"/api/cases/{id}/complaint", new { payout = "Voucher" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.StartsWith("Reklamacja – opóźnienie pociągu PKP Intercity", json.GetProperty("subject").GetString());
+        Assert.DoesNotContain("art. 19", json.GetProperty("body").GetString());
+    }
+
+    [Fact]
+    public async Task CaseWithoutTicketPrice_Returns409ProblemAndKeepsPayout()
+    {
+        var client = await LoggedInClientAsync("noprice@test.pl");
+        var created = await client.PostAsJsonAsync("/api/cases", new
+        {
+            carrier = "PKP Intercity", trainCategory = "IC", fromStation = "A", toStation = "B", ticketNumber = "IC-1",
+            travelDate = "2026-11-01", ticketPrice = 0m, incidentType = "Delay", delayMinutes = 90,
             isSeasonTicket = false,
         });
         var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
@@ -203,7 +223,7 @@ public sealed class ComplaintsApiTests : IClassFixture<TestApiFactory>
         var response = await client.PostAsJsonAsync($"/api/cases/{id}/complaint", new { payout = "Voucher" });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Contains("nie kwalifikuje się do odszkodowania", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Podaj cenę biletu", await response.Content.ReadAsStringAsync());
         var profile = await (await client.GetAsync("/api/profile")).Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("OriginalPayment", profile.GetProperty("preferredPayout").GetString());
     }

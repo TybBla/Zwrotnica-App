@@ -172,18 +172,21 @@ describe('ResultStep – verdicts', () => {
     expect(await screen.findByText(letter.subject)).toBeTruthy()
   })
 
-  it('offers no save when a covered train is under 60 minutes late', async () => {
+  it('still prepares a complaint under the carrier’s rules when a covered train is under 60 minutes late', async () => {
+    const user = userEvent.setup()
+    signedIn = true
     renderResult({
       initial: {
         ...preset,
-        delay: { ...preset.delay, minutes: 30 },
+        delay: { ...preset.delay, minutes: 45 },
         assessment: { ...eligible, compensationAmount: 0, percent: 0, reason: 'Poniżej 60 minut.' },
       },
     })
     expect(await screen.findByRole('heading', { name: 'Nie należy się' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Zapisz sprawę/ })).toBeNull()
-    expect(screen.queryByRole('radiogroup')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Sprawdź kolejny bilet' })).toBeTruthy()
+    expect(screen.getByText(/Możesz też złożyć reklamację/)).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: /jeśli przewoźnik coś przyzna/ })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Zapisz sprawę i przygotuj reklamację' }))
+    expect(await screen.findByText(letter.subject)).toBeTruthy()
   })
 })
 
@@ -323,13 +326,13 @@ describe('ResultStep – errors', () => {
     expect(screen.getByTestId('step').textContent).toBe('ticket')
   })
 
-  it('says kindly when the case does not qualify (409)', async () => {
+  it('says plainly when the API refuses the letter (409) and offers no retry', async () => {
     const user = userEvent.setup()
     signedIn = true
-    vi.mocked(api.generateComplaint).mockRejectedValue(new ApiError(409, 'Ta sprawa nie kwalifikuje się do odszkodowania – nie można wygenerować pisma.'))
+    vi.mocked(api.generateComplaint).mockRejectedValue(new ApiError(409, 'Podaj cenę biletu w sprawie, aby przygotować pismo.'))
     renderResult()
     await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj pismo' }))
-    expect((await screen.findByRole('alert')).textContent).toMatch(/nie kwalifikuje się/)
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Podaj cenę biletu/)
     expect(screen.queryByRole('button', { name: 'Spróbuj ponownie' })).toBeNull()
   })
 

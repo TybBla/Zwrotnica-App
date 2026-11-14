@@ -6,15 +6,16 @@ using RefundPilot.Domain;
 
 namespace RefundPilot.Application.Services;
 
-public enum ComplaintStatus { Generated, NotFound, NotEligible }
+public enum ComplaintStatus { Generated, NotFound, PriceRequired }
 
 public sealed record ComplaintResult(ComplaintStatus Status, ComplaintDto? Letter);
 
 public interface IComplaintService
 {
     /// <summary>
-    /// NotFound when the case does not exist or belongs to someone else. NotEligible only for a covered train with nothing
-    /// due (e.g. under 60 minutes late); trains outside the EU scheme or unclear ones get a complaint under the carrier's rules.
+    /// NotFound when the case does not exist or belongs to someone else. PriceRequired when the case has no ticket price.
+    /// Money due gets a demand under the EU rules; anything else (outside the scheme, unclear, or a covered train with
+    /// nothing due, e.g. 45 minutes late) gets a complaint under the carrier's rules - filing is never blocked.
     /// </summary>
     Task<ComplaintResult> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct);
 
@@ -58,17 +59,15 @@ public sealed partial class ComplaintService(
         if (currentUser.UserId is not { } userId || await cases.GetAsync(caseId, userId) is not { } refundCase)
             return new(ComplaintStatus.NotFound, null);
 
-        // Eligible with money due: a formal demand under art. 19 / art. 18. Not covered or unclear: a complaint asking the
-        // carrier to decide under its own rules. A covered train with nothing due (e.g. under 60 minutes late) has
-        // nothing to ask for, so nothing is written.
-        var kind = refundCase.Verdict switch
-        {
-            Verdict.Eligible when refundCase.CompensationAmount > 0 => LetterKind.Compensation,
-            Verdict.NotCovered or Verdict.Unknown => LetterKind.CarrierRules,
-            _ => (LetterKind?)null,
-        };
-        if (kind is not { } letterKind)
-            return new(ComplaintStatus.NotEligible, null);
+        // Without a price there is no ticket to describe (the wizard never saves such a case).
+        if (refundCase.TicketPrice <= 0)
+            return new(ComplaintStatus.PriceRequired, null);
+
+        // Money due: a formal demand under art. 19 / art. 18. Anything else - not covered, unclear, or a covered train
+        // with nothing due under the EU rules - a complaint asking the carrier to decide under its own rules.
+        var letterKind = refundCase.Verdict == Verdict.Eligible && refundCase.CompensationAmount > 0
+            ? LetterKind.Compensation
+            : LetterKind.CarrierRules;
 
         var profile = await profiles.GetAsync(userId) ?? new UserProfile(null, null, null, request.Payout);
         var oneTimeIban = Sanitize(request.OneTimeIban is { } raw && !string.IsNullOrWhiteSpace(raw) ? Domain.Iban.Normalize(raw) : null, MaxIban);
@@ -173,7 +172,7 @@ public sealed partial class ComplaintService(
             """;
     }
 
-    /// <summary>Prompt for a train outside the EU 25%/50% scheme: facts only, no amount, the carrier's own rules decide.</summary>
+    /// <summary>Prompt when the EU 25%/50% scheme gives nothing: facts only, no amount, the carrier's own rules decide.</summary>
     internal static string BuildCarrierRulesPrompt(ComplaintFacts f)
     {
         var incident = f.Incident == IncidentType.Cancellation
@@ -182,8 +181,8 @@ public sealed partial class ComplaintService(
         var cause = f.CauseText is { } c ? $"\n- Cause of the delay (if relevant): {c}" : "";
         return $"""
             You write a formal complaint letter ("reklamacja") in Polish from a rail passenger to the railway carrier.
-            The EU compensation scheme of 25%/50% does not apply to this train (or it is unclear whether it does),
-            so the passenger asks the carrier to consider the complaint and grant compensation or a refund
+            The EU compensation scheme of 25%/50% gives nothing here (the train is outside it, it is unclear whether it
+            applies, or the delay was shorter than the 60 minutes it requires), so the passenger asks the carrier to consider the complaint and grant compensation or a refund
             under the carrier's own terms of carriage ("regulamin przewozu").
 
             Case facts:

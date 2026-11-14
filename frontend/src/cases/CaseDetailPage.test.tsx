@@ -69,7 +69,7 @@ describe('CaseDetailPage', () => {
     expect(await screen.findByText(/proszę o bon/)).toBeTruthy()
   })
 
-  it('prepares the complaint again for a regional train too, and none for a covered train with nothing due', async () => {
+  it('prepares the complaint again for a regional train and for a covered train with nothing due', async () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'getCase').mockResolvedValueOnce({ ...item, carrier: 'Polregio', trainCategory: null, verdict: 'NotCovered', compensationAmount: 0 })
     vi.spyOn(api, 'generateComplaint').mockResolvedValue({ subject: 'Reklamacja', body: 'wg regulaminu', usedAi: false, missingFields: [] })
@@ -78,11 +78,11 @@ describe('CaseDetailPage', () => {
     expect(await screen.findByText(/wg regulaminu/)).toBeTruthy()
     unmount()
 
-    vi.spyOn(api, 'getCase').mockResolvedValueOnce({ ...item, delayMinutes: 30, compensationAmount: 0 })
+    vi.spyOn(api, 'getCase').mockResolvedValueOnce({ ...item, delayMinutes: 45, compensationAmount: 0 })
     renderAt('/sprawy/7')
-    expect(await screen.findByRole('heading', { level: 1 })).toBeTruthy()
-    await screen.findByText('Opóźnienie 30 min')
-    expect(screen.queryByRole('button', { name: /Przygotuj/ })).toBeNull()
+    await screen.findByText('Opóźnienie 45 min')
+    expect(screen.getByRole('button', { name: 'Przygotuj reklamację ponownie' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Przygotuj pismo ponownie' })).toBeNull()
   })
 
   it('keeps focus on the page heading when the case finishes loading', async () => {
