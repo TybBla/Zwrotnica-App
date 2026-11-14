@@ -30,10 +30,6 @@
   font-size: var(--text-2xl);
 }
 
-#main h1[tabindex='-1']:focus {
-  outline: none;
-}
-
 .page__lead {
   max-width: 38rem;
   color: var(--text-secondary);

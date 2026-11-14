@@ -123,6 +123,15 @@ a {
   box-shadow: 0 0 0 2px var(--focus-halo);
 }
 
+/*
+ * Headings, regions and alerts that receive focus from code (route change, wizard step, error) are not controls:
+ * no ring or halo. Controls keep theirs, including inactive roving tabs (buttons with tabindex="-1").
+ */
+[tabindex='-1']:not(a, button, input, select, textarea):focus {
+  outline: none;
+  box-shadow: none;
+}
+
 /* Numbers that are compared (amounts, minutes) line up. */
 .tabular {
   font-variant-numeric: tabular-nums;
