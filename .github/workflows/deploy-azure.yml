@@ -1,0 +1,70 @@
+name: Deploy to Azure App Service
+
+# One App Service (Linux) hosts both the API and the built SPA on the same origin.
+# Setup and required secrets: docs/deploy-azure.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      self_contained:
+        description: 'Bundle the .NET runtime (only if the App Service stack has no .NET 10)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-azure
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Name of the App Service: repository variable or secret AZURE_WEBAPP_NAME.
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || secrets.AZURE_WEBAPP_NAME }}
+      HAS_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE != '' }}
+      SELF_CONTAINED: ${{ inputs.self_contained == true }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish API
+        run: |
+          if [ "$SELF_CONTAINED" = "true" ]; then
+            dotnet publish backend/src/RefundPilot.Api -c Release -o publish -r linux-x64 --self-contained true
+          else
+            dotnet publish backend/src/RefundPilot.Api -c Release -o publish -r linux-x64 --self-contained false
+          fi
+
+      - name: Copy SPA into wwwroot
+        run: |
+          mkdir -p publish/wwwroot
+          cp -r frontend/dist/. publish/wwwroot/
+          test -f publish/wwwroot/index.html
+
+      - name: Skip deploy (Azure not configured yet)
+        if: env.HAS_PUBLISH_PROFILE != 'true' || env.AZURE_WEBAPP_NAME == ''
+        run: echo "::notice::Set AZURE_WEBAPP_NAME and AZURE_WEBAPP_PUBLISH_PROFILE (docs/deploy-azure.md) to deploy."
+
+      - name: Deploy to Azure Web App
+        if: env.HAS_PUBLISH_PROFILE == 'true' && env.AZURE_WEBAPP_NAME != ''
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish
