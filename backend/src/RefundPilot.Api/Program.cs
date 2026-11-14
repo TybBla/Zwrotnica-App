@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -39,6 +40,9 @@ builder.Services.ConfigureApplicationCookie(o =>
 {
     o.Cookie.HttpOnly = true;
     o.Cookie.SameSite = SameSiteMode.Lax;
+    // Production is HTTPS-only (Azure terminates TLS; ForwardedHeaders restores the scheme), so never send the cookie in clear.
+    if (!builder.Environment.IsDevelopment())
+        o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     o.Events.OnRedirectToLogin = ctx =>
     {
         ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -79,7 +83,7 @@ builder.Services.AddRateLimiter(o =>
         {
             Status = StatusCodes.Status429TooManyRequests,
             Title = "Too Many Requests",
-            Detail = "Zbyt wiele zapytań. Spróbuj ponownie za minutę.",
+            Detail = "Zbyt wiele zapytaĹ„. SprĂłbuj ponownie za minutÄ™.",
         }, (JsonSerializerOptions?)null, "application/problem+json", ct);
     };
 });
@@ -90,10 +94,29 @@ builder.Services.AddCors(o => o.AddPolicy(FrontendCorsPolicy, policy => policy
     .AllowAnyMethod()
     .AllowCredentials()));
 
+// Behind Azure App Service's front end: take the client IP (rate limiter) and the https scheme from X-Forwarded-*.
+// The proxy's address is not known up front, so trust the single hop it adds (ForwardLimit = 1, the default).
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownIPNetworks.Clear();
+    o.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
+var seedEnabled = app.Configuration.GetValue("Seed:Enabled", defaultValue: true);
 await DatabaseInitializer.InitializeAsync(
-    app.Services, app.Configuration["Seed:DemoEmail"], app.Configuration["Seed:DemoPassword"]);
+    app.Services,
+    seedEnabled ? app.Configuration["Seed:DemoEmail"] : null,
+    seedEnabled ? app.Configuration["Seed:DemoPassword"] : null);
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseForwardedHeaders();
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -104,6 +127,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// The built SPA (frontend/dist copied to wwwroot at publish) is served from the API's own origin.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseCors(FrontendCorsPolicy);
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -111,6 +138,10 @@ app.UseAuthorization();
 
 app.MapGroup("/api/auth").MapIdentityApi<AppUser>();
 app.MapControllers();
+app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+
+// Client-side routes (/sprawy, /profil, ...) get index.html; /api and /swagger keep their own 404s.
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!(api|swagger)(/|$)).*$)}", "index.html");
 
 app.Run();
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RefundPilot.Domain;
@@ -13,6 +14,7 @@ public static class DatabaseInitializer
     {
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        EnsureDatabaseDirectory(db.Database.GetConnectionString());
         await db.Database.EnsureCreatedAsync();
 
         if (string.IsNullOrWhiteSpace(demoEmail) || string.IsNullOrWhiteSpace(demoPassword))
@@ -42,5 +44,18 @@ public static class DatabaseInitializer
 
         await SeedData.EnsureSeededAsync(db, demo.Id);
         await transaction.CommitAsync();
+    }
+
+    /// <summary>SQLite creates the file but not its folder (e.g. /home/data on Azure App Service).</summary>
+    private static void EnsureDatabaseDirectory(string? connectionString)
+    {
+        var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
+        if (string.IsNullOrEmpty(dataSource) || dataSource == ":memory:"
+            || dataSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
     }
 }
