@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import type { ReferenceDataDto } from '../api/types'
 import { useWizard, type WizardStep } from '../hooks/useWizard'
 import { DelayStep } from './DelayStep'
-import { ResultPlaceholder } from './ResultPlaceholder'
+import { ResultStep } from './ResultStep'
 import { StartChoice } from './StartChoice'
 import { StepIndicator } from './StepIndicator'
 import { TicketStep } from './TicketStep'
@@ -12,7 +12,7 @@ import './Wizard.css'
 const indicatorIndex: Record<WizardStep, number> = { start: 0, ticket: 0, delay: 1, result: 2 }
 
 /** Bilet → Opóźnienie → Wynik. Works for guests; nothing entered is lost when moving back or when a read fails. */
-export function Wizard() {
+export function Wizard({ onOpenCases }: { onOpenCases?: () => void } = {}) {
   const { state, dispatch } = useWizard()
   const [reference, setReference] = useState<ReferenceDataDto | null>(null)
   const rootRef = useRef<HTMLElement>(null)
@@ -49,7 +49,7 @@ export function Wizard() {
         {state.step === 'start' && <StartChoice onChoose={(source) => dispatch({ type: 'start', source })} />}
         {state.step === 'ticket' && <TicketStep state={state} dispatch={dispatch} reference={reference} />}
         {state.step === 'delay' && <DelayStep state={state} dispatch={dispatch} />}
-        {state.step === 'result' && <ResultPlaceholder state={state} dispatch={dispatch} />}
+        {state.step === 'result' && <ResultStep state={state} dispatch={dispatch} onOpenCases={onOpenCases} />}
       </div>
     </section>
   )

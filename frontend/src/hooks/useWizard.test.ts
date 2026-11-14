@@ -6,6 +6,7 @@ import {
   parsePrice,
   ticketIssues,
   toAssessmentRequest,
+  toCaseRequest,
   toTicketFields,
   wizardReducer,
   type TicketForm,
@@ -162,5 +163,56 @@ describe('wizardReducer', () => {
     })
     state = wizardReducer(wizardReducer(state, { type: 'back' }), { type: 'start', source: 'upload' })
     expect(state.reviewing).toBe(false)
+  })
+})
+
+describe('result step state', () => {
+  const atResult = {
+    ...initialWizardState,
+    step: 'result' as const,
+    ticket: filled,
+    delay: { incidentType: 'Delay' as const, minutes: 120, isSeasonTicket: false },
+  }
+
+  it('builds the case request from the ticket, the delay and the payout', () => {
+    expect(toCaseRequest({ ...atResult, payout: { ...atResult.payout, choice: 'Voucher' } })).toEqual({
+      carrier: 'PKP Intercity',
+      trainCategory: 'IC',
+      fromStation: 'Kraków Główny',
+      toStation: null,
+      ticketNumber: null,
+      travelDate: '2026-11-10',
+      ticketPrice: 49.9,
+      incidentType: 'Delay',
+      delayMinutes: 120,
+      delayCause: null,
+      isSeasonTicket: false,
+      payoutPreference: 'Voucher',
+      notes: null,
+    })
+    expect(toCaseRequest({ ...atResult, ticket: { ...filled, travelDate: '' } })).toBeNull()
+  })
+
+  it('defaults the payout to the original payment method', () => {
+    expect(initialWizardState.payout.choice).toBe('OriginalPayment')
+  })
+
+  it("takes the profile's payout and account number unless the user already chose", () => {
+    const profile = { email: 'a@b.pl', fullName: null, address: null, iban: 'PL61109010140000071219812874', preferredPayout: 'BankTransfer' as const }
+    const loaded = wizardReducer(atResult, { type: 'profileLoaded', profile })
+    expect(loaded.payout).toMatchObject({ choice: 'BankTransfer', iban: 'PL61109010140000071219812874' })
+
+    const chosen = wizardReducer(atResult, { type: 'payout', patch: { choice: 'Voucher' } })
+    expect(wizardReducer(chosen, { type: 'profileLoaded', profile }).payout.choice).toBe('Voucher')
+
+    const typed = wizardReducer(atResult, { type: 'payout', patch: { iban: 'DE89370400440532013000' } })
+    expect(wizardReducer(typed, { type: 'profileLoaded', profile }).payout.iban).toBe('DE89370400440532013000')
+  })
+
+  it('remembers the saved case for the same ticket and forgets it when the ticket changes', () => {
+    const saved = wizardReducer(atResult, { type: 'saved', caseId: 7, key: 'k' })
+    expect(saved.savedCase).toEqual({ id: 7, key: 'k' })
+    expect(wizardReducer(saved, { type: 'goto', step: 'ticket' })).toMatchObject({ step: 'ticket', direction: 'back' })
+    expect(wizardReducer(saved, { type: 'reset' }).savedCase).toBeUndefined()
   })
 })

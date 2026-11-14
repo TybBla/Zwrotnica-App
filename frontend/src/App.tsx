@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AuthDialog } from './auth/AuthDialog'
 import { AccountMenu } from './components/AccountMenu'
 import { AppShell } from './components/AppShell'
 import { Badge } from './components/Badge'
@@ -25,14 +26,16 @@ export default function App() {
     setView(next)
     window.scrollTo({ top: 0 })
   }
-  // Sign-in arrives with the inline auth panel (Task 10) and account pages (Task 11).
-  const signIn = () => {}
+  const [signInOpen, setSignInOpen] = useState(false)
+  const signIn = () => setSignInOpen(true)
+  const signInDialog = <AuthDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
   const scrollToSteps = () => document.getElementById('how')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   if (view === 'wizard') {
     return (
       <AppShell account={<AccountMenu onSignIn={signIn} />} onHome={() => show('home')}>
         <Wizard />
+        {signInDialog}
       </AppShell>
     )
   }
@@ -97,6 +100,7 @@ export default function App() {
         </Card>
 
       </section>
+      {signInDialog}
     </AppShell>
   )
 }

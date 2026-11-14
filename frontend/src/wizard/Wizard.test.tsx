@@ -3,7 +3,15 @@ import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, api } from '../api/client'
 import type { AssessmentDto, AssessmentRequest, ExtractionDto, ReferenceDataDto } from '../api/types'
+import { AuthProvider } from '../auth/AuthProvider'
 import { Wizard } from './Wizard'
+
+const renderWizard = () =>
+  render(
+    <AuthProvider>
+      <Wizard />
+    </AuthProvider>,
+  )
 
 const reference: ReferenceDataDto = {
   carriers: [
@@ -66,13 +74,14 @@ beforeEach(() => {
     addEventListener: () => {},
     removeEventListener: () => {},
   }))
+  vi.spyOn(api, 'me').mockRejectedValue(new ApiError(401, 'Zaloguj się.'))
   vi.spyOn(api, 'getReference').mockResolvedValue(reference)
   vi.spyOn(api, 'assess').mockImplementation(async (request) => eligible(request))
 })
 
 describe('Wizard – ticket step', () => {
   it('shows all three steps and both ways to start', async () => {
-    render(<Wizard />)
+    renderWizard()
     const steps = screen.getByRole('list', { name: 'Postęp' })
     expect(within(steps).getByText('Bilet')).toBeTruthy()
     expect(within(steps).getByText('Opóźnienie')).toBeTruthy()
@@ -84,7 +93,7 @@ describe('Wizard – ticket step', () => {
   it('switches to manual entry with a message on 502 and keeps what was typed', async () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'extractTicket').mockRejectedValue(new ApiError(502, 'Model AI nie odpowiedział.'))
-    const { container } = render(<Wizard />)
+    const { container } = renderWizard()
 
     await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
     await user.selectOptions(await screen.findByLabelText('Przewoźnik'), 'PKP Intercity')
@@ -103,7 +112,7 @@ describe('Wizard – ticket step', () => {
   it('switches to manual entry when AI is disabled (409) or rate limited (429)', async () => {
     const user = userEvent.setup()
     const extract = vi.spyOn(api, 'extractTicket').mockRejectedValueOnce(new ApiError(409, 'AI wyłączone – wpisz dane ręcznie.'))
-    const { container } = render(<Wizard />)
+    const { container } = renderWizard()
 
     await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
     await uploadAndRead(user, container)
@@ -130,7 +139,7 @@ describe('Wizard – ticket step', () => {
       usedAi: true,
     }
     vi.spyOn(api, 'extractTicket').mockResolvedValue(extraction)
-    const { container } = render(<Wizard />)
+    const { container } = renderWizard()
 
     await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
     await uploadAndRead(user, container)
@@ -155,7 +164,7 @@ describe('Wizard – ticket step', () => {
 
   it('blocks "Dalej" only while carrier, travel date or price are missing', async () => {
     const user = userEvent.setup()
-    render(<Wizard />)
+    renderWizard()
     await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
     await screen.findByLabelText('Przewoźnik')
     expect(nextButton().disabled).toBe(true)
@@ -181,7 +190,7 @@ describe('Wizard – delay step', () => {
   it('re-assesses when minutes change, does not require a cause and keeps data when going back', async () => {
     const user = userEvent.setup()
     const assess = vi.mocked(api.assess)
-    render(<Wizard />)
+    renderWizard()
     await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
     await screen.findByLabelText('Przewoźnik')
     await fillManualTicket(user)
@@ -214,7 +223,7 @@ describe('Wizard – delay step', () => {
   it('hides minutes for a cancelled train and sends the cause when chosen', async () => {
     const user = userEvent.setup()
     const assess = vi.mocked(api.assess)
-    render(<Wizard />)
+    renderWizard()
     await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
     await screen.findByLabelText('Przewoźnik')
     await fillManualTicket(user)
@@ -261,7 +270,7 @@ describe('Wizard – late answers and focus', () => {
     const user = userEvent.setup()
     const pending = deferred<ExtractionDto>()
     const extract = vi.spyOn(api, 'extractTicket').mockReturnValue(pending.promise) // ignores the signal on purpose
-    const { container } = render(<Wizard />)
+    const { container } = renderWizard()
 
     await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
     await uploadAndRead(user, container)
@@ -285,7 +294,7 @@ describe('Wizard – late answers and focus', () => {
     const user = userEvent.setup()
     const late = deferred<AssessmentDto>()
     const assess = vi.mocked(api.assess)
-    render(<Wizard />)
+    renderWizard()
     await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
     await screen.findByLabelText('Przewoźnik')
     await fillManualTicket(user)
@@ -313,7 +322,7 @@ describe('Wizard – late answers and focus', () => {
   it('moves focus to the heading of the form after a read, whether it worked or not', async () => {
     const user = userEvent.setup()
     const extract = vi.spyOn(api, 'extractTicket').mockResolvedValueOnce(readTicket)
-    const { container } = render(<Wizard />)
+    const { container } = renderWizard()
 
     await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
     await uploadAndRead(user, container)

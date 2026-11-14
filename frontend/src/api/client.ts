@@ -171,7 +171,7 @@ export const api = {
 
   listCases: () => json<CaseDto[]>('/cases'),
   getCase: (id: number) => json<CaseDto>(`/cases/${id}`),
-  createCase: (request: CaseRequest) => json<CaseDto>('/cases', 'POST', request),
+  createCase: (request: CaseRequest, signal?: AbortSignal) => json<CaseDto>('/cases', 'POST', request, signal),
   updateCase: (id: number, request: CaseRequest) => json<CaseDto>(`/cases/${id}`, 'PUT', request),
   setStatus: (id: number, status: CaseStatus) => json<CaseDto>(`/cases/${id}/status`, 'PATCH', { status }),
   deleteCase: (id: number) => noContent(`/cases/${id}`, 'DELETE'),
@@ -179,8 +179,8 @@ export const api = {
   getStats: () => json<StatsDto>('/stats'),
 
   /** 409 when the case is not eligible for compensation. */
-  generateComplaint: (id: number, request: ComplaintRequest) =>
-    json<ComplaintDto>(`/cases/${id}/complaint`, 'POST', request),
+  generateComplaint: (id: number, request: ComplaintRequest, signal?: AbortSignal) =>
+    json<ComplaintDto>(`/cases/${id}/complaint`, 'POST', request, signal),
 
   /** Renders the (possibly edited) letter; resolves to the PDF file. */
   downloadComplaintPdf: async (id: number, letter: ComplaintPdfRequest): Promise<Blob> => {

@@ -484,8 +484,7 @@
   letter-spacing: -0.03em;
 }
 
-.live__currency,
-.result-placeholder__currency {
+.live__currency {
   font-size: 0.6em;
   font-weight: var(--weight-semibold);
   color: var(--text-secondary);
@@ -510,25 +509,6 @@
 .live__risk svg {
   flex: none;
   margin-top: 0.1em;
-}
-
-/* ---------- Result placeholder (Task 10 replaces it) ---------- */
-.result-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
-.result-placeholder__amount {
-  font-size: clamp(2.75rem, 2rem + 4vw, 4rem);
-  font-weight: var(--weight-bold);
-  line-height: 1;
-  letter-spacing: -0.04em;
-}
-
-.result-placeholder__reason {
-  color: var(--text-secondary);
 }
 
 /* ---------- Action bar ---------- */

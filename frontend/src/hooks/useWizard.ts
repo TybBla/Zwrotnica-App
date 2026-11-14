@@ -1,5 +1,16 @@
 import { useReducer } from 'react'
-import type { AssessmentDto, AssessmentRequest, CarrierOption, DelayCause, ExtractionDto, IncidentType, IsoDate } from '../api/types'
+import type {
+  AssessmentDto,
+  AssessmentRequest,
+  CarrierOption,
+  CaseRequest,
+  DelayCause,
+  ExtractionDto,
+  IncidentType,
+  IsoDate,
+  PayoutPreference,
+  ProfileDto,
+} from '../api/types'
 import { finalizeText } from '../lib/textRules'
 
 export type WizardStep = 'start' | 'ticket' | 'delay' | 'result'
@@ -32,6 +43,17 @@ export interface DelayInput {
   isSeasonTicket: boolean
 }
 
+/** How the passenger wants the money; the account number is kept in memory only until the letter is made. */
+export interface PayoutInput {
+  choice: PayoutPreference
+  /** As typed (only used for BankTransfer). */
+  iban: string
+  /** Save the typed account number to the profile when the letter is generated. */
+  remember: boolean
+  /** The user picked a payout themselves, so the profile's preference no longer overrides it. */
+  touched: boolean
+}
+
 /** Extraction field names (ExtractionDto.missingFields) the form highlights until filled. */
 export type TicketFieldKey = 'carrier' | 'trainCategory' | 'fromStation' | 'toStation' | 'ticketNumber' | 'ticketPrice' | 'travelDate'
 
@@ -54,6 +76,9 @@ export interface WizardState {
   delay: DelayInput
   /** Latest assessment of the current ticket + delay (live preview and the result step). */
   assessment?: AssessmentDto
+  payout: PayoutInput
+  /** The case created for this ticket + delay (`key` = caseKey of its request), so a retry does not save it twice. */
+  savedCase?: { id: number; key: string }
 }
 
 export const emptyTicket: TicketForm = {
@@ -76,6 +101,7 @@ export const initialWizardState: WizardState = {
   missing: [],
   reviewing: false,
   delay: { incidentType: 'Delay', minutes: null, isSeasonTicket: false },
+  payout: { choice: 'OriginalPayment', iban: '', remember: false, touched: false },
 }
 
 export type WizardAction =
@@ -89,6 +115,12 @@ export type WizardAction =
   | { type: 'dismissNotice' }
   | { type: 'delay'; patch: Partial<DelayInput> }
   | { type: 'assessed'; assessment: AssessmentDto | undefined }
+  | { type: 'payout'; patch: Partial<Omit<PayoutInput, 'touched'>> }
+  /** The signed-in user's profile: preselects their payout and account number unless the user already chose. */
+  | { type: 'profileLoaded'; profile: ProfileDto }
+  | { type: 'saved'; caseId: number; key: string }
+  /** Jump back to a step to fix what the server rejected. */
+  | { type: 'goto'; step: WizardStep }
   | { type: 'next' }
   | { type: 'back' }
   | { type: 'reset' }
@@ -178,6 +210,31 @@ export function toAssessmentRequest(state: Pick<WizardState, 'ticket' | 'delay'>
   }
 }
 
+/** The case to save, or null while the ticket is incomplete (the ticket step normally prevents that). */
+export function toCaseRequest(state: Pick<WizardState, 'ticket' | 'delay' | 'payout'>): CaseRequest | null {
+  const ticket = toTicketFields(state.ticket)
+  const { incidentType, minutes, cause, isSeasonTicket } = state.delay
+  if (!ticket.carrier || !ticket.travelDate || ticket.ticketPrice === null) return null
+  if (incidentType === 'Delay' && minutes === null) return null
+  return {
+    ...ticket,
+    carrier: ticket.carrier,
+    travelDate: ticket.travelDate,
+    ticketPrice: ticket.ticketPrice,
+    incidentType,
+    delayMinutes: incidentType === 'Cancellation' ? 0 : (minutes ?? 0),
+    delayCause: cause ?? null,
+    isSeasonTicket,
+    payoutPreference: state.payout.choice,
+    notes: null,
+  }
+}
+
+/** Identifies a saved case by its facts; the payout is left out because the letter request sets it again. */
+export function caseKey(request: CaseRequest): string {
+  return JSON.stringify({ ...request, payoutPreference: undefined })
+}
+
 /** Merges what the AI read into the form: read values win, unread ones keep whatever the user already typed. */
 function mergeExtraction(ticket: TicketForm, extraction: ExtractionDto, carriers: readonly CarrierOption[]): TicketForm {
   const next = { ...ticket }
@@ -235,6 +292,23 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, delay: { ...state.delay, ...action.patch } }
     case 'assessed':
       return { ...state, assessment: action.assessment }
+    case 'payout':
+      return { ...state, payout: { ...state.payout, ...action.patch, touched: state.payout.touched || action.patch.choice !== undefined } }
+    case 'profileLoaded': {
+      const { profile } = action
+      return {
+        ...state,
+        payout: {
+          ...state.payout,
+          choice: state.payout.touched ? state.payout.choice : profile.preferredPayout,
+          iban: state.payout.iban === '' ? (profile.iban ?? '') : state.payout.iban,
+        },
+      }
+    }
+    case 'saved':
+      return { ...state, savedCase: { id: action.caseId, key: action.key } }
+    case 'goto':
+      return { ...state, step: action.step, direction: order.indexOf(action.step) < order.indexOf(state.step) ? 'back' : 'forward' }
     case 'next': {
       const index = order.indexOf(state.step)
       return { ...state, step: order[Math.min(index + 1, order.length - 1)], direction: 'forward' }
