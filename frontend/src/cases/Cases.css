@@ -456,3 +456,9 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+
+.case-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

@@ -9,6 +9,8 @@ interface ConfirmDialogProps {
   title: string
   children: ReactNode
   confirmLabel: string
+  /** 'danger' (default) for destructive actions, 'primary' for a question that only asks to confirm. */
+  confirmVariant?: 'danger' | 'primary'
   /** May throw; the dialog then stays open and shows the reason. Resolving closes it. */
   onConfirm: () => Promise<void>
   onClose: () => void
@@ -27,7 +29,7 @@ export function ConfirmDialog({ open, ...props }: ConfirmDialogProps) {
 
 const FOCUSABLE = 'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
 
-function OpenConfirmDialog({ title, children, confirmLabel, onConfirm, onClose, fallbackFocus }: Omit<ConfirmDialogProps, 'open'>) {
+function OpenConfirmDialog({ title, children, confirmLabel, confirmVariant = 'danger', onConfirm, onClose, fallbackFocus }: Omit<ConfirmDialogProps, 'open'>) {
   const ref = useRef<HTMLDialogElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
   const id = useId()
@@ -122,7 +124,7 @@ function OpenConfirmDialog({ title, children, confirmLabel, onConfirm, onClose, 
           <Button ref={cancelRef} variant="secondary" onClick={onClose} disabled={busy}>
             Anuluj
           </Button>
-          <Button variant="danger" onClick={() => void confirm()} loading={busy}>
+          <Button variant={confirmVariant} onClick={() => void confirm()} loading={busy}>
             {confirmLabel}
           </Button>
         </div>

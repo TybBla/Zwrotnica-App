@@ -31,6 +31,7 @@ const base: CaseDto = {
   expenseAmount: null,
   createdAt: '2026-11-02T10:00:00Z',
   outcome: null,
+  followUps: { reminder: false, utkComplaint: false, pastDeadline: false },
 }
 
 const second: CaseDto = {

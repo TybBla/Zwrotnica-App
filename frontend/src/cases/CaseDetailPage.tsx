@@ -14,7 +14,9 @@ import { usePageTitle } from '../routes/usePageTitle'
 import { FinalVerdict } from '../wizard/FinalVerdict'
 import { LetterChoice } from '../wizard/LetterChoice'
 import { caseLetterKind, caseRoute, caseTitle, caseVerdict, causeLabels, formatPln, incidentText, payoutLabels } from './caseText'
+import { AddToCalendarButton } from './AddToCalendarButton'
 import { DeadlineBadge } from './DeadlineBadge'
+import { NextSteps } from './NextSteps'
 import { StatusSelect } from './StatusSelect'
 import './Cases.css'
 import '../wizard/Result.css'
@@ -193,6 +195,15 @@ function CaseDetail({ id }: { id: number | null }) {
             <div className="case-detail__status">
               <StatusSelect value={load.item.status} onChange={(status) => void changeStatus(load.item, status)} />
               <DeadlineBadge status={load.item.status} responseDueDate={load.item.responseDueDate} />
+              {load.item.status === 'Sent' && load.item.responseDueDate && (
+                <AddToCalendarButton
+                  caseId={load.item.id}
+                  carrier={load.item.carrier}
+                  route={caseRoute(load.item)}
+                  travelDate={load.item.travelDate}
+                  responseDueDate={load.item.responseDueDate}
+                />
+              )}
             </div>
             <p className="case-detail__hint">
               Ustaw „Wysłana”, gdy wyślesz pismo – policzymy miesiąc na odpowiedź przewoźnika.
@@ -249,9 +260,18 @@ function CaseDetail({ id }: { id: number | null }) {
                   </div>
                 </div>
               )}
-              {letter && <LetterChoice caseId={load.item.id} letter={letter} />}
+              {letter && (
+                <LetterChoice
+                  caseId={load.item.id}
+                  letter={letter}
+                  trip={{ carrier: load.item.carrier, route: caseRoute(load.item), travelDate: load.item.travelDate }}
+                />
+              )}
             </section>
           )}
+
+          {/* key: a status change starts the follow-ups afresh (an old letter may no longer fit). */}
+          <NextSteps key={load.item.status} item={load.item} />
 
           <section className="case-detail__section case-detail__danger" aria-labelledby="case-delete-title">
             <h2 className="case-detail__subtitle" id="case-delete-title">

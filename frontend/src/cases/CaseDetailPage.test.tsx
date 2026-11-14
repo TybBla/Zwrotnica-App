@@ -36,6 +36,7 @@ const item: CaseDto = {
     legalBasis: 'Art. 19 rozporządzenia (UE) 2021/782',
     deadline: 'Przewoźnik powinien wypłacić odszkodowanie w terminie 1 miesiąca od złożenia wniosku.',
   },
+  followUps: { reminder: false, utkComplaint: false, pastDeadline: false },
 }
 
 const renderAt = (path: string) =>
@@ -50,6 +51,18 @@ const renderAt = (path: string) =>
 
 beforeEach(() => {
   vi.spyOn(api, 'getCase').mockResolvedValue(item)
+  vi.spyOn(api, 'getReference').mockResolvedValue({
+    carriers: [
+      { name: 'PKP Intercity', coverage: 'Eligible', categories: ['EIC'], complaintUrl: 'https://www.intercity.pl/reklamacje.html' },
+    ],
+    categories: [],
+    minimumPayout: 16,
+    utk: {
+      name: 'Prezes Urzędu Transportu Kolejowego',
+      complaintUrl: 'https://utk.gov.pl/pl/urzad/kontakt',
+      complaintChannels: 'E-mailem na adres pasazer@utk.gov.pl.',
+    },
+  })
 })
 
 describe('CaseDetailPage', () => {
@@ -196,5 +209,137 @@ describe('CaseDetailPage', () => {
     await user.click(screen.getAllByRole('button', { name: 'Usuń sprawę' }).at(-1)!)
     expect(await screen.findByText('lista spraw')).toBeTruthy()
     expect(api.deleteCase).toHaveBeenCalledWith(7)
+  })
+})
+
+describe('CaseDetailPage – next steps', () => {
+  const sent: CaseDto = {
+    ...item,
+    status: 'Sent',
+    filedAt: '2026-10-13T10:00:00Z',
+    responseDueDate: '2026-11-13T10:00:00Z',
+    followUps: { reminder: true, utkComplaint: true, pastDeadline: true },
+  }
+  const followUpLetter = (subject: string, body: string, missingFields: string[] = []) => ({
+    subject,
+    body,
+    usedAi: false,
+    missingFields,
+    deadlineStarted: false,
+    responseDueDate: null,
+  })
+
+  it('is hidden while the case allows no follow-up letter', async () => {
+    renderAt('/sprawy/7')
+    await screen.findByRole('heading', { level: 1, name: 'PKP Intercity EIC' })
+
+    expect(screen.queryByRole('heading', { name: 'Kolejne kroki' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Przygotuj ponaglenie' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Dodaj do kalendarza' })).toBeNull()
+  })
+
+  it('offers both letters after the deadline and shows the complaint to UTK with its own recipient', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.getCase).mockResolvedValue(sent)
+    vi.spyOn(api, 'generateFollowUp').mockResolvedValue(
+      followUpLetter('Skarga na przewoźnika PKP Intercity', 'Prezes Urzędu Transportu Kolejowego\n[kopia biletu]', [
+        'załączniki – kopie pisma i biletu',
+      ]),
+    )
+    vi.spyOn(api, 'downloadFollowUpPdf').mockResolvedValue(new Blob(['%PDF']))
+    URL.createObjectURL = vi.fn(() => 'blob:pdf')
+    URL.revokeObjectURL = vi.fn()
+    renderAt('/sprawy/7')
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Kolejne kroki' })).toBeTruthy()
+    expect(screen.getByText(/Termin odpowiedzi przewoźnika minął/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Przygotuj ponaglenie' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Przygotuj skargę do UTK' }))
+
+    expect(api.generateFollowUp).toHaveBeenCalledWith(7, 'utk-complaint', expect.any(AbortSignal))
+    expect(await screen.findByRole('heading', { name: 'Skarga do UTK jest gotowa' })).toBeTruthy()
+    expect(screen.getByText('Uzupełnij w piśmie: załączniki – kopie pisma i biletu')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Gdzie wysłać skargę' })).toBeTruthy()
+    expect(await screen.findByText('E-mailem na adres pasazer@utk.gov.pl.')).toBeTruthy()
+
+    await user.click(screen.getByRole('radio', { name: 'PDF' }))
+    expect(screen.getByText('skarga-utk-7.pdf')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Pobierz PDF' }))
+    expect(api.downloadFollowUpPdf).toHaveBeenCalledWith(7, 'utk-complaint', {
+      subject: 'Skarga na przewoźnika PKP Intercity',
+      body: 'Prezes Urzędu Transportu Kolejowego\n[kopia biletu]',
+    })
+  })
+
+  it('asks to confirm a reminder while the carrier still has time', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.getCase).mockResolvedValue({
+      ...sent,
+      responseDueDate: '2099-12-13T10:00:00Z',
+      followUps: { reminder: true, utkComplaint: false, pastDeadline: false },
+    })
+    vi.spyOn(api, 'generateFollowUp').mockResolvedValue(
+      followUpLetter('Ponaglenie – wniosek', 'do dnia dzisiejszego nie otrzymałem(-am) odpowiedzi'),
+    )
+    renderAt('/sprawy/7')
+
+    expect(await screen.findByText(/Przewoźnik ma czas na odpowiedź do 13 grudnia 2099/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Przygotuj skargę do UTK' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Przygotuj ponaglenie' }))
+    expect(api.generateFollowUp).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Termin odpowiedzi jeszcze trwa' })).toBeTruthy()
+    await user.click(screen.getAllByRole('button', { name: 'Przygotuj ponaglenie' }).at(-1)!)
+
+    expect(await screen.findByRole('heading', { name: 'Ponaglenie jest gotowe' })).toBeTruthy()
+    expect(api.generateFollowUp).toHaveBeenCalledWith(7, 'reminder', expect.any(AbortSignal))
+    expect(screen.getByRole('heading', { name: 'Gdzie wysłać pismo' })).toBeTruthy()
+  })
+
+  it('offers only the complaint to UTK after a rejection and shows a 409 reason', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.getCase).mockResolvedValue({
+      ...sent,
+      status: 'Rejected',
+      followUps: { reminder: false, utkComplaint: true, pastDeadline: false },
+    })
+    vi.spyOn(api, 'generateFollowUp').mockRejectedValue(new ApiError(409, 'Skargę do UTK przygotujemy później.'))
+    renderAt('/sprawy/7')
+
+    expect(await screen.findByText(/Przewoźnik odrzucił pismo/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Przygotuj ponaglenie' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Przygotuj skargę do UTK' }))
+    expect(await screen.findByText('Skargę do UTK przygotujemy później.')).toBeTruthy()
+  })
+
+  it('adds the response deadline to the calendar as an .ics file', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.getCase).mockResolvedValue({ ...sent, followUps: { reminder: true, utkComplaint: false, pastDeadline: false } })
+    const created: Blob[] = []
+    URL.createObjectURL = vi.fn((blob: Blob | MediaSource) => {
+      created.push(blob as Blob)
+      return 'blob:ics'
+    })
+    URL.revokeObjectURL = vi.fn()
+    renderAt('/sprawy/7')
+
+    await user.click(await screen.findByRole('button', { name: 'Dodaj do kalendarza' }))
+
+    expect(created).toHaveLength(1)
+    expect(created[0].type).toBe('text/calendar;charset=utf-8')
+    const text = await created[0].text()
+    expect(text).toContain('DTSTART;VALUE=DATE:20261113')
+    expect(text).toContain('/sprawy/7')
+  })
+
+  it('reminds on the letter that Zwrotnica never asks for card details or payment', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'generateComplaint').mockResolvedValue(followUpLetter('Reklamacja', 'Treść'))
+    renderAt('/sprawy/7')
+
+    await user.click(await screen.findByRole('button', { name: 'Przygotuj pismo ponownie' }))
+
+    expect(await screen.findByText(/nigdy nie prosi o dane karty ani o opłatę/)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Gdzie wysłać pismo' })).toBeTruthy()
+    expect(await screen.findByRole('link', { name: /intercity\.pl/ })).toBeTruthy()
   })
 })
