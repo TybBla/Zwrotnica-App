@@ -177,7 +177,7 @@ To lokalne dane testowe z `appsettings.Development.json` (fikcyjna osoba, 5 fikc
 ### 7. Testy
 
 ```bash
-dotnet test backend/RefundPilot.sln     # 347 testów: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
+dotnet test backend/RefundPilot.sln     # 348 testów: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
 cd frontend
 npm run test                             # 170 testów (Vitest + Testing Library)
 npm run build                            # tsc + build produkcyjny
