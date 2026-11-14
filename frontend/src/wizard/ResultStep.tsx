@@ -4,6 +4,7 @@ import type { CaseRequest, ComplaintDto, ComplaintRequest } from '../api/types'
 import { AuthPanel } from '../auth/AuthPanel'
 import { useAccountChange } from '../auth/useAccountChange'
 import { useAuth } from '../auth/useAuth'
+import { caseRoute } from '../cases/caseText'
 import { Button } from '../components/Button'
 import { AlertCircleIcon, ArrowRightIcon } from '../components/icons'
 import {
@@ -282,7 +283,7 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
   }, [phase, user])
 
   const ticket = toTicketFields(state.ticket)
-  const route = [ticket.fromStation, ticket.toStation].filter(Boolean).join(' → ')
+  const route = caseRoute(ticket) ?? ''
   const details = tripDetails(ticket, route, state.delay)
   const done = phase === 'done' && letter !== null
   const reset = () => {
@@ -450,11 +451,13 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
   )
 }
 
-/** The trip as printed on the result's stub: only what the passenger actually entered. */
+/**
+ * The trip as printed on the result's stub: only what the passenger actually entered.
+ * Short facts first (they pair up in two columns), then the long ones that take a full row.
+ */
 function tripDetails(ticket: ReturnType<typeof toTicketFields>, route: string, delay: WizardState['delay']): VerdictDetail[] {
   const rows: (VerdictDetail | null)[] = [
     ticket.carrier ? { label: 'Przewoźnik', value: [ticket.carrier, ticket.trainCategory].filter(Boolean).join(' · ') } : null,
-    route ? { label: 'Trasa', value: route } : null,
     ticket.travelDate ? { label: 'Data przejazdu', value: formatDate(ticket.travelDate) } : null,
     ticket.ticketPrice !== null ? { label: 'Cena biletu', value: `${formatAmount(ticket.ticketPrice)} zł`, mono: true } : null,
     delay.incidentType === 'Cancellation'
@@ -462,7 +465,8 @@ function tripDetails(ticket: ReturnType<typeof toTicketFields>, route: string, d
       : delay.minutes !== null
         ? { label: 'Opóźnienie', value: `${delay.minutes} min`, mono: true }
         : null,
-    ticket.ticketNumber ? { label: 'Numer biletu', value: ticket.ticketNumber, mono: true } : null,
+    route ? { label: 'Trasa', value: route, wide: true } : null,
+    ticket.ticketNumber ? { label: 'Numer biletu', value: ticket.ticketNumber, mono: true, wide: true } : null,
   ]
   return rows.filter((row): row is VerdictDetail => row !== null)
 }

@@ -23,7 +23,7 @@ section.auth-panel {
 .auth-panel__title {
   font-size: var(--text-lg);
   outline: none;
-  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+  scroll-margin-top: var(--space-4); /* plus the html scroll-padding for the sticky header */
 }
 
 .auth-panel__description {

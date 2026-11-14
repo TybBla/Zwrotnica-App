@@ -19,6 +19,8 @@ export interface VerdictDetail {
   value: string
   /** Ticket data such as the ticket number, set in Plex Mono. */
   mono?: boolean
+  /** Long values (route, ticket number) take a whole row. */
+  wide?: boolean
 }
 
 interface VerdictCardProps {
@@ -94,7 +96,7 @@ export function VerdictCard({ assessment, details = [] }: VerdictCardProps) {
           <div className="verdict__perforation" aria-hidden="true" />
           <dl className="verdict__details">
             {details.map((detail) => (
-              <div key={detail.label} className="verdict__detail">
+              <div key={detail.label} className="verdict__detail" data-wide={detail.wide || undefined}>
                 <dt>{detail.label}</dt>
                 <dd className={detail.mono ? 'mono' : undefined}>{detail.value}</dd>
               </div>

@@ -15,6 +15,16 @@ html {
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   background: var(--bg);
+  /* Focus and anchor scrolling stop below the sticky header (and the notch), never under it. */
+  scroll-padding-top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+}
+
+/* Phones: the wizard's sticky action bar (≈ 80–115 px) covers the bottom of the screen; a field focused by Tab or
+   by the keyboard's "next" key scrolls up far enough to stay visible above it. */
+@media (max-width: 47.99rem) {
+  html {
+    scroll-padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 body {
@@ -53,7 +63,24 @@ select {
 
 button {
   cursor: pointer;
+}
+
+/* No double-tap-zoom wait on anything tappable (iOS still delays some elements without it). */
+a,
+button,
+summary,
+label,
+select,
+input,
+textarea,
+[role='button'] {
   touch-action: manipulation;
+}
+
+/* The FAQ question is a control: a long press must not select its text. Answers stay selectable. */
+summary {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 h1,

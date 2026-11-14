@@ -22,7 +22,12 @@
 .page__title {
   font-size: var(--text-3xl);
   outline: none;
-  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+  scroll-margin-top: var(--space-4); /* plus the html scroll-padding for the sticky header */
+  overflow-wrap: anywhere;
+}
+
+.page__title[data-long] {
+  font-size: var(--text-2xl);
 }
 
 #main h1[tabindex='-1']:focus {

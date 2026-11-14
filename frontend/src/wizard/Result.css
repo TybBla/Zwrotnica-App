@@ -79,6 +79,8 @@
   font-weight: var(--weight-semibold);
   line-height: 1.1;
   letter-spacing: var(--tracking-display);
+  /* "99 999,99 zł" stays on one line (≈ 210 px at 36 px), the currency never drops below the figure. */
+  white-space: nowrap;
   animation: verdict-amount-in var(--duration-base) var(--ease-out) both;
 }
 
@@ -168,6 +170,11 @@
   flex-direction: column;
   gap: 0.125rem;
   min-width: 0;
+}
+
+/* Long values (route, ticket number) take the whole row instead of a 141 px column at phone width. */
+.verdict__detail[data-wide] {
+  grid-column: 1 / -1;
 }
 
 .verdict__detail dt {
@@ -289,7 +296,7 @@
 
 .letter__title {
   outline: none;
-  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+  scroll-margin-top: var(--space-4); /* plus the html scroll-padding for the sticky header */
 }
 
 .letter__lead {
@@ -435,6 +442,7 @@
 
 .letter__subject {
   max-width: 65ch;
+  overflow-wrap: anywhere;
   font-weight: var(--weight-semibold);
   line-height: var(--leading-snug);
 }
@@ -443,7 +451,8 @@
   max-width: 65ch;
   line-height: var(--leading-body);
   white-space: pre-wrap;
-  overflow-wrap: break-word;
+  /* anywhere (not break-word) also lowers min-content, so an IBAN or a long ticket number cannot widen the card. */
+  overflow-wrap: anywhere;
   text-wrap: auto;
 }
 
@@ -468,4 +477,23 @@
   line-height: var(--leading-tight);
   white-space: normal;
   text-align: center;
+}
+
+/* Two text buttons after the letter ("Sprawdź kolejny bilet", "Przejdź do moich spraw"): side by side when both fit
+   on one line, otherwise one full-width button per row, the primary one lowest, nearest the thumb. Without this, at
+   320 px the primary label broke into four lines in a 74 px column. */
+.wizard-actions__row:has(> .result__wrap + .result__wrap) {
+  flex-wrap: wrap;
+}
+
+/* Once the letter is ready the bar holds two stacked buttons (≈ 133 px); kept sticky it would cover a fifth of a
+   320 × 640 screen while the user reads and copies the letter, so here it sits at the end of the page instead. */
+.wizard-actions:has(> .wizard-actions__row > .result__wrap + .result__wrap) {
+  position: static;
+}
+
+.wizard-actions__row > .result__wrap + .result__wrap,
+.wizard-actions__row > .result__wrap:has(+ .result__wrap) {
+  flex: 1 1 14rem;
+  margin-left: 0;
 }

@@ -6,10 +6,15 @@ import { shownVerdict } from '../lib/verdict'
 export const caseTitle = (item: Pick<CaseDto, 'carrier' | 'trainCategory'>) =>
   [item.carrier, item.trainCategory].filter(Boolean).join(' ')
 
-/** "Kraków Główny → Warszawa Centralna", or null when neither station is known. */
+/**
+ * "Kraków Główny → Warszawa Centralna"; with one station only "Z: Kraków Główny" / "Do: Warszawa Centralna"
+ * (no orphaned "?"); null when neither is known.
+ */
 export function caseRoute(item: Pick<CaseDto, 'fromStation' | 'toStation'>): string | null {
-  if (!item.fromStation && !item.toStation) return null
-  return `${item.fromStation ?? '?'} → ${item.toStation ?? '?'}`
+  if (item.fromStation && item.toStation) return `${item.fromStation} → ${item.toStation}`
+  if (item.fromStation) return `Z: ${item.fromStation}`
+  if (item.toStation) return `Do: ${item.toStation}`
+  return null
 }
 
 /** A stored case has a price, so only the 0 zł "Eligible" (under 60 min) needs re-reading as not due. */

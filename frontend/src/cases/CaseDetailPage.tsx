@@ -116,6 +116,9 @@ function CaseDetail({ id }: { id: number | null }) {
     }
   }
 
+  const heading =
+    load.state === 'ready' ? caseTitle(load.item) : load.state === 'error' && load.notFound ? 'Nie znaleziono sprawy' : 'Sprawa'
+
   return (
     <div className="container container--wide page page--column case-detail">
       <Link to="/sprawy" className="page__back">
@@ -125,8 +128,9 @@ function CaseDetail({ id }: { id: number | null }) {
 
       {/* One h1 element in every state: the route focus lands on it while loading and stays when the data arrives. */}
       <header className="page__head">
-        <h1 className="page__title" tabIndex={-1}>
-          {load.state === 'ready' ? caseTitle(load.item) : load.state === 'error' && load.notFound ? 'Nie znaleziono sprawy' : 'Sprawa'}
+        {/* A typed-in carrier can be 200 characters: shown in full here, one size smaller (7 → 4 lines at 375 px). */}
+        <h1 className="page__title" tabIndex={-1} data-long={heading.length > 48 || undefined}>
+          {heading}
         </h1>
         {load.state === 'ready' && <CaseLead item={load.item} />}
       </header>

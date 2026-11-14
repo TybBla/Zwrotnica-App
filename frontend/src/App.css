@@ -1,6 +1,8 @@
 /* Wizard page: the form column, left-aligned; on wide screens the rules sit in a quiet column beside it. */
 .wizard-layout {
   display: grid;
+  /* minmax(0, …): a long unbroken value (IBAN, ticket number in the letter) wraps instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: var(--space-10);
 }

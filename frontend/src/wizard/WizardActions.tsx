@@ -10,7 +10,10 @@ interface WizardActionsProps {
   children: (hintId: string | undefined) => ReactNode
 }
 
-/** Back + primary action. On phones it sticks to the bottom of the screen on the same glass as the header. */
+/**
+ * Back + primary action. On phones it is a solid bar stuck to the bottom of the screen (header background, top rule).
+ * Below 360 px "Wstecz" shrinks to its arrow (the word stays as the accessible name), leaving room for the primary label.
+ */
 export function WizardActions({ onBack, hint, children }: WizardActionsProps) {
   const id = useId()
   const hintId = hint ? `${id}-hint` : undefined
@@ -24,7 +27,7 @@ export function WizardActions({ onBack, hint, children }: WizardActionsProps) {
       <div className="wizard-actions__row">
         {onBack && (
           <Button variant="secondary" iconStart={<ArrowLeftIcon size={18} />} onClick={onBack} className="wizard-actions__back">
-            Wstecz
+            <span className="wizard-actions__back-label">Wstecz</span>
           </Button>
         )}
         {children(hintId)}

@@ -5,7 +5,6 @@
   flex-direction: column;
   gap: var(--space-6);
   padding-top: var(--space-6);
-  scroll-margin-top: var(--header-height);
 }
 
 @media (min-width: 48rem) {
@@ -567,5 +566,23 @@
 
   .wizard-actions__back {
     flex: none;
+  }
+}
+
+/* Narrow phones (320 px): the back button is its arrow only, 48 × 48; "Zapisz sprawę i przygotuj pismo" then needs
+   two lines instead of three. The word stays in the DOM as the button's name. */
+@media (max-width: 22.49rem) {
+  .wizard-actions__back {
+    width: var(--control-height);
+    padding-inline: 0;
+  }
+
+  .wizard-actions__back-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

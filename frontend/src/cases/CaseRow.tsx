@@ -16,6 +16,9 @@ interface CaseRowProps {
   onDelete: () => void
 }
 
+/** Longer than fits two lines of a phone row: clamped, with the full text as a title tooltip. */
+const isLong = (text: string) => text.length > 48
+
 /** One case as a row: what and when on the left, amount and verdict, then status and delete. */
 export function CaseRow({ item, error, onStatusChange, onDelete }: CaseRowProps) {
   const id = useId()
@@ -26,13 +29,23 @@ export function CaseRow({ item, error, onStatusChange, onDelete }: CaseRowProps)
   return (
     <li className="case-row">
       <div className="case-row__main">
-        <Link to={`/sprawy/${item.id}`} className="case-row__title" id={`${id}-title`}>
-          {title}
+        {/* Long names (a typed-in carrier, 200 characters) are clamped to two lines; the full text is in the title
+            tooltip, in the accessible name and on the case page. */}
+        <Link to={`/sprawy/${item.id}`} className="case-row__title" id={`${id}-title`} title={isLong(title) ? title : undefined}>
+          <span className="case-row__title-text">{title}</span>
           <ChevronRightIcon size={18} />
         </Link>
-        <p className="case-row__meta">
-          {route ? <span>{route}</span> : <span className="case-row__unknown">trasa nieznana</span>}
-          <span aria-hidden="true"> · </span>
+        <p className="case-row__meta" data-long={route && isLong(route) ? true : undefined}>
+          {route ? (
+            <span className="case-row__route" title={isLong(route) ? route : undefined}>
+              {route}
+            </span>
+          ) : (
+            <span className="case-row__unknown">trasa nieznana</span>
+          )}
+          <span className="case-row__sep" aria-hidden="true">
+            {' · '}
+          </span>
           <span>
             <span className="visually-hidden">przejazd </span>
             {formatDate(item.travelDate)}

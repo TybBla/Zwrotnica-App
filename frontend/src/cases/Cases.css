@@ -75,6 +75,9 @@
   gap: var(--space-3) var(--space-4);
   padding-block: var(--space-5);
   border-bottom: 1px solid var(--border);
+  /* The list is not paginated: with 200 cases (7 100 nodes) rows below the fold skip layout and paint until near. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px;
 }
 
 @media (min-width: 48rem) {
@@ -113,6 +116,30 @@
 .case-row__title svg {
   flex: none;
   color: var(--text-tertiary);
+}
+
+/* Two lines at most: a 200-character typed-in carrier made a 7-line, 170 px title at 375 px. */
+.case-row__title-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+/* A long route gets its own clamped block; the date then starts the next line (separator hidden). */
+.case-row__meta[data-long] .case-row__route {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.case-row__meta[data-long] .case-row__sep {
+  display: none;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -255,11 +282,19 @@
 }
 
 .deadline__link {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.2em;
   color: inherit;
   font-weight: var(--weight-semibold);
+}
+
+/* The link sits in a one-line badge (19 px tall): an invisible hit area brings it to 44 px without moving text. */
+.deadline__link::before {
+  content: '';
+  position: absolute;
+  inset: -13px -4px;
 }
 
 /* ---------- Loading and empty ---------- */

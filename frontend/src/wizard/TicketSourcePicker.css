@@ -86,6 +86,8 @@
 
 .source__files {
   display: grid;
+  /* minmax(0, …): a long file name must not size the column (it pushed the remove button off a 375 px screen). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
   padding: 0;
   list-style: none;
@@ -143,12 +145,22 @@
   min-width: 0;
 }
 
+/* Middle truncation: the start shrinks with an ellipsis, the end (number, extension) always shows; full name in title. */
 .source__file-name {
-  overflow: hidden;
+  display: flex;
+  min-width: 0;
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.source__file-start {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.source__file-end {
+  flex: none;
 }
 
 .source__file-meta {

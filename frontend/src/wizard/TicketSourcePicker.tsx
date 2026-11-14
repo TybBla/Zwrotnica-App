@@ -156,6 +156,25 @@ export function TicketSourcePicker({ files, onFilesChange, disabled = false }: T
   )
 }
 
+/** Phone photos differ at the end ("IMG_4512.jpg", "…-2.pdf"): the middle is cut, the end and extension stay. */
+const KEPT_END = 12
+
+function FileName({ name }: { name: string }) {
+  if (name.length <= KEPT_END * 2) {
+    return (
+      <span className="source__file-name" title={name}>
+        <span className="source__file-start">{name}</span>
+      </span>
+    )
+  }
+  return (
+    <span className="source__file-name" title={name}>
+      <span className="source__file-start">{name.slice(0, -KEPT_END)}</span>
+      <span className="source__file-end">{name.slice(-KEPT_END)}</span>
+    </span>
+  )
+}
+
 function FilePreview({ file, disabled, onRemove }: { file: File; disabled: boolean; onRemove: () => void }) {
   const [broken, setBroken] = useState(false)
   const imageRef = useRef<HTMLImageElement>(null)
@@ -179,7 +198,7 @@ function FilePreview({ file, disabled, onRemove }: { file: File; disabled: boole
         {canPreview && !broken && <img ref={imageRef} alt="" onError={() => setBroken(true)} />}
       </span>
       <span className="source__file-text">
-        <span className="source__file-name">{file.name}</span>
+        <FileName name={file.name} />
         <span className="source__file-meta">
           {pdf ? 'PDF' : 'Zdjęcie'} · {formatFileSize(file.size)}
         </span>
