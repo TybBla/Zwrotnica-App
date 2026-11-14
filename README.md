@@ -14,7 +14,7 @@ Więcej zrzutów (ciemny motyw, telefon): [`docs/screenshots/`](docs/screenshots
 
 Pociąg dalekobieżny spóźnił się ponad godzinę? Według rozporządzenia (UE) 2021/782 pasażerowi należy się 25% albo 50% ceny biletu, ale mało kto o tym wie i chce pisać reklamację. **Zwrotnica** w trzech krokach (Bilet → Opóźnienie → Wynik) ocenia sprawę, liczy kwotę i generuje pismo (tekst lub PDF). AI czyta bilet i pisze pismo, a o tym, co się należy, i o kwotach decyduje zwykły, przetestowany kod.
 
-Demo online: **https://zwrotnica-d6a2hkftb7emcvc3.belgiumcentral-01.azurewebsites.net** (Azure App Service, darmowy plan – pierwsze wejście może potrwać kilkadziesiąt sekund; dane konta demo dla wersji online podaję w zgłoszeniu, lokalne konto demo – niżej).
+Demo online: **https://zwrotnica-d6a2hkftb7emcvc3.belgiumcentral-01.azurewebsites.net** (Azure App Service, darmowy plan – pierwsze wejście może potrwać kilkadziesiąt sekund). Konto demo działa online i lokalnie – dane w sekcji [Uruchomienie lokalne](#uruchomienie-lokalne), krok 5.
 
 ## Najważniejsze funkcje
 
