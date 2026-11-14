@@ -1,6 +1,6 @@
 import type { CaseDto, DelayCause, PayoutPreference } from '../api/types'
 import { formatAmount } from '../lib/format'
-import { shownVerdict } from '../lib/verdict'
+import { letterKind, shownVerdict } from '../lib/verdict'
 
 /** "PKP Intercity IC" */
 export const caseTitle = (item: Pick<CaseDto, 'carrier' | 'trainCategory'>) =>
@@ -20,6 +20,10 @@ export function caseRoute(item: Pick<CaseDto, 'fromStation' | 'toStation'>): str
 /** A stored case has a price, so only the 0 zł "Eligible" (under 60 min) needs re-reading as not due. */
 export const caseVerdict = (item: Pick<CaseDto, 'verdict' | 'compensationAmount'>) =>
   shownVerdict({ verdict: item.verdict, compensationAmount: item.compensationAmount, priceRequired: false })
+
+/** The letter a saved case gets (a saved case always has a price). */
+export const caseLetterKind = (item: Pick<CaseDto, 'verdict' | 'compensationAmount'>) =>
+  letterKind({ verdict: item.verdict, compensationAmount: item.compensationAmount, priceRequired: false })
 
 export const formatPln = (value: number) => `${formatAmount(value)} zł`
 

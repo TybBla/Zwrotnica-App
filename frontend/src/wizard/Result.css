@@ -497,3 +497,10 @@
   flex: 1 1 14rem;
   margin-left: 0;
 }
+
+/* One line on what a complaint under the carrier's rules asks for. */
+.result__explain {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+}

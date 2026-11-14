@@ -83,18 +83,21 @@ interface PayoutChoiceProps {
   /** The account number is already the one saved on the account – nothing to remember. */
   ibanSaved: boolean
   disabled?: boolean
+  /** Defaults to the plain question; a complaint without a guaranteed amount asks it conditionally. */
+  legend?: string
 }
 
 /** How the money should come back: three radio cards; the account number appears only for a transfer. */
 export function PayoutChoice(props: PayoutChoiceProps) {
   const { value, onChange, iban, onIbanChange, onIbanBlur, ibanError, ibanRef, remember, onRememberChange, ibanSaved, disabled } = props
+  const legend = props.legend ?? 'Jak chcesz otrzymać pieniądze?'
 
   return (
     <div className="payout">
       <PayoutRadios
         value={value}
         onChange={onChange}
-        legend="Jak chcesz otrzymać pieniądze?"
+        legend={legend}
         hint="Kupiłeś bilet gotówką w kasie? Wybierz przelew."
         disabled={disabled}
       />

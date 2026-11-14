@@ -131,22 +131,33 @@ beforeEach(() => {
 const saveButton = () => screen.getByRole('button', { name: 'Zapisz sprawę i przygotuj pismo' })
 
 describe('ResultStep – verdicts', () => {
-  it('offers no save or letter for a train that is not covered, and says what to do instead', async () => {
-    renderResult({
-      initial: {
-        ...preset,
-        ticket: { ...preset.ticket, carrierChoice: 'Polregio', trainCategory: '' },
-        assessment: { ...eligible, verdict: 'NotCovered', compensationAmount: 0, percent: 0, reason: 'Pociągi regionalne nie są objęte.' },
-      },
-    })
+  const notCovered: WizardState = {
+    ...preset,
+    ticket: { ...preset.ticket, carrierChoice: 'Polregio', trainCategory: '' },
+    assessment: { ...eligible, verdict: 'NotCovered', compensationAmount: 0, percent: 0, reason: 'Pociągi regionalne nie są objęte.' },
+  }
+
+  it('keeps an honest verdict for a train that is not covered, and still prepares a complaint under the carrier’s rules', async () => {
+    const user = userEvent.setup()
+    signedIn = true
+    renderResult({ initial: notCovered })
     expect(await screen.findByRole('heading', { name: 'Nie należy się' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Zapisz sprawę/ })).toBeNull()
-    expect(screen.queryByRole('radiogroup')).toBeNull()
+    expect(screen.queryByText('Kwota odszkodowania')).toBeNull()
     expect(screen.getByText(/nie wypłaca odszkodowań wg przepisów UE/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Sprawdź kolejny bilet' })).toBeTruthy()
+    expect(screen.getByText(/według jego regulaminu, bez gwarantowanej kwoty/)).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: /Jak chcesz otrzymać pieniądze, jeśli przewoźnik coś przyzna/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Zapisz sprawę i przygotuj pismo' })).toBeNull()
+
+    await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj reklamację' }))
+
+    expect(await screen.findByText(letter.subject)).toBeTruthy()
+    expect(api.createCase).toHaveBeenCalledTimes(1)
+    expect(api.generateComplaint).toHaveBeenCalledWith(17, expect.objectContaining({ payout: 'Voucher' }), expect.anything())
   })
 
-  it('offers no save for "Do sprawdzenia" either', async () => {
+  it('prepares a complaint for "Do sprawdzenia" too', async () => {
+    const user = userEvent.setup()
+    signedIn = true
     renderResult({
       initial: {
         ...preset,
@@ -155,7 +166,23 @@ describe('ResultStep – verdicts', () => {
       },
     })
     expect(await screen.findByRole('heading', { name: 'Do sprawdzenia' })).toBeTruthy()
+    expect(screen.queryByText('Kwota odszkodowania')).toBeNull()
+    await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj reklamację' }))
+    expect(await screen.findByText(letter.subject)).toBeTruthy()
+  })
+
+  it('offers no save when a covered train is under 60 minutes late', async () => {
+    renderResult({
+      initial: {
+        ...preset,
+        delay: { ...preset.delay, minutes: 30 },
+        assessment: { ...eligible, compensationAmount: 0, percent: 0, reason: 'Poniżej 60 minut.' },
+      },
+    })
+    expect(await screen.findByRole('heading', { name: 'Nie należy się' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Zapisz sprawę/ })).toBeNull()
+    expect(screen.queryByRole('radiogroup')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sprawdź kolejny bilet' })).toBeTruthy()
   })
 })
 

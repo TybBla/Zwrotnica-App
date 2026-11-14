@@ -18,7 +18,7 @@ import {
 } from '../hooks/useWizard'
 import { formatAmount, formatDate } from '../lib/format'
 import { isValidIban, normalizeIban } from '../lib/textRules'
-import { isClaimable, shownVerdict } from '../lib/verdict'
+import { letterKind, shownVerdict } from '../lib/verdict'
 import { LetterChoice } from './LetterChoice'
 import { PayoutChoice } from './PayoutChoice'
 import { VerdictCard, type VerdictDetail } from './VerdictCard'
@@ -72,7 +72,10 @@ interface ResultStepProps {
   minimumPayout?: number
 }
 
-/** Wynik: the verdict, and for money due – payout, save (signing in inline if needed) and the letter. */
+/**
+ * Wynik: the verdict, then payout, save (signing in inline if needed) and the letter – a demand for money due, or a
+ * complaint under the carrier's own rules when the EU 25%/50% scheme does not apply or is unclear.
+ */
 export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPending, minimumPayout }: ResultStepProps) {
   const { assessment, payout } = state
   const { user, loading, logout } = useAuth()
@@ -88,7 +91,9 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
   const inFlight = useRef<AbortController | null>(null)
   const ownPending = useRef<PendingCase | null>(null)
   const pendingCase = sharedPending ?? ownPending
-  const claimable = isClaimable(assessment)
+  const kind = letterKind(assessment)
+  const claimable = kind !== null
+  const saveLabel = kind === 'carrierRules' ? 'Zapisz sprawę i przygotuj reklamację' : 'Zapisz sprawę i przygotuj pismo'
   const busy = phase === 'saving' || phase === 'writing'
   const sessionNoticeId = useId()
   const authOpen = (phase === 'auth' || phase === 'reauth') && !user && !loading
@@ -312,7 +317,7 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
         <p className="wizard-step__lead">Brak wyniku – wróć i sprawdź dane.</p>
       )}
 
-      {assessment && !claimable && <NextSteps state={state} dispatch={dispatch} />}
+      {assessment && kind !== 'compensation' && <NextSteps state={state} dispatch={dispatch} />}
 
       {claimable && !done && (
         <>
@@ -325,13 +330,20 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
                 </p>
                 <p className="notice__text">
                   {state.savedCase ? 'Sprawa jest zapisana – po zalogowaniu' : 'Po zalogowaniu'} wybierz formę wypłaty i naciśnij
-                  „Zapisz sprawę i przygotuj pismo”.
+                  „{saveLabel}”.
                 </p>
               </div>
             </div>
           )}
 
+          {kind === 'carrierRules' && (
+            <p className="result__explain">
+              Reklamacja poprosi przewoźnika o rozpatrzenie sprawy według jego regulaminu, bez gwarantowanej kwoty.
+            </p>
+          )}
+
           <PayoutChoice
+            legend={kind === 'carrierRules' ? 'Jak chcesz otrzymać pieniądze, jeśli przewoźnik coś przyzna?' : undefined}
             value={payout.choice}
             onChange={(choice) => dispatch({ type: 'payout', patch: { choice } })}
             iban={payout.iban}
@@ -441,7 +453,7 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
               aria-describedby={hintId}
               onClick={() => void save()}
             >
-              Zapisz sprawę i przygotuj pismo
+              {saveLabel}
             </Button>
           )}
         </WizardActions>
@@ -478,7 +490,7 @@ function tripDetails(ticket: ReturnType<typeof toTicketFields>, route: string, d
   return rows.filter((row): row is VerdictDetail => row !== null)
 }
 
-/** No money due: say honestly why and what the passenger can still do. */
+/** No EU amount: say honestly why and what the passenger can still do. */
 function NextSteps({ state, dispatch }: { state: WizardState; dispatch: Dispatch<WizardAction> }) {
   const titleId = useId()
   const assessment = state.assessment
@@ -489,7 +501,7 @@ function NextSteps({ state, dispatch }: { state: WizardState; dispatch: Dispatch
 
   if (assessment.verdict === 'NotCovered') {
     items.push('Ten przewoźnik nie wypłaca odszkodowań wg przepisów UE – sprawdź jego regulamin.')
-    items.push('Reklamację możesz złożyć bezpośrednio u przewoźnika: w kasie lub przez formularz na jego stronie.')
+    items.push('Możesz złożyć reklamację – przygotujemy ją poniżej. Wyślesz ją przewoźnikowi e-mailem, przez jego formularz albo w kasie.')
     items.push('Jeśli przewoźnik lub kategoria pociągu są inne niż wpisane, popraw dane biletu.')
     fix = 'ticket'
   } else if (state.delay.isSeasonTicket) {

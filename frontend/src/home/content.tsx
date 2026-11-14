@@ -22,7 +22,7 @@ export const rules: Rule[] = [
   {
     situation: 'Pociąg regionalny, podmiejski lub miejski w Polsce',
     detail: 'np. Polregio (wszystkie jego pociągi, także InterRegio), Koleje Mazowieckie, Koleje Śląskie, SKM',
-    outcome: 'Brak odszkodowania wg przepisów UE. Obowiązuje regulamin przewoźnika.',
+    outcome: 'Brak odszkodowania wg przepisów UE. Reklamacja wg regulaminu przewoźnika – przygotujemy ją.',
     kind: 'none',
   },
 ]
@@ -79,8 +79,10 @@ export const faq: FaqItem[] = [
       <p>
         Nie. Polska wyłączyła pociągi miejskie, podmiejskie i regionalne z unijnego systemu 25%/50% (art. 3a ustawy o
         transporcie kolejowym). Dotyczy to polskich przewoźników regionalnych, m.in. Polregio (także jego pociągów
-        InterRegio), Kolei Mazowieckich, Kolei Śląskich, Kolei Dolnośląskich, SKM i WKD. Reklamację możesz złożyć na
-        zasadach z regulaminu przewoźnika. Sprawdź w nim, czy i ile zwraca za opóźnienie. Jeśli znasz tylko kategorię
+        InterRegio), Kolei Mazowieckich, Kolei Śląskich, Kolei Dolnośląskich, SKM i WKD. Reklamację możesz jednak złożyć
+        na zasadach z regulaminu przewoźnika – Refund Pilot przygotuje ją za Ciebie: opisze przejazd i poprosi o
+        rozpatrzenie sprawy według regulaminu, bez żądania konkretnej kwoty. To, czy i ile przewoźnik zwróci, zależy od
+        jego regulaminu. Jeśli znasz tylko kategorię
         InterRegio (IR), a przewoźnik jest inny niż Polregio albo go nie podasz, wynik to „Do sprawdzenia”.
       </p>
     ),

@@ -18,6 +18,17 @@ export function shownVerdict(assessment: Pick<AssessmentDto, 'verdict' | 'compen
   return assessment.compensationAmount > 0 ? 'Eligible' : 'NotCovered'
 }
 
-/** Only a case with money due can be saved and turned into a letter (the API answers 409 otherwise). */
-export const isClaimable = (assessment: AssessmentDto | undefined): assessment is AssessmentDto =>
-  assessment !== undefined && shownVerdict(assessment) === 'Eligible'
+/**
+ * Which letter a case gets, mirroring ComplaintService: money due → a demand under the EU rules ('compensation');
+ * a train outside the EU 25%/50% scheme or an unclear one → a complaint the carrier decides under its own rules
+ * ('carrierRules'); a covered train with nothing due (under 60 min, no price yet) → none (the API answers 409).
+ */
+export type LetterKind = 'compensation' | 'carrierRules'
+
+export function letterKind(
+  assessment: Pick<AssessmentDto, 'verdict' | 'compensationAmount' | 'priceRequired'> | undefined,
+): LetterKind | null {
+  if (!assessment) return null
+  if (assessment.verdict === 'NotCovered' || assessment.verdict === 'Unknown') return 'carrierRules'
+  return shownVerdict(assessment) === 'Eligible' ? 'compensation' : null
+}

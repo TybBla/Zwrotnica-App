@@ -12,7 +12,7 @@ import { formatDate } from '../lib/format'
 import { verdictStyle } from '../lib/verdict'
 import { usePageTitle } from '../routes/usePageTitle'
 import { LetterChoice } from '../wizard/LetterChoice'
-import { caseRoute, caseTitle, caseVerdict, causeLabels, formatPln, incidentText, payoutLabels } from './caseText'
+import { caseLetterKind, caseRoute, caseTitle, caseVerdict, causeLabels, formatPln, incidentText, payoutLabels } from './caseText'
 import { DeadlineBadge } from './DeadlineBadge'
 import { StatusSelect } from './StatusSelect'
 import './Cases.css'
@@ -192,7 +192,7 @@ function CaseDetail({ id }: { id: number | null }) {
             </p>
           </section>
 
-          {caseVerdict(load.item) === 'Eligible' && (
+          {caseLetterKind(load.item) !== null && (
             <section className="case-detail__section" aria-labelledby="case-letter-title">
               <h2 className="case-detail__subtitle" id="case-letter-title">
                 Pismo do przewoźnika
@@ -200,8 +200,10 @@ function CaseDetail({ id }: { id: number | null }) {
               {!letter && (
                 <>
                   <p className="case-detail__hint">
-                    Przygotujemy pismo od nowa z danych tej sprawy i Twojego profilu (forma wypłaty:{' '}
-                    {payoutLabels[load.item.payoutPreference].toLowerCase()}).
+                    {caseLetterKind(load.item) === 'carrierRules'
+                      ? 'Przygotujemy reklamację od nowa – przewoźnik rozpatrzy ją według swojego regulaminu, bez gwarantowanej kwoty. Użyjemy'
+                      : 'Przygotujemy pismo od nowa z'}{' '}
+                    danych tej sprawy i Twojego profilu (forma wypłaty: {payoutLabels[load.item.payoutPreference].toLowerCase()}).
                   </p>
                   <div>
                     <Button
@@ -210,7 +212,7 @@ function CaseDetail({ id }: { id: number | null }) {
                       loading={letterBusy}
                       onClick={() => void prepareLetter(load.item)}
                     >
-                      Przygotuj pismo ponownie
+                      {caseLetterKind(load.item) === 'carrierRules' ? 'Przygotuj reklamację ponownie' : 'Przygotuj pismo ponownie'}
                     </Button>
                   </div>
                   {letterBusy && (
