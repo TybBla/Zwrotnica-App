@@ -39,6 +39,44 @@ function extractionNotice(error: unknown): string {
   return 'Nie udało się odczytać biletu. Uzupełnij dane poniżej.'
 }
 
+/** Form order, with the labels used in "Nie udało się odczytać: …". */
+const unreadLabels: [TicketFieldKey, string][] = [
+  ['carrier', 'przewoźnik'],
+  ['trainCategory', 'kategoria pociągu'],
+  ['travelDate', 'data przejazdu'],
+  ['ticketPrice', 'cena biletu'],
+  ['fromStation', 'stacja początkowa'],
+  ['toStation', 'stacja docelowa'],
+  ['ticketNumber', 'numer biletu'],
+]
+
+const keyFields: TicketFieldKey[] = ['carrier', 'travelDate', 'ticketPrice']
+
+function formValue(ticket: TicketForm, key: TicketFieldKey): string {
+  switch (key) {
+    case 'carrier':
+      return ticket.carrierChoice === OTHER_CARRIER ? ticket.otherCarrier : ticket.carrierChoice
+    case 'ticketPrice':
+      return ticket.price
+    default:
+      return ticket[key]
+  }
+}
+
+/**
+ * What the last read could not get and the form still lacks. A regional carrier has no category, so a missing one
+ * is not worth mentioning. `nothingRead`: carrier, date and price are all missing – probably a blurred or cut-off photo.
+ */
+function unreadSummary(ticket: TicketForm, missing: string[], regional: boolean) {
+  const unread = unreadLabels.filter(
+    ([key]) => missing.includes(key) && formValue(ticket, key).trim() === '' && !(regional && key === 'trainCategory'),
+  )
+  const keys = unread.map(([key]) => key)
+  return { labels: unread.map(([, label]) => label), nothingRead: keyFields.every((key) => keys.includes(key)) }
+}
+
+const isInterRegio = (category: string) => /^s*(ir|interregio)s*$/i.test(category)
+
 const requiredNames: Record<TicketIssue['field'], string> = {
   carrier: 'przewoźnika',
   travelDate: 'datę przejazdu',
@@ -104,6 +142,8 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
     dispatch({ type: 'back' })
   }
 
+  const regionalCarrier = reference?.carriers.find((c) => c.name === state.ticket.carrierChoice)?.coverage === 'NotCovered'
+  const unread = state.reviewing && !picking ? unreadSummary(state.ticket, state.missing, regionalCarrier) : null
   const issues = ticketIssues(state.ticket)
   const missingRequired = issues.filter((issue) => issue.empty).map((issue) => requiredNames[issue.field])
   const nextHint =
@@ -140,6 +180,27 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
           <button type="button" className="notice__close" aria-label="Zamknij komunikat" onClick={() => dispatch({ type: 'dismissNotice' })}>
             <CloseIcon size={18} />
           </button>
+        </div>
+      )}
+
+      {unread && unread.labels.length > 0 && (
+        <div className="notice" role="status" aria-labelledby="ticket-unread-title">
+          <AlertCircleIcon className="notice__icon" />
+          <div className="notice__body">
+            <p className="notice__title" id="ticket-unread-title">
+              {unread.nothingRead
+                ? 'Nie udało się odczytać biletu – zdjęcie może być nieostre lub ucięte.'
+                : `Nie udało się odczytać: ${joinPolish(unread.labels)}.`}
+            </p>
+            <p className="notice__text">
+              {unread.nothingRead
+                ? 'Wgraj wyraźniejsze zdjęcie albo wpisz dane ręcznie.'
+                : 'Wgraj wyraźniejsze zdjęcie albo uzupełnij te pola ręcznie.'}
+            </p>
+            <Button variant="secondary" size="sm" className="notice__action" iconStart={<UploadIcon size={16} />} onClick={() => switchSource('upload')}>
+              Wgraj inne zdjęcie
+            </Button>
+          </div>
         </div>
       )}
 
@@ -294,12 +355,11 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
         label="Przewoźnik"
         required
         attention={carrierAttention}
-        hint={
-          carrierAttention
-            ? MISSING_HINT
-            : regional
-              ? 'Przewoźnik regionalny – takie pociągi w Polsce zwykle nie są objęte rekompensatą 25%/50%. Sprawdzimy to w wyniku.'
-              : undefined
+        hint={carrierAttention ? MISSING_HINT : undefined}
+        note={
+          regional
+            ? `${carrier.name} to przewoźnik regionalny. Przepisy UE o odszkodowaniu 25% / 50% go nie obejmują, więc nie wyliczymy kwoty. Możesz kontynuować i przygotować reklamację – przewoźnik rozpatrzy ją według swojego regulaminu.`
+            : undefined
         }
       >
         <Select value={ticket.carrierChoice} onValueChange={chooseCarrier} options={carrierOptions} placeholder="Wybierz przewoźnika" />
@@ -325,6 +385,11 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
           optional
           attention={attention('trainCategory', ticket.trainCategory)}
           hint={attention('trainCategory', ticket.trainCategory) ? MISSING_HINT : undefined}
+          note={
+            isInterRegio(ticket.trainCategory)
+              ? 'Do sprawdzenia: pociągi InterRegio prowadzi przewoźnik regionalny Polregio, więc przepisy UE o odszkodowaniu 25% / 50% mogą ich nie obejmować i kwoty nie wyliczymy. Możesz kontynuować i przygotować reklamację – przewoźnik rozpatrzy ją według swojego regulaminu.'
+              : undefined
+          }
           tooltip="Skrót przed numerem pociągu na bilecie, np. „IC 5310”. Dla PKP Intercity od kategorii zależy, czy należy się rekompensata."
         >
           <Select value={ticket.trainCategory} onValueChange={(trainCategory) => onChange({ trainCategory })} options={categoryOptions} />

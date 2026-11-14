@@ -69,6 +69,8 @@ export interface WizardState {
   extraction?: ExtractionDto
   /** Fields the AI could not read (highlighted while still empty). */
   missing: string[]
+  /** Form fields the user changed by hand: a later read never overwrites them while they hold a value. */
+  edited: (keyof TicketForm)[]
   /** Upload path: the review form is shown (after a read). */
   reviewing: boolean
   /** Friendly message after a failed read (the wizard switched to manual entry). */
@@ -102,6 +104,7 @@ export const initialWizardState: WizardState = {
   files: [],
   ticket: emptyTicket,
   missing: [],
+  edited: [],
   reviewing: false,
   delay: { incidentType: 'Delay', minutes: null, isSeasonTicket: false },
   payout: { choice: 'OriginalPayment', iban: '', remember: false, touched: false },
@@ -243,10 +246,20 @@ export function caseKey(request: CaseRequest): string {
   return JSON.stringify({ ...request, payoutPreference: undefined })
 }
 
-/** Merges what the AI read into the form: read values win, unread ones keep whatever the user already typed. */
-function mergeExtraction(ticket: TicketForm, extraction: ExtractionDto, carriers: readonly CarrierOption[]): TicketForm {
+/**
+ * Merges what the AI read into the form. A read value fills a field that is empty or was filled by an earlier read;
+ * whatever the user typed or picked themselves stays, so reading another photo never undoes their corrections.
+ */
+function mergeExtraction(
+  ticket: TicketForm,
+  extraction: ExtractionDto,
+  carriers: readonly CarrierOption[],
+  edited: readonly (keyof TicketForm)[],
+): TicketForm {
   const next = { ...ticket }
-  if (extraction.carrier) {
+  const kept = (key: keyof TicketForm) => edited.includes(key) && ticket[key].trim() !== ''
+  const carrierKept = kept('carrierChoice') && (ticket.carrierChoice !== OTHER_CARRIER || kept('otherCarrier'))
+  if (extraction.carrier && !carrierKept) {
     if (carriers.some((carrier) => carrier.name === extraction.carrier)) {
       next.carrierChoice = extraction.carrier
     } else {
@@ -254,12 +267,12 @@ function mergeExtraction(ticket: TicketForm, extraction: ExtractionDto, carriers
       next.otherCarrier = extraction.carrier
     }
   }
-  if (extraction.trainCategory) next.trainCategory = extraction.trainCategory
-  if (extraction.fromStation) next.fromStation = extraction.fromStation
-  if (extraction.toStation) next.toStation = extraction.toStation
-  if (extraction.ticketNumber) next.ticketNumber = extraction.ticketNumber
-  if (extraction.travelDate) next.travelDate = extraction.travelDate
-  if (extraction.ticketPrice !== null) next.price = formatPriceInput(extraction.ticketPrice)
+  if (extraction.trainCategory && !kept('trainCategory')) next.trainCategory = extraction.trainCategory
+  if (extraction.fromStation && !kept('fromStation')) next.fromStation = extraction.fromStation
+  if (extraction.toStation && !kept('toStation')) next.toStation = extraction.toStation
+  if (extraction.ticketNumber && !kept('ticketNumber')) next.ticketNumber = extraction.ticketNumber
+  if (extraction.travelDate && !kept('travelDate')) next.travelDate = extraction.travelDate
+  if (extraction.ticketPrice !== null && !kept('price')) next.price = formatPriceInput(extraction.ticketPrice)
   // Regional carriers have no categories: a printed one would only confuse the case.
   if (carriers.find((carrier) => carrier.name === next.carrierChoice)?.coverage === 'NotCovered') next.trainCategory = ''
   return next
@@ -278,13 +291,18 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, files: action.files }
     case 'ticket':
       // The ticket decides eligibility and amount, so an older assessment no longer applies.
-      return { ...state, ticket: { ...state.ticket, ...action.patch }, assessment: undefined }
+      return {
+        ...state,
+        ticket: { ...state.ticket, ...action.patch },
+        edited: [...new Set([...state.edited, ...(Object.keys(action.patch) as (keyof TicketForm)[])])],
+        assessment: undefined,
+      }
     case 'extracted':
       // A read that finishes after the user left the upload path (typed by hand, went back) must not touch the form.
       if (!awaitingRead(state)) return state
       return {
         ...state,
-        ticket: mergeExtraction(state.ticket, action.extraction, action.carriers),
+        ticket: mergeExtraction(state.ticket, action.extraction, action.carriers, state.edited),
         extraction: action.extraction,
         missing: action.extraction.missingFields,
         reviewing: true,

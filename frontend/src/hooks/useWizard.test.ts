@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { ExtractionDto } from '../api/types'
 import {
   OTHER_CARRIER,
   emptyTicket,
@@ -116,6 +117,27 @@ describe('wizardReducer', () => {
     })
     expect(state.missing).toEqual(['trainCategory', 'toStation', 'ticketPrice'])
     expect(state.reviewing).toBe(true)
+  })
+
+  it('a second read never overwrites what the user edited, but refreshes what the AI filled before', () => {
+    const carriers = [{ name: 'PKP Intercity', coverage: 'Eligible' as const, categories: ['IC', 'TLK'] }]
+    const read = (patch: Partial<ExtractionDto>) => ({
+      type: 'extracted' as const,
+      carriers,
+      extraction: {
+        carrier: null, trainCategory: null, fromStation: null, toStation: null, ticketNumber: null,
+        ticketPrice: null, travelDate: null, missingFields: [], usedAi: true, ...patch,
+      },
+    })
+    let state = wizardReducer(initialWizardState, { type: 'start', source: 'upload' })
+    state = wizardReducer(state, read({ fromStation: 'Krakow', ticketPrice: 10, trainCategory: 'IC' }))
+    state = wizardReducer(state, { type: 'ticket', patch: { price: '49,90' } })
+    state = wizardReducer(state, { type: 'ticket', patch: { ticketNumber: '' } })
+    state = wizardReducer(state, { type: 'source', source: 'upload' })
+    state = wizardReducer(state, read({ fromStation: 'Kraków Główny', ticketPrice: 99, ticketNumber: 'AB-1', trainCategory: 'TLK' }))
+
+    expect(state.ticket).toMatchObject({ fromStation: 'Kraków Główny', price: '49,90', ticketNumber: 'AB-1', trainCategory: 'TLK' })
+    expect(wizardReducer(state, { type: 'reset' }).edited).toEqual([])
   })
 
   it('falls back to manual entry on an extraction error without losing data', () => {

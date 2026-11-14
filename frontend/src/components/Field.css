@@ -59,3 +59,23 @@
   border-color: var(--warning);
   background: color-mix(in srgb, var(--warning-tint) 55%, var(--surface));
 }
+
+/* Information about the chosen value (e.g. a regional carrier): informative, never an error. */
+.field__note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding: var(--space-3);
+  border-left: 3px solid var(--brand);
+  border-radius: var(--radius-sm);
+  background: var(--brand-tint);
+  color: var(--brand-tint-text);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.field__note svg {
+  flex: none;
+  margin-top: 0.1em;
+}

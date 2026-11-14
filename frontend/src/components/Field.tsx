@@ -1,5 +1,5 @@
 import { useId, useMemo, type ReactNode } from 'react'
-import { AlertCircleIcon } from './icons'
+import { AlertCircleIcon, InfoIcon } from './icons'
 import { FieldContext } from './fieldContext'
 import { Tooltip } from './Tooltip'
 import './Field.css'
@@ -7,6 +7,8 @@ import './Field.css'
 interface FieldProps {
   label: string
   hint?: ReactNode
+  /** Information about the chosen value (not an error, never blocks), shown as a quiet box under the control. */
+  note?: ReactNode
   /** Shown instead of nothing below the control; marks the control aria-invalid. */
   error?: string | null
   /** Optional ⓘ next to the label. */
@@ -21,20 +23,21 @@ interface FieldProps {
 }
 
 /** Label + control + hint + error. The child control (TextInput, TextArea, Select) picks up id and ARIA wiring. */
-export function Field({ label, hint, error, tooltip, optional, required = false, attention = false, id, children }: FieldProps) {
+export function Field({ label, hint, note, error, tooltip, optional, required = false, attention = false, id, children }: FieldProps) {
   const generatedId = useId()
   const controlId = id ?? generatedId
   const hintId = hint ? `${controlId}-hint` : undefined
   const errorId = error ? `${controlId}-error` : undefined
+  const noteId = note ? `${controlId}-note` : undefined
 
   const control = useMemo(
     () => ({
       id: controlId,
-      describedBy: [errorId, hintId].filter(Boolean).join(' ') || undefined,
+      describedBy: [errorId, hintId, noteId].filter(Boolean).join(' ') || undefined,
       invalid: Boolean(error),
       required,
     }),
-    [controlId, errorId, hintId, error, required],
+    [controlId, errorId, hintId, noteId, error, required],
   )
 
   return (
@@ -61,6 +64,12 @@ export function Field({ label, hint, error, tooltip, optional, required = false,
       {hint && (
         <p className="field__hint" id={hintId}>
           {hint}
+        </p>
+      )}
+      {note && (
+        <p className="field__note" id={noteId}>
+          <InfoIcon size={16} />
+          <span>{note}</span>
         </p>
       )}
     </div>

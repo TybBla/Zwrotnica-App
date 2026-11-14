@@ -269,6 +269,10 @@
   color: var(--text-secondary);
 }
 
+.notice__action {
+  margin-top: var(--space-3);
+}
+
 .notice__close {
   display: grid;
   flex: none;

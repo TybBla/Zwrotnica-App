@@ -173,6 +173,138 @@ describe('Wizard – ticket step', () => {
     expect(description(price)).not.toContain(missingHint)
   })
 
+  it('names the fields it could not read and offers another photo', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'extractTicket').mockResolvedValue({
+      carrier: 'PKP Intercity',
+      trainCategory: 'IC',
+      fromStation: 'Kraków Główny',
+      toStation: 'Warszawa Centralna',
+      ticketNumber: 'IC-1',
+      ticketPrice: null,
+      travelDate: null,
+      missingFields: ['ticketPrice', 'travelDate'],
+      usedAi: true,
+    })
+    const { container } = renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+
+    const notice = await screen.findByRole('status', { name: /Nie udało się odczytać/ })
+    expect(notice.textContent).toContain('Nie udało się odczytać: data przejazdu i cena biletu.')
+    expect(notice.textContent).toContain('Wgraj wyraźniejsze zdjęcie albo uzupełnij te pola ręcznie.')
+    expect(within(notice).getByRole('button', { name: 'Wgraj inne zdjęcie' })).toBeTruthy()
+    // Field-level highlights stay.
+    expect(description(screen.getByLabelText('Cena biletu'))).toContain('Uzupełnij – nie udało się odczytać')
+  })
+
+  it('says plainly when nothing useful could be read', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'extractTicket').mockResolvedValue({
+      carrier: null,
+      trainCategory: null,
+      fromStation: null,
+      toStation: null,
+      ticketNumber: null,
+      ticketPrice: null,
+      travelDate: null,
+      missingFields: ['carrier', 'trainCategory', 'fromStation', 'toStation', 'ticketNumber', 'ticketPrice', 'travelDate'],
+      usedAi: true,
+    })
+    const { container } = renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+
+    const notice = await screen.findByRole('status', { name: /Nie udało się odczytać biletu/ })
+    expect(notice.textContent).toContain('Nie udało się odczytać biletu – zdjęcie może być nieostre lub ucięte.')
+    expect(notice.textContent).toContain('Wgraj wyraźniejsze zdjęcie albo wpisz dane ręcznie.')
+    expect(notice.textContent).not.toContain('Nie udało się odczytać:')
+    expect(within(notice).getByRole('button', { name: 'Wgraj inne zdjęcie' })).toBeTruthy()
+  })
+
+  it('"Wgraj inne zdjęcie" keeps what was read and typed; a new read only fills the rest', async () => {
+    const user = userEvent.setup()
+    const extract = vi.spyOn(api, 'extractTicket').mockResolvedValueOnce({
+      carrier: 'PKP Intercity',
+      trainCategory: 'IC',
+      fromStation: 'Kraków Główny',
+      toStation: null,
+      ticketNumber: null,
+      ticketPrice: null,
+      travelDate: null,
+      missingFields: ['toStation', 'ticketNumber', 'ticketPrice', 'travelDate'],
+      usedAi: true,
+    })
+    const { container } = renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+    await user.type(await screen.findByLabelText('Cena biletu'), '49,90')
+
+    await user.click(screen.getByRole('button', { name: 'Wgraj inne zdjęcie' }))
+    expect(container.querySelector('input[type="file"]')).not.toBeNull()
+
+    extract.mockResolvedValueOnce({
+      carrier: 'PKP Intercity',
+      trainCategory: 'TLK',
+      fromStation: 'Kraków Główny',
+      toStation: 'Warszawa Centralna',
+      ticketNumber: null,
+      ticketPrice: 99,
+      travelDate: '2025-06-01',
+      missingFields: ['ticketNumber'],
+      usedAi: true,
+    })
+    await uploadAndRead(user, container)
+
+    expect(((await screen.findByLabelText('Cena biletu')) as HTMLInputElement).value).toBe('49,90')
+    expect((screen.getByLabelText('Data przejazdu') as HTMLInputElement).value).toBe('2025-06-01')
+    expect((screen.getByLabelText(/^Stacja docelowa/) as HTMLInputElement).value).toBe('Warszawa Centralna')
+    expect((screen.getByLabelText(/^Kategoria pociągu/) as HTMLSelectElement).value).toBe('TLK')
+    expect(screen.getByRole('status', { name: /Nie udało się odczytać/ }).textContent).toContain('numer biletu')
+  })
+
+  it('shows at once that a regional carrier is outside the EU 25% / 50% rules, without blocking', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    await user.selectOptions(await screen.findByLabelText('Przewoźnik'), 'Polregio')
+
+    const carrier = screen.getByLabelText('Przewoźnik')
+    expect(description(carrier)).toContain(
+      'Polregio to przewoźnik regionalny. Przepisy UE o odszkodowaniu 25% / 50% go nie obejmują, więc nie wyliczymy kwoty. ' +
+        'Możesz kontynuować i przygotować reklamację – przewoźnik rozpatrzy ją według swojego regulaminu.',
+    )
+    expect(carrier.getAttribute('aria-invalid')).not.toBe('true')
+    expect(screen.queryByRole('alert')).toBeNull()
+
+    fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
+    await user.type(screen.getByLabelText('Cena biletu'), '19,90')
+    expect(nextButton().disabled).toBe(false)
+  })
+
+  it('marks an InterRegio train with another carrier as "Do sprawdzenia"', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'extractTicket').mockResolvedValue({
+      carrier: 'Inny Przewoźnik',
+      trainCategory: 'IR',
+      fromStation: null,
+      toStation: null,
+      ticketNumber: null,
+      ticketPrice: 30,
+      travelDate: '2025-06-01',
+      missingFields: [],
+      usedAi: true,
+    })
+    const { container } = renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+
+    const category = await screen.findByLabelText(/^Kategoria pociągu/)
+    expect(description(category)).toMatch(/^Do sprawdzenia/)
+    expect(description(category)).toContain('przygotować reklamację')
+    expect(nextButton().disabled).toBe(false)
+  })
+
   it('blocks "Dalej" only while carrier, travel date or price are missing', async () => {
     const user = userEvent.setup()
     renderWizard()
