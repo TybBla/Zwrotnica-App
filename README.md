@@ -179,6 +179,8 @@ npm run build                            # tsc + build produkcyjny
 npm run lint                             # oxlint
 ```
 
+Testy backendu i frontendu uruchamia też GitHub Actions (`.github/workflows/ci.yml`).
+
 ### Konfiguracja (opcjonalna)
 
 | Klucz | Domyślnie | Znaczenie |
