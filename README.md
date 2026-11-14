@@ -24,6 +24,8 @@ Demo online: **https://zwrotnica-d6a2hkftb7emcvc3.belgiumcentral-01.azurewebsite
 - **Werdykt końcowy** formalnym językiem: podstawa prawna, kwota, termin, zastrzeżenia.
 - **Pismo reklamacyjne** jako tekst lub PDF, z listą danych do uzupełnienia. Aplikacja nigdy nie blokuje złożenia reklamacji (przy braku roszczenia z UE powstaje pismo wg regulaminu przewoźnika).
 - **Przewoźnicy regionalni:** poza unijnym systemem 25%/50%, więc można wpisać poniesione koszty (np. taksówka, nocleg) i dostać wniosek o ich zwrot z listą załączników.
+- **Co dalej po piśmie:** zweryfikowane linki do oficjalnych kanałów reklamacyjnych przewoźnika, termin odpowiedzi do kalendarza (.ics), a po terminie lub odmowie ponaglenie i skarga do Prezesa UTK z szablonu (tekst lub PDF).
+- **Bezpieczeństwo:** sekcja o fałszywych SMS-ach „o odszkodowaniu” – Zwrotnica nie wypłaca pieniędzy i nigdy nie prosi o dane karty.
 - **Trzy formy wypłaty:** zwrot na konto użyte do zakupu, inny rachunek, bon.
 - **Konta i lista spraw:** statusy, licznik kwot, odliczanie miesiąca na odpowiedź przewoźnika, jedno przypomnienie e-mail po terminie. Numer rachunku jest szyfrowany w bazie.
 - **Tryb gościa:** odczyt, werdykt i kwota bez logowania.

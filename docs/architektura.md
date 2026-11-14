@@ -56,6 +56,7 @@ To główna zasada projektu i mój „creative twist”: AI robi tylko to, czego
 - **Jedna sprawa na jedno przejście kreatora.** Ponowne „Zapisz” lub błąd w połowie nie tworzą duplikatów. Stan kreatora jest powiązany z kontem, więc po wylogowaniu nic nie przecieka do następnej osoby.
 - **Odliczanie terminu w strefie Europe/Warsaw.** Daty są liczone tak, jak czyta je pasażer w Polsce, niezależnie od strefy urządzenia i serwera (także „dzisiaj” przy walidacji daty podróży).
 - **Przypomnienie e-mail po terminie przewoźnika.** Usługa w tle (`ReminderBackgroundService`) przy starcie i co godzinę woła `ReminderService`. Jedno zapytanie zwraca sprawy „Wysłana”, których termin skończył się przed dzisiejszym dniem w Europe/Warsaw (przewoźnik ma cały ostatni dzień, art. 112 KC), bez przypomnienia i z włączoną zgodą właściciela, razem z jego adresem e-mail. Potem **claim-then-send**: jeden warunkowy `UPDATE ... SET ReminderSentAt = teraz WHERE ReminderSentAt IS NULL` rezerwuje partię, a wysyłane są tylko sprawy zarezerwowane przez ten przebieg. Dwie instancje nie wyślą więc tego samego e-maila (najwyżej raz); kosztem jest to, że awaria procesu między rezerwacją a wysyłką gubi to jedno przypomnienie. `ReminderSentAt` oznacza „obsłużone”: wysłane albo trwale niedostarczalne (zarezerwowana domena testowa, błędny adres, odmowa skrzynki 550/551/553). Błąd przejściowy zwalnia rezerwację na następny przebieg, a niedostępny serwer SMTP (połączenie, TLS, logowanie, 15 s timeout) przerywa przebieg. Logi zawierają tylko id sprawy i typ błędu, nigdy adres ani treść.
+- **Kolejne kroki bez AI.** Ponaglenie i skarga do Prezesa UTK powstają wyłącznie z szablonów (`FollowUpTemplate`) z tymi samymi tokenami, listą braków i nagłówkiem PDF co pierwsze pismo; powtarzają kwotę zapisaną w sprawie, niczego nie liczą od nowa. Dostępność (`FollowUpRules`) liczy serwer i zwraca w `followUps`. Linki do kanałów reklamacyjnych (`ComplaintChannels`) to wyłącznie adresy sprawdzone na stronach przewoźników i UTK; przewoźnik bez zweryfikowanej strony dostaje tylko ogólną podpowiedź. Plik `.ics` z terminem odpowiedzi powstaje w przeglądarce.
 - **Tryb bez AI.** Bez klucza rejestrowany jest `NullAiClient`: wgrywanie biletu zwraca 409, UI przełącza na ścieżkę ręczną, a pismo powstaje z szablonu. Limit (429) i błąd AI (502) kończą się tak samo, czytelnym komunikatem i trybem ręcznym. Aplikacja nigdy się nie wysypuje.
 
 
@@ -96,7 +97,7 @@ Wartości produkcyjne są w `appsettings.Production.json`. Zmienne środowiskowe
 | Metoda | Ścieżka | Autoryzacja | Do czego |
 |---|---|---|---|
 | GET | `/api/health` | – | Sprawdzenie, czy aplikacja działa: `{ "status": "ok" }` |
-| GET | `/api/reference` | – | Słownik przewoźników i kategorii oraz minimalna wypłata (`minimumPayout`), cache 1 h |
+| GET | `/api/reference` | – | Słownik przewoźników i kategorii, minimalna wypłata (`minimumPayout`), zweryfikowane kanały reklamacji przewoźnika (`complaintUrl`, `complaintFormUrl`, `complaintChannels`) i UTK (`utk`), cache 1 h |
 | POST | `/api/extractions` | – (limit 5/min/IP) | Odczyt biletu przez AI z 1–4 plików (multipart `files`). 409 bez klucza AI, 502 przy błędzie AI, 429 po przekroczeniu limitu |
 | POST | `/api/assessments` | – | Werdykt, kwota, procent, ryzyko odmowy i werdykt końcowy (`outcome`) dla podanych danych (bez zapisu) |
 | POST | `/api/auth/register` | – | Rejestracja (Identity API) |
@@ -106,7 +107,7 @@ Wartości produkcyjne są w `appsettings.Production.json`. Zmienne środowiskowe
 | GET | `/api/profile` | ciasteczko | Profil: imię i nazwisko, adres, rachunek, forma wypłaty |
 | PUT | `/api/profile` | ciasteczko | Aktualizacja profilu |
 | GET | `/api/cases` | ciasteczko | Lista spraw użytkownika |
-| GET | `/api/cases/{id}` | ciasteczko | Szczegóły sprawy z werdyktem końcowym (`outcome`), 404 dla cudzej |
+| GET | `/api/cases/{id}` | ciasteczko | Szczegóły sprawy z werdyktem końcowym (`outcome`) i dostępnymi kolejnymi pismami (`followUps`), 404 dla cudzej |
 | POST | `/api/cases` | ciasteczko | Utworzenie sprawy. Werdykt i kwotę liczy serwer (201 + `Location`). Opcjonalne `expenseDescription` / `expenseAmount` zapisywane tylko dla przewoźnika regionalnego |
 | PUT | `/api/cases/{id}` | ciasteczko | Edycja sprawy (przeliczenie werdyktu) |
 | PATCH | `/api/cases/{id}/status` | ciasteczko | Zmiana statusu. „Wysłana” ustawia termin odpowiedzi (+1 miesiąc) |
@@ -114,6 +115,8 @@ Wartości produkcyjne są w `appsettings.Production.json`. Zmienne środowiskowe
 | GET | `/api/stats` | ciasteczko | Kwoty odzyskane i oczekujące, liczba spraw |
 | POST | `/api/cases/{id}/complaint` | ciasteczko | Wygenerowanie pisma: `{ payout, oneTimeIban?, saveIbanToProfile }` → temat, treść, lista braków. Gdy nic nie należy się według przepisów UE (także opóźnienie poniżej 60 minut) albo sprawa jest niejasna: reklamacja wg regulaminu przewoźnika (bez kwoty). Przewoźnik regionalny z kwotą kosztów: wniosek o zwrot udokumentowanych kosztów. 409 tylko dla sprawy bez ceny biletu |
 | POST | `/api/cases/{id}/complaint/pdf` | ciasteczko | PDF z podanego tematu i treści (bez wywołania AI, bez zapisu) |
+| POST | `/api/cases/{id}/letters/{kind}` | ciasteczko | Kolejne pismo z szablonu (bez AI, bez zapisu): `reminder` (ponaglenie, sprawa „Wysłana”) albo `utk-complaint` (skarga do Prezesa UTK, sprawa „Odrzucona” albo „Wysłana” po terminie wg daty w Europe/Warsaw) → `ComplaintDto`. 409 z polskim komunikatem, gdy status na to nie pozwala; 404 dla cudzej sprawy i nieznanego `kind` |
+| POST | `/api/cases/{id}/letters/{kind}/pdf` | ciasteczko | PDF kolejnego pisma z podanego tematu i treści (`ponaglenie-{id}.pdf`, `skarga-utk-{id}.pdf`), te same reguły dostępności |
 
 Pozostałe endpointy `MapIdentityApi` (np. `refresh`, `forgotPassword`, `manage/2fa`) są wystawione przez framework, ale frontend ich nie używa.
 
