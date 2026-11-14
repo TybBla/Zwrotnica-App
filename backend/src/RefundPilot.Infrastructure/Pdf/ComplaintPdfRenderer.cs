@@ -21,7 +21,7 @@ public sealed class ComplaintPdfRenderer : IComplaintPdfRenderer
         QuestPDF.Settings.ThrowOnMissingTextGlyphs = false;
     }
 
-    public byte[] Render(ComplaintDto letter)
+    public byte[] Render(ComplaintDto letter, string placeAndDate)
     {
         var paragraphs = letter.Body.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries);
 
@@ -32,7 +32,11 @@ public sealed class ComplaintPdfRenderer : IComplaintPdfRenderer
             page.MarginHorizontal(2.5f, Unit.Centimetre);
             page.DefaultTextStyle(t => t.FontFamily("Lato").FontSize(11).LineHeight(1.35f));
 
-            page.Header().Text(letter.Subject).FontSize(15).Bold();
+            page.Header().Column(header =>
+            {
+                header.Item().AlignRight().Text(placeAndDate).FontSize(10.5f);
+                header.Item().PaddingTop(14).Text(letter.Subject).FontSize(15).Bold();
+            });
 
             page.Content().PaddingTop(18).Column(column =>
             {

@@ -4,5 +4,6 @@ namespace RefundPilot.Application.Abstractions;
 
 public interface IComplaintPdfRenderer
 {
-    byte[] Render(ComplaintDto letter);
+    /// <summary>placeAndDate is the right-aligned header line, e.g. "Gdańsk, 14 listopada 2026 r.".</summary>
+    byte[] Render(ComplaintDto letter, string placeAndDate);
 }

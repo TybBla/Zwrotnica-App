@@ -53,10 +53,15 @@ public sealed partial class ComplaintService(
 
     private const int MaxName = 200, MaxAddress = 300, MaxIban = 34, MaxSubject = 200, MaxBody = 6000;
 
-    public async Task<byte[]?> RenderPdfAsync(int caseId, ComplaintPdfRequest request) =>
-        currentUser.UserId is { } id && await cases.GetAsync(caseId, id) is not null
-            ? pdf.Render(new ComplaintDto(request.Subject, request.Body, UsedAi: false, []))
-            : null;
+    public async Task<byte[]?> RenderPdfAsync(int caseId, ComplaintPdfRequest request)
+    {
+        if (currentUser.UserId is not { } id || await cases.GetAsync(caseId, id) is null)
+            return null;
+
+        var address = (await profiles.GetAsync(id))?.Address;
+        var placeAndDate = LetterHeader.PlaceAndDate(LetterHeader.PlaceFromAddress(address), WarsawClock.Today(clock));
+        return pdf.Render(new ComplaintDto(request.Subject, request.Body, UsedAi: false, []), placeAndDate);
+    }
 
     public async Task<ComplaintResult> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct)
     {

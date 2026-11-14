@@ -98,11 +98,13 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     {
         public int Calls { get; private set; }
         public ComplaintDto? Last { get; private set; }
+        public string? LastPlaceAndDate { get; private set; }
 
-        public byte[] Render(ComplaintDto letter)
+        public byte[] Render(ComplaintDto letter, string placeAndDate)
         {
             Calls++;
             Last = letter;
+            LastPlaceAndDate = placeAndDate;
             return [1, 2, 3];
         }
     }
@@ -587,8 +589,17 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.Equal([1, 2, 3], own);
         Assert.Equal("Temat", _pdf.Last!.Subject);
         Assert.Equal("Treść", _pdf.Last.Body);
+        Assert.Equal("Gdańsk, 13 listopada 2026 r.", _pdf.LastPlaceAndDate);
         Assert.Null(foreign);
         Assert.Equal(1, _pdf.Calls);
+    }
+
+    [Fact]
+    public async Task RenderPdf_WithoutProfileAddress_UsesPlaceholder()
+    {
+        await Service(Failing(), Empty).RenderPdfAsync(await AddCaseAsync(Empty), new ComplaintPdfRequest("Temat", "Treść"));
+
+        Assert.Equal("[miejscowość], 13 listopada 2026 r.", _pdf.LastPlaceAndDate);
     }
 
     [Fact]

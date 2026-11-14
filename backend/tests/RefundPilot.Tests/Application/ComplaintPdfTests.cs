@@ -19,7 +19,7 @@ public sealed class ComplaintPdfTests
         QuestPDF.Settings.ThrowOnMissingTextGlyphs = true;
         try
         {
-            var bytes = Renderer.Render(letter);
+            var bytes = Renderer.Render(letter, "Łódź, 14 listopada 2026 r.");
 
             Assert.True(bytes.Length > 1000);
             Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
@@ -35,7 +35,7 @@ public sealed class ComplaintPdfTests
     {
         var letter = new ComplaintDto("Reklamacja 🚆", "Jan 😀 Kowalski\nul. 東京 5\n\nTreść 🎉 z emoji i pismem 漢字.", false, []);
 
-        var bytes = Renderer.Render(letter);
+        var bytes = Renderer.Render(letter, "Gdańsk, 14 listopada 2026 r.");
 
         Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
     }
@@ -45,7 +45,7 @@ public sealed class ComplaintPdfTests
     {
         var body = string.Join("\n\n", Enumerable.Repeat(string.Join(' ', Enumerable.Repeat("Zażółć gęślą jaźń.", 40)), 30));
 
-        var bytes = Renderer.Render(new ComplaintDto("Temat", body, false, []));
+        var bytes = Renderer.Render(new ComplaintDto("Temat", body, false, []), "Gdańsk, 14 listopada 2026 r.");
 
         Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
     }
