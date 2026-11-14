@@ -1,11 +1,13 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useReducer } from 'react'
+import { useReducer, useRef } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, api } from '../api/client'
 import type { AssessmentDto, CaseDto, ComplaintDto, ProfileDto } from '../api/types'
 import { AuthProvider } from '../auth/AuthProvider'
-import { emptyTicket, initialWizardState, wizardReducer, type WizardState } from '../hooks/useWizard'
+import { useAccountChange } from '../auth/useAccountChange'
+import { useAuth } from '../auth/useAuth'
+import { emptyTicket, initialWizardState, wizardReducer, type PendingCase, type WizardState } from '../hooks/useWizard'
 import { ResultStep } from './ResultStep'
 
 const eligible: AssessmentDto = {
@@ -45,13 +47,40 @@ const letter: ComplaintDto = {
 const IBAN = 'PL61109010140000071219812874'
 
 let signedIn = false
+let currentEmail = 'jan@example.com'
 
 function Harness({ initial = preset, onOpenCases }: { initial?: WizardState; onOpenCases?: () => void }) {
   const [state, dispatch] = useReducer(wizardReducer, initial)
+  const { logout } = useAuth()
+  // Same wiring as Wizard.
+  const pendingCase = useRef<PendingCase | null>(null)
+  useAccountChange((email) => {
+    if (pendingCase.current?.owner !== email) pendingCase.current = null
+    dispatch({ type: 'accountChanged', email })
+  })
   return (
     <>
       <p data-testid="step">{state.step}</p>
-      {state.step === 'result' && <ResultStep state={state} dispatch={dispatch} onOpenCases={onOpenCases} />}
+      <button type="button" onClick={() => void logout()}>
+        test: wyloguj
+      </button>
+      <button type="button" onClick={() => dispatch({ type: 'goto', step: 'delay' })}>
+        test: wyjdź
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          dispatch({ type: 'ticket', patch: { price: '99,90' } })
+          dispatch({ type: 'assessed', assessment: eligible })
+          dispatch({ type: 'goto', step: 'result' })
+        }}
+      >
+        test: zmień cenę i wróć
+      </button>
+      <button type="button" onClick={() => dispatch({ type: 'goto', step: 'result' })}>
+        test: wróć do wyniku
+      </button>
+      {state.step === 'result' && <ResultStep state={state} dispatch={dispatch} onOpenCases={onOpenCases} pendingCase={pendingCase} />}
     </>
   )
 }
@@ -74,6 +103,7 @@ const profile = (patch: Partial<ProfileDto> = {}): ProfileDto => ({
 
 beforeEach(() => {
   signedIn = false
+  currentEmail = 'jan@example.com'
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query.includes('reduce'),
     media: query,
@@ -82,11 +112,16 @@ beforeEach(() => {
   }))
   vi.spyOn(api, 'me').mockImplementation(async () => {
     if (!signedIn) throw new ApiError(401, 'Zaloguj się.')
-    return { email: 'jan@example.com', isEmailConfirmed: true }
+    return { email: currentEmail, isEmailConfirmed: true }
   })
-  vi.spyOn(api, 'login').mockImplementation(async () => {
+  vi.spyOn(api, 'login').mockImplementation(async (email) => {
     signedIn = true
+    currentEmail = email
   })
+  vi.spyOn(api, 'logout').mockImplementation(async () => {
+    signedIn = false
+  })
+  vi.spyOn(api, 'updateCase').mockResolvedValue({ id: 17 } as CaseDto)
   vi.spyOn(api, 'register').mockResolvedValue(undefined)
   vi.spyOn(api, 'getProfile').mockResolvedValue(profile({ preferredPayout: 'Voucher' }))
   vi.spyOn(api, 'createCase').mockResolvedValue({ id: 17 } as CaseDto)
@@ -327,5 +362,93 @@ describe('ResultStep – letter formats', () => {
     expect(onOpenCases).toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Sprawdź kolejny bilet' }))
     expect(screen.getByTestId('step').textContent).toBe('start')
+  })
+})
+
+describe('ResultStep – one case per ticket, one person per wizard', () => {
+  it('updates the saved case instead of creating another after going back and changing the ticket', async () => {
+    const user = userEvent.setup()
+    signedIn = true
+    vi.mocked(api.generateComplaint).mockRejectedValueOnce(new ApiError(502, 'Usługa chwilowo niedostępna.'))
+    renderResult()
+    await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj pismo' }))
+    await screen.findByRole('button', { name: 'Spróbuj ponownie' })
+
+    await user.click(screen.getByRole('button', { name: 'Wstecz' }))
+    expect(screen.getByTestId('step').textContent).toBe('delay')
+    await user.click(screen.getByRole('button', { name: 'test: zmień cenę i wróć' }))
+    await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj pismo' }))
+
+    expect(await screen.findByRole('heading', { name: /Pismo jest gotowe/ })).toBeTruthy()
+    expect(api.createCase).toHaveBeenCalledTimes(1)
+    expect(api.updateCase).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(api.updateCase).mock.calls[0][0]).toBe(17)
+    expect(vi.mocked(api.updateCase).mock.calls[0][1]).toEqual(expect.objectContaining({ ticketPrice: 99.9 }))
+  })
+
+  it('lets a save that is already sent finish after leaving the step, so coming back does not duplicate it', async () => {
+    const user = userEvent.setup()
+    signedIn = true
+    let finishCreate: (value: CaseDto) => void = () => {}
+    // Like fetch: an aborted request never resolves.
+    vi.mocked(api.createCase).mockImplementationOnce(
+      (_request, signal) =>
+        new Promise((resolve, reject) => {
+          finishCreate = resolve
+          signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+        }),
+    )
+    renderResult()
+    await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj pismo' }))
+    await waitFor(() => expect(api.createCase).toHaveBeenCalledTimes(1))
+
+    await user.click(screen.getByRole('button', { name: 'test: wyjdź' }))
+    finishCreate({ id: 21 } as CaseDto)
+    await user.click(screen.getByRole('button', { name: 'test: wróć do wyniku' }))
+    await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj pismo' }))
+
+    expect(await screen.findByRole('heading', { name: /Pismo jest gotowe/ })).toBeTruthy()
+    expect(api.createCase).toHaveBeenCalledTimes(1)
+    expect(api.updateCase).not.toHaveBeenCalled()
+    expect(vi.mocked(api.generateComplaint).mock.lastCall?.[0]).toBe(21)
+  })
+
+  it('forgets the account number and the letter when the user signs out', async () => {
+    const user = userEvent.setup()
+    signedIn = true
+    vi.mocked(api.getProfile).mockResolvedValue(profile({ preferredPayout: 'BankTransfer', iban: IBAN }))
+    renderResult()
+    await waitFor(() => expect((screen.getByLabelText(/^Numer rachunku/) as HTMLInputElement).value).toBe(IBAN))
+    await user.click(saveButton())
+    await screen.findByRole('heading', { name: /Pismo jest gotowe/ })
+
+    await user.click(screen.getByRole('button', { name: 'test: wyloguj' }))
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /Pismo jest gotowe/ })).toBeNull())
+    expect(screen.queryByText(letter.subject)).toBeNull()
+    expect((screen.getByRole('radio', { name: /Zwrot na konto/ }) as HTMLInputElement).checked).toBe(true)
+    await user.click(screen.getByRole('radio', { name: /Przelew na inny rachunek/ }))
+    expect((screen.getByLabelText(/^Numer rachunku/) as HTMLInputElement).value).toBe('')
+  })
+
+  it("never reuses another account's case after switching users", async () => {
+    const user = userEvent.setup()
+    signedIn = true
+    vi.mocked(api.generateComplaint).mockRejectedValueOnce(new ApiError(502, 'Usługa chwilowo niedostępna.'))
+    renderResult()
+    await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj pismo' }))
+    await screen.findByRole('button', { name: 'Spróbuj ponownie' })
+
+    await user.click(screen.getByRole('button', { name: 'test: wyloguj' }))
+    vi.mocked(api.createCase).mockResolvedValueOnce({ id: 30 } as CaseDto)
+    await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj pismo' }))
+    const panel = await screen.findByRole('region', { name: /Zaloguj się, aby zapisać sprawę/ })
+    await user.type(within(panel).getByLabelText('E-mail'), 'ola@example.com')
+    await user.type(within(panel).getByLabelText('Hasło'), 'Haslo123!')
+    await user.click(within(panel).getByRole('button', { name: 'Zaloguj się' }))
+
+    expect(await screen.findByRole('heading', { name: /Pismo jest gotowe/ })).toBeTruthy()
+    expect(api.createCase).toHaveBeenCalledTimes(2)
+    expect(api.updateCase).not.toHaveBeenCalled()
+    expect(vi.mocked(api.generateComplaint).mock.lastCall?.[0]).toBe(30)
   })
 })

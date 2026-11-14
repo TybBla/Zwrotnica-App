@@ -76,6 +76,7 @@ describe('AuthDialog', () => {
     await user.type(within(dialog).getByLabelText('Hasło'), 'Haslo123!')
     await user.click(within(dialog).getByRole('button', { name: 'Zaloguj się' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(screen.getByRole('button', { name: 'Konto: jan@example.com' })).toBeTruthy()
+    // The 'Zaloguj się' trigger is gone: focus lands on the account menu that replaced it.
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Konto: jan@example.com' })))
   })
 })

@@ -178,3 +178,8 @@ section.auth-panel {
     --sheet-shift: 0px;
   }
 }
+
+/* The page behind an open dialog does not scroll (no scroll chaining on phones). */
+html:has(.auth-dialog[open]) {
+  overflow: hidden;
+}

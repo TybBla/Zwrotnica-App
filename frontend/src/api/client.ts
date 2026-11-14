@@ -172,7 +172,8 @@ export const api = {
   listCases: () => json<CaseDto[]>('/cases'),
   getCase: (id: number) => json<CaseDto>(`/cases/${id}`),
   createCase: (request: CaseRequest, signal?: AbortSignal) => json<CaseDto>('/cases', 'POST', request, signal),
-  updateCase: (id: number, request: CaseRequest) => json<CaseDto>(`/cases/${id}`, 'PUT', request),
+  updateCase: (id: number, request: CaseRequest, signal?: AbortSignal) =>
+    json<CaseDto>(`/cases/${id}`, 'PUT', request, signal),
   setStatus: (id: number, status: CaseStatus) => json<CaseDto>(`/cases/${id}/status`, 'PATCH', { status }),
   deleteCase: (id: number) => noContent(`/cases/${id}`, 'DELETE'),
 

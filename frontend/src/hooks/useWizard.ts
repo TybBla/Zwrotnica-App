@@ -77,8 +77,11 @@ export interface WizardState {
   /** Latest assessment of the current ticket + delay (live preview and the result step). */
   assessment?: AssessmentDto
   payout: PayoutInput
-  /** The case created for this ticket + delay (`key` = caseKey of its request), so a retry does not save it twice. */
-  savedCase?: { id: number; key: string }
+  /**
+   * The case already saved for this wizard run (`key` = caseKey of what was saved, `owner` = the account's e-mail).
+   * Kept across Back, so a later save updates it instead of creating another; cleared by reset or an account switch.
+   */
+  savedCase?: { id: number; key: string; owner: string }
 }
 
 export const emptyTicket: TicketForm = {
@@ -118,7 +121,12 @@ export type WizardAction =
   | { type: 'payout'; patch: Partial<Omit<PayoutInput, 'touched'>> }
   /** The signed-in user's profile: preselects their payout and account number unless the user already chose. */
   | { type: 'profileLoaded'; profile: ProfileDto }
-  | { type: 'saved'; caseId: number; key: string }
+  | { type: 'saved'; caseId: number; key: string; owner: string }
+  /**
+   * The signed-in account changed (signed out, or another account). The account number and the payout choice may be
+   * the previous person's (prefilled from their profile), so they go; the ticket stays.
+   */
+  | { type: 'accountChanged'; email: string | null }
   /** Jump back to a step to fix what the server rejected. */
   | { type: 'goto'; step: WizardStep }
   | { type: 'next' }
@@ -306,7 +314,14 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       }
     }
     case 'saved':
-      return { ...state, savedCase: { id: action.caseId, key: action.key } }
+      return { ...state, savedCase: { id: action.caseId, key: action.key, owner: action.owner } }
+    case 'accountChanged':
+      return {
+        ...state,
+        payout: initialWizardState.payout,
+        // Signing out keeps the id for a same-account sign-in (expired session); it is only ever used for its owner.
+        savedCase: action.email === null || state.savedCase?.owner === action.email ? state.savedCase : undefined,
+      }
     case 'goto':
       return { ...state, step: action.step, direction: order.indexOf(action.step) < order.indexOf(state.step) ? 'back' : 'forward' }
     case 'next': {
@@ -329,4 +344,14 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
 export function useWizard() {
   const [state, dispatch] = useReducer(wizardReducer, initialWizardState)
   return { state, dispatch }
+}
+
+/**
+ * A case save that has been sent but not answered yet. It lives above the result step (a ref in Wizard), so leaving
+ * and coming back joins the same request instead of sending a second one.
+ */
+export interface PendingCase {
+  promise: Promise<number>
+  key: string
+  owner: string
 }

@@ -209,10 +209,26 @@ describe('result step state', () => {
     expect(wizardReducer(typed, { type: 'profileLoaded', profile }).payout.iban).toBe('DE89370400440532013000')
   })
 
-  it('remembers the saved case for the same ticket and forgets it when the ticket changes', () => {
-    const saved = wizardReducer(atResult, { type: 'saved', caseId: 7, key: 'k' })
-    expect(saved.savedCase).toEqual({ id: 7, key: 'k' })
-    expect(wizardReducer(saved, { type: 'goto', step: 'ticket' })).toMatchObject({ step: 'ticket', direction: 'back' })
+  it('keeps the saved case when moving between steps and drops it on reset', () => {
+    const saved = wizardReducer(atResult, { type: 'saved', caseId: 7, key: 'k', owner: 'a@b.pl' })
+    expect(saved.savedCase).toEqual({ id: 7, key: 'k', owner: 'a@b.pl' })
+    const back = wizardReducer(wizardReducer(saved, { type: 'back' }), { type: 'goto', step: 'ticket' })
+    expect(back).toMatchObject({ step: 'ticket', direction: 'back', savedCase: { id: 7 } })
     expect(wizardReducer(saved, { type: 'reset' }).savedCase).toBeUndefined()
+  })
+
+  it('forgets the account number and the saved case when the account changes', () => {
+    const profile = { email: 'a@b.pl', fullName: null, address: null, iban: 'PL61109010140000071219812874', preferredPayout: 'BankTransfer' as const }
+    let filled = wizardReducer(atResult, { type: 'profileLoaded', profile })
+    filled = wizardReducer(filled, { type: 'payout', patch: { remember: true } })
+    filled = wizardReducer(filled, { type: 'saved', caseId: 7, key: 'k', owner: 'a@b.pl' })
+
+    const signedOut = wizardReducer(filled, { type: 'accountChanged', email: null })
+    expect(signedOut.payout).toEqual(initialWizardState.payout)
+    expect(signedOut.ticket).toEqual(filled.ticket)
+
+    const other = wizardReducer(filled, { type: 'accountChanged', email: 'b@b.pl' })
+    expect(other.savedCase).toBeUndefined()
+    expect(other.payout.iban).toBe('')
   })
 })

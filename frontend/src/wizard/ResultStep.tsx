@@ -1,11 +1,20 @@
-import { useEffect, useId, useRef, useState, type Dispatch } from 'react'
+import { useEffect, useId, useRef, useState, type Dispatch, type RefObject } from 'react'
 import { ApiError, api } from '../api/client'
-import type { ComplaintDto, ComplaintRequest } from '../api/types'
+import type { CaseRequest, ComplaintDto, ComplaintRequest } from '../api/types'
 import { AuthPanel } from '../auth/AuthPanel'
+import { useAccountChange } from '../auth/useAccountChange'
 import { useAuth } from '../auth/useAuth'
 import { Button } from '../components/Button'
 import { AlertCircleIcon, ArrowRightIcon } from '../components/icons'
-import { caseKey, toCaseRequest, toTicketFields, type WizardAction, type WizardState, type WizardStep } from '../hooks/useWizard'
+import {
+  caseKey,
+  toCaseRequest,
+  toTicketFields,
+  type PendingCase,
+  type WizardAction,
+  type WizardState,
+  type WizardStep,
+} from '../hooks/useWizard'
 import { isValidIban, normalizeIban } from '../lib/textRules'
 import { isClaimable, shownVerdict } from '../lib/verdict'
 import { LetterChoice } from './LetterChoice'
@@ -16,6 +25,21 @@ import './Result.css'
 
 /** The AI may take a while; past this the user gets a retry instead of an endless spinner. */
 const LETTER_TIMEOUT_MS = 60_000
+/** Saving the case is quick; past this the user gets a retry (the request itself keeps going, see PendingCase). */
+const SAVE_TIMEOUT_MS = 20_000
+
+class Timeout extends Error {}
+
+/** Rejects with Timeout after `ms` without cancelling `promise`. */
+function within<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: number | undefined
+  const limit = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => reject(new Timeout()), ms)
+  })
+  return Promise.race([promise, limit]).finally(() => window.clearTimeout(timer))
+}
+
+const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 type Phase = 'idle' | 'auth' | 'saving' | 'writing' | 'done'
 
@@ -34,10 +58,12 @@ interface ResultStepProps {
   dispatch: Dispatch<WizardAction>
   /** "Przejdź do moich spraw" (wired to the cases page by the router). */
   onOpenCases?: () => void
+  /** Owned by Wizard, so a save sent before leaving the step is joined, not repeated, after coming back. */
+  pendingCase?: RefObject<PendingCase | null>
 }
 
 /** Wynik: the verdict, and for money due – payout, save (signing in inline if needed) and the letter. */
-export function ResultStep({ state, dispatch, onOpenCases }: ResultStepProps) {
+export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPending }: ResultStepProps) {
   const { assessment, payout } = state
   const { user, loading, logout } = useAuth()
   const [phase, setPhase] = useState<Phase>('idle')
@@ -48,11 +74,23 @@ export function ResultStep({ state, dispatch, onOpenCases }: ResultStepProps) {
   const ibanRef = useRef<HTMLInputElement>(null)
   const errorRef = useRef<HTMLDivElement>(null)
   const inFlight = useRef<AbortController | null>(null)
+  const ownPending = useRef<PendingCase | null>(null)
+  const pendingCase = sharedPending ?? ownPending
   const claimable = isClaimable(assessment)
   const busy = phase === 'saving' || phase === 'writing'
   const authOpen = phase === 'auth' && !user && !loading
 
   useEffect(() => () => inFlight.current?.abort(), [])
+
+  // Signed out or another account: drop everything that belonged to the previous person (Wizard clears the state).
+  useAccountChange(() => {
+    inFlight.current?.abort()
+    setLetter(null)
+    setProfileIban(null)
+    setError(null)
+    setIbanError(null)
+    setPhase((current) => (current === 'auth' ? current : 'idle'))
+  })
 
   // Signed in: preselect the payout and account number from the profile (unless the user already chose).
   const email = user?.email
@@ -87,6 +125,47 @@ export function ResultStep({ state, dispatch, onOpenCases }: ResultStepProps) {
     return true
   }
 
+  /**
+   * The id of this wizard's case, saved as `request`: joins a save still in flight, updates the saved case when the
+   * ticket changed since (Back + edit), and creates one only when there is none. A create is never cancelled once
+   * sent – it records `saved` even after the step unmounts – so nothing is duplicated or orphaned.
+   */
+  const ensureCase = async (request: CaseRequest, owner: string, signal: AbortSignal): Promise<number> => {
+    const key = caseKey(request)
+    let current: { id: number; key: string } | undefined
+    const pending = pendingCase.current
+    if (pending && pending.owner === owner) current = { id: await within(pending.promise, SAVE_TIMEOUT_MS), key: pending.key }
+    else if (state.savedCase && state.savedCase.owner === owner) current = state.savedCase
+
+    if (current && current.key === key) return current.id
+    if (current) {
+      try {
+        await within(api.updateCase(current.id, request, signal), SAVE_TIMEOUT_MS)
+        dispatch({ type: 'saved', caseId: current.id, key, owner })
+        return current.id
+      } catch (failure) {
+        // Deleted meanwhile (e.g. from the cases list): save it anew.
+        if (!(failure instanceof ApiError && failure.status === 404)) throw failure
+      }
+    }
+
+    const entry: PendingCase = {
+      key,
+      owner,
+      promise: api.createCase(request).then((created) => {
+        if (pendingCase.current === entry) dispatch({ type: 'saved', caseId: created.id, key, owner })
+        return created.id
+      }),
+    }
+    pendingCase.current = entry
+    entry.promise
+      .finally(() => {
+        if (pendingCase.current === entry) pendingCase.current = null
+      })
+      .catch(() => {})
+    return within(entry.promise, SAVE_TIMEOUT_MS)
+  }
+
   const save = async () => {
     setError(null)
     if (!checkIban()) {
@@ -94,6 +173,8 @@ export function ResultStep({ state, dispatch, onOpenCases }: ResultStepProps) {
       return
     }
     if (!user) {
+      // The guest confirmed this payout: the profile loaded after signing in must not change it behind their back.
+      dispatch({ type: 'payout', patch: { choice: payout.choice } })
       setPhase('auth')
       return
     }
@@ -106,39 +187,35 @@ export function ResultStep({ state, dispatch, onOpenCases }: ResultStepProps) {
     inFlight.current?.abort()
     const controller = new AbortController()
     inFlight.current = controller
-    let timedOut = false
-    const key = caseKey(request)
+    const owner = user.email
+    let stage: 'save' | 'letter' = 'save'
 
     try {
-      let caseId = state.savedCase?.key === key ? state.savedCase.id : undefined
-      if (caseId === undefined) {
-        setPhase('saving')
-        caseId = (await api.createCase(request, controller.signal)).id
-        dispatch({ type: 'saved', caseId, key })
-      }
+      setPhase('saving')
+      const caseId = await ensureCase(request, owner, controller.signal)
 
+      stage = 'letter'
       setPhase('writing')
-      const timer = window.setTimeout(() => {
-        timedOut = true
-        controller.abort()
-      }, LETTER_TIMEOUT_MS)
       const complaint: ComplaintRequest = {
         payout: payout.choice,
         oneTimeIban: ibanToSend,
         saveIbanToProfile: ibanToSend !== null && payout.remember,
       }
-      try {
-        const result = await api.generateComplaint(caseId, complaint, controller.signal)
-        setLetter({ caseId, letter: result })
-        setPhase('done')
-      } finally {
-        window.clearTimeout(timer)
-      }
+      const result = await within(api.generateComplaint(caseId, complaint, controller.signal), LETTER_TIMEOUT_MS)
+      setLetter({ caseId, letter: result })
+      setPhase('done')
     } catch (failure) {
-      if (controller.signal.aborted && !timedOut) return // left the step
+      if (failure instanceof Timeout) controller.abort()
+      else if (controller.signal.aborted || isAbort(failure)) return // left the step or signed out
       setPhase('idle')
-      if (timedOut) {
-        setError({ kind: 'retry', message: 'Przygotowanie pisma trwa dłużej niż zwykle. Spróbuj ponownie – sprawa jest już zapisana.' })
+      if (failure instanceof Timeout) {
+        setError({
+          kind: 'retry',
+          message:
+            stage === 'letter'
+              ? 'Przygotowanie pisma trwa dłużej niż zwykle. Spróbuj ponownie – sprawa jest już zapisana.'
+              : 'Zapisywanie trwa dłużej niż zwykle. Spróbuj ponownie – nie zapiszemy sprawy dwa razy.',
+        })
         return
       }
       if (!(failure instanceof ApiError)) {
@@ -184,7 +261,10 @@ export function ResultStep({ state, dispatch, onOpenCases }: ResultStepProps) {
   const ticket = toTicketFields(state.ticket)
   const route = [ticket.fromStation, ticket.toStation].filter(Boolean).join(' → ')
   const done = phase === 'done' && letter !== null
-  const reset = () => dispatch({ type: 'reset' })
+  const reset = () => {
+    pendingCase.current = null
+    dispatch({ type: 'reset' })
+  }
 
   return (
     <div className="wizard-step">

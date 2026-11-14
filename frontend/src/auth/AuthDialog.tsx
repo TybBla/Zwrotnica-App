@@ -48,7 +48,11 @@ function OpenDialog({ onClose }: { onClose: () => void }) {
     return () => {
       dialog.removeEventListener('cancel', onCancel)
       if (dialog.open && typeof dialog.close === 'function') dialog.close()
-      returnTo?.focus()
+      // After signing in the 'Zaloguj się' trigger is replaced by the account menu: focus that, or the main region.
+      const target = returnTo?.isConnected
+        ? returnTo
+        : document.querySelector<HTMLElement>('.account-menu__trigger') ?? document.getElementById('main')
+      target?.focus({ preventScroll: true })
     }
   }, [])
 
@@ -77,7 +81,6 @@ function OpenDialog({ onClose }: { onClose: () => void }) {
       ref={ref}
       className="auth-dialog"
       aria-labelledby={titleId}
-      aria-modal="true"
       onKeyDown={onKeyDown}
       // A press on the backdrop (the dialog box itself, outside its content) closes it.
       onClick={(event) => {

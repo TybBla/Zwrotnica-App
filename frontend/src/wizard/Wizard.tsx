@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { ReferenceDataDto } from '../api/types'
-import { useWizard, type WizardStep } from '../hooks/useWizard'
+import { useAccountChange } from '../auth/useAccountChange'
+import { useWizard, type PendingCase, type WizardStep } from '../hooks/useWizard'
 import { DelayStep } from './DelayStep'
 import { ResultStep } from './ResultStep'
 import { StartChoice } from './StartChoice'
@@ -17,6 +18,13 @@ export function Wizard({ onOpenCases }: { onOpenCases?: () => void } = {}) {
   const [reference, setReference] = useState<ReferenceDataDto | null>(null)
   const rootRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
+  const pendingCase = useRef<PendingCase | null>(null)
+
+  // Another person on this device must not inherit the previous account's number, payout or case.
+  useAccountChange((email) => {
+    if (pendingCase.current?.owner !== email) pendingCase.current = null
+    dispatch({ type: 'accountChanged', email })
+  })
 
   useEffect(() => {
     let active = true
@@ -49,7 +57,7 @@ export function Wizard({ onOpenCases }: { onOpenCases?: () => void } = {}) {
         {state.step === 'start' && <StartChoice onChoose={(source) => dispatch({ type: 'start', source })} />}
         {state.step === 'ticket' && <TicketStep state={state} dispatch={dispatch} reference={reference} />}
         {state.step === 'delay' && <DelayStep state={state} dispatch={dispatch} />}
-        {state.step === 'result' && <ResultStep state={state} dispatch={dispatch} onOpenCases={onOpenCases} />}
+        {state.step === 'result' && <ResultStep state={state} dispatch={dispatch} onOpenCases={onOpenCases} pendingCase={pendingCase} />}
       </div>
     </section>
   )
