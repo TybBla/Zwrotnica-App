@@ -452,3 +452,39 @@ describe('ResultStep – one case per ticket, one person per wizard', () => {
     expect(vi.mocked(api.generateComplaint).mock.lastCall?.[0]).toBe(30)
   })
 })
+
+describe('ResultStep – expired session', () => {
+  it('does not resume on its own after a 401: it asks to sign in and confirm the payout again', async () => {
+    const user = userEvent.setup()
+    signedIn = true
+    vi.mocked(api.getProfile).mockResolvedValue(profile({ preferredPayout: 'Voucher' }))
+    vi.mocked(api.generateComplaint).mockRejectedValueOnce(new ApiError(401, 'Zaloguj się, aby kontynuować.'))
+    renderResult()
+    await waitFor(() => expect((screen.getByRole('radio', { name: /Bon/ }) as HTMLInputElement).checked).toBe(true))
+    await user.click(screen.getByRole('radio', { name: /Przelew na inny rachunek/ }))
+    await user.type(screen.getByLabelText(/^Numer rachunku/), IBAN)
+    await user.click(saveButton())
+
+    expect((await screen.findByRole('status', { name: /Sesja wygasła/ })).textContent).toMatch(/potwierdź formę wypłaty/)
+    // The typed account number is gone with the session.
+    expect(screen.queryByDisplayValue(IBAN)).toBeNull()
+
+    const panel = await screen.findByRole('region', { name: /Zaloguj się ponownie/ })
+    await user.type(within(panel).getByLabelText('E-mail'), 'jan@example.com')
+    await user.type(within(panel).getByLabelText('Hasło'), 'Haslo123!')
+    await user.click(within(panel).getByRole('button', { name: 'Zaloguj się' }))
+
+    // Signed in again, the profile's payout is shown – and nothing is sent until the user confirms.
+    await waitFor(() => expect((screen.getByRole('radio', { name: /Bon/ }) as HTMLInputElement).checked).toBe(true))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(api.generateComplaint).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('region', { name: /Zaloguj się/ })).toBeNull()
+    expect(screen.getByRole('status', { name: /Sesja wygasła/ })).toBeTruthy()
+
+    await user.click(saveButton())
+    expect(await screen.findByRole('heading', { name: /Pismo jest gotowe/ })).toBeTruthy()
+    expect(api.createCase).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(api.generateComplaint).mock.calls[1][1]).toEqual({ payout: 'Voucher', oneTimeIban: null, saveIbanToProfile: false })
+    expect(screen.queryByRole('status', { name: /Sesja wygasła/ })).toBeNull()
+  })
+})

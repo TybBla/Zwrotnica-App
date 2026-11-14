@@ -41,7 +41,13 @@ function within<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
-type Phase = 'idle' | 'auth' | 'saving' | 'writing' | 'done'
+/**
+ * 'auth': a guest pressed save – after signing in the save continues by itself.
+ * 'reauth': the session expired mid-save – after signing in the user confirms the payout and saves again themselves.
+ */
+type Phase = 'idle' | 'auth' | 'reauth' | 'saving' | 'writing' | 'done'
+
+const SESSION_EXPIRED = 'Sesja wygasła. Zaloguj się ponownie i potwierdź formę wypłaty.'
 
 type SaveError =
   /** Something the user can fix in an earlier step (the API rejected a field). */
@@ -66,7 +72,9 @@ interface ResultStepProps {
 export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPending }: ResultStepProps) {
   const { assessment, payout } = state
   const { user, loading, logout } = useAuth()
-  const [phase, setPhase] = useState<Phase>('idle')
+  const [rawPhase, setPhase] = useState<Phase>('idle')
+  // Signed in again after an expired session: show the (re)preselected payout and wait for the user's own save.
+  const phase: Phase = rawPhase === 'reauth' && user ? 'idle' : rawPhase
   const [error, setError] = useState<SaveError | null>(null)
   const [ibanError, setIbanError] = useState<string | null>(null)
   const [letter, setLetter] = useState<{ caseId: number; letter: ComplaintDto } | null>(null)
@@ -78,7 +86,11 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
   const pendingCase = sharedPending ?? ownPending
   const claimable = isClaimable(assessment)
   const busy = phase === 'saving' || phase === 'writing'
-  const authOpen = phase === 'auth' && !user && !loading
+  const sessionNoticeId = useId()
+  const authOpen = (phase === 'auth' || phase === 'reauth') && !user && !loading
+  const [sessionNotice, setSessionNotice] = useState(false)
+  /** Set just before the 401 sign-out, so the account-change reset below knows why the account went away. */
+  const sessionExpired = useRef(false)
 
   useEffect(() => () => inFlight.current?.abort(), [])
 
@@ -89,7 +101,14 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
     setProfileIban(null)
     setError(null)
     setIbanError(null)
-    setPhase((current) => (current === 'auth' ? current : 'idle'))
+    // The payout was just cleared with the account: never resume a save the user has not confirmed again.
+    if (sessionExpired.current) {
+      sessionExpired.current = false
+      setSessionNotice(true)
+      setPhase('reauth')
+    } else {
+      setPhase('idle')
+    }
   })
 
   // Signed in: preselect the payout and account number from the profile (unless the user already chose).
@@ -168,6 +187,7 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
 
   const save = async () => {
     setError(null)
+    setSessionNotice(false)
     if (!checkIban()) {
       ibanRef.current?.focus()
       return
@@ -224,8 +244,10 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
       }
       if (failure.status === 401) {
         // The session expired: sign in again, then this continues on its own.
+        sessionExpired.current = true
         await logout().catch(() => {})
-        setPhase('auth')
+        setSessionNotice(true)
+        setPhase('reauth')
         return
       }
       if (failure.status === 409) {
@@ -285,6 +307,21 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
 
       {claimable && !done && (
         <>
+          {sessionNotice && (
+            <div className="notice" role="status" aria-labelledby={sessionNoticeId}>
+              <AlertCircleIcon className="notice__icon" size={20} />
+              <div className="notice__body">
+                <p className="notice__title" id={sessionNoticeId}>
+                  {SESSION_EXPIRED}
+                </p>
+                <p className="notice__text">
+                  {state.savedCase ? 'Sprawa jest zapisana – po zalogowaniu' : 'Po zalogowaniu'} wybierz formę wypłaty i naciśnij
+                  „Zapisz sprawę i przygotuj pismo”.
+                </p>
+              </div>
+            </div>
+          )}
+
           <PayoutChoice
             value={payout.choice}
             onChange={(choice) => dispatch({ type: 'payout', patch: { choice } })}
@@ -304,8 +341,13 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
 
           {authOpen && (
             <AuthPanel
-              title="Zaloguj się, aby zapisać sprawę"
-              description="Nic z tego, co wpisałeś, nie przepadnie – po zalogowaniu od razu zapiszemy sprawę i przygotujemy pismo."
+              key={phase}
+              title={phase === 'reauth' ? 'Zaloguj się ponownie' : 'Zaloguj się, aby zapisać sprawę'}
+              description={
+                phase === 'reauth'
+                  ? 'Ze względów bezpieczeństwa numer rachunku i forma wypłaty zostały wyczyszczone razem z sesją.'
+                  : 'Nic z tego, co wpisałeś, nie przepadnie – po zalogowaniu od razu zapiszemy sprawę i przygotujemy pismo.'
+              }
             />
           )}
 
@@ -373,7 +415,13 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
       ) : claimable ? (
         <WizardActions
           onBack={busy ? undefined : () => dispatch({ type: 'back' })}
-          hint={authOpen ? 'Zaloguj się lub załóż konto – potem zapiszemy sprawę automatycznie.' : undefined}
+          hint={
+            !authOpen
+              ? undefined
+              : phase === 'reauth'
+                ? 'Zaloguj się ponownie, potem potwierdź formę wypłaty i zapisz.'
+                : 'Zaloguj się lub załóż konto – potem zapiszemy sprawę automatycznie.'
+          }
         >
           {(hintId) => (
             <Button
