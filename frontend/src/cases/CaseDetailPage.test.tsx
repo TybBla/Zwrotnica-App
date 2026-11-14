@@ -28,6 +28,12 @@ const item: CaseDto = {
   responseDueDate: null,
   notes: null,
   createdAt: '2026-10-21T08:00:00Z',
+  outcome: {
+    title: 'Przewoźnik jest zobowiązany do wypłaty odszkodowania',
+    statement: 'Na podstawie art. 19 rozporządzenia (UE) 2021/782 przewoźnik jest zobowiązany wypłacić odszkodowanie w wysokości 25% ceny biletu, tj. 50,00 zł.',
+    legalBasis: 'Art. 19 rozporządzenia (UE) 2021/782',
+    deadline: 'Przewoźnik powinien wypłacić odszkodowanie w terminie 1 miesiąca od złożenia wniosku.',
+  },
 }
 
 const renderAt = (path: string) =>
@@ -57,6 +63,10 @@ describe('CaseDetailPage', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'PKP Intercity EIC' })).toBeTruthy()
     expect(screen.getByText('Gdańsk Główny → Warszawa Centralna')).toBeTruthy()
     expect(screen.getByText('Opóźnienie 75 min')).toBeTruthy()
+    const outcome = screen.getByRole('region', { name: 'Werdykt końcowy' })
+    expect(screen.getByRole('heading', { level: 2, name: 'Werdykt końcowy' })).toBeTruthy()
+    expect(outcome.textContent).toContain('Przewoźnik jest zobowiązany do wypłaty odszkodowania')
+    expect(outcome.textContent).toContain('tj. 50,00 zł.')
 
     await user.click(screen.getByRole('button', { name: 'Przygotuj pismo ponownie' }))
     await waitFor(() =>

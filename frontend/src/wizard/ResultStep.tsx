@@ -18,7 +18,8 @@ import {
 } from '../hooks/useWizard'
 import { formatAmount, formatDate } from '../lib/format'
 import { isValidIban, normalizeIban } from '../lib/textRules'
-import { letterKind, shownVerdict } from '../lib/verdict'
+import { letterKind, shownVerdict, verdictStyle } from '../lib/verdict'
+import { FinalVerdict } from './FinalVerdict'
 import { LetterChoice } from './LetterChoice'
 import { PayoutChoice } from './PayoutChoice'
 import { VerdictCard, type VerdictDetail } from './VerdictCard'
@@ -316,6 +317,8 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
       ) : (
         <p className="wizard-step__lead">Brak wyniku – wróć i sprawdź dane.</p>
       )}
+
+      {assessment?.outcome && <FinalVerdict outcome={assessment.outcome} tone={verdictStyle[shownVerdict(assessment)].tone} />}
 
       {assessment && kind !== 'compensation' && <NextSteps state={state} dispatch={dispatch} />}
 

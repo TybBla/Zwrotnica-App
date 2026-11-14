@@ -37,6 +37,7 @@ const eligible = (request: AssessmentRequest): AssessmentDto => {
     belowMinimum: false,
     priceRequired: false,
     refusalRisk: false,
+    outcome: null,
   }
 }
 

@@ -1,0 +1,79 @@
+/* "Werdykt końcowy": a formal statement block. Tokens only; the left rule carries the verdict's signal colour. */
+.final-verdict {
+  --tone: var(--neutral);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--tone);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.final-verdict[data-tone='success'] {
+  --tone: var(--success);
+}
+
+.final-verdict[data-tone='danger'] {
+  --tone: var(--danger);
+}
+
+.final-verdict[data-tone='warning'] {
+  --tone: var(--warning);
+}
+
+.final-verdict__heading {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+}
+
+.final-verdict__title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  color: var(--text);
+}
+
+.final-verdict__statement {
+  line-height: var(--leading-body);
+  color: var(--text);
+}
+
+.final-verdict__amount {
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+.final-verdict__facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.final-verdict__facts dt {
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+}
+
+.final-verdict__facts dd {
+  margin: 0;
+  color: var(--text);
+}
+
+@media (min-width: 40rem) {
+  .final-verdict__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.final-verdict__disclaimer {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+}

@@ -28,6 +28,7 @@ const base: CaseDto = {
   responseDueDate: null,
   notes: null,
   createdAt: '2026-11-02T10:00:00Z',
+  outcome: null,
 }
 
 const second: CaseDto = {

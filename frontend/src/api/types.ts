@@ -73,6 +73,14 @@ export interface AssessmentRequest {
   isSeasonTicket: boolean
 }
 
+/** "Werdykt końcowy": the expected legal effect of the complaint, worded by the server from its rules. */
+export interface OutcomeDto {
+  title: string
+  statement: string
+  legalBasis: string | null
+  deadline: string | null
+}
+
 export interface AssessmentDto {
   verdict: Verdict
   reason: string
@@ -81,6 +89,8 @@ export interface AssessmentDto {
   belowMinimum: boolean
   priceRequired: boolean
   refusalRisk: boolean
+  /** null while the ticket price is missing. */
+  outcome: OutcomeDto | null
 }
 
 /** Body of POST /api/cases and PUT /api/cases/{id}. */
@@ -122,6 +132,8 @@ export interface CaseDto {
   responseDueDate: IsoDateTime | null
   notes: string | null
   createdAt: IsoDateTime
+  /** The same final verdict the wizard shows; null without a ticket price. */
+  outcome: OutcomeDto | null
 }
 
 export interface StatsDto {

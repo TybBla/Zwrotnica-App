@@ -18,6 +18,12 @@ const eligible: AssessmentDto = {
   belowMinimum: false,
   priceRequired: false,
   refusalRisk: false,
+  outcome: {
+    title: 'Przewoźnik jest zobowiązany do wypłaty odszkodowania',
+    statement: 'Na podstawie art. 19 rozporządzenia (UE) 2021/782 przewoźnik jest zobowiązany wypłacić odszkodowanie w wysokości 50% ceny biletu, tj. 74,95 zł.',
+    legalBasis: 'Art. 19 rozporządzenia (UE) 2021/782',
+    deadline: 'Przewoźnik powinien wypłacić odszkodowanie w terminie 1 miesiąca od złożenia wniosku.',
+  },
 }
 
 const preset: WizardState = {
@@ -135,8 +141,41 @@ describe('ResultStep – verdicts', () => {
   const notCovered: WizardState = {
     ...preset,
     ticket: { ...preset.ticket, carrierChoice: 'Polregio', trainCategory: '' },
-    assessment: { ...eligible, verdict: 'NotCovered', compensationAmount: 0, percent: 0, reason: 'Pociągi regionalne nie są objęte.' },
+    assessment: {
+      ...eligible,
+      verdict: 'NotCovered',
+      compensationAmount: 0,
+      percent: 0,
+      reason: 'Pociągi regionalne nie są objęte.',
+      outcome: {
+        title: 'Przewoźnik nie ma ustawowego obowiązku wypłaty odszkodowania',
+        statement: 'Przewozy regionalne, podmiejskie i miejskie w Polsce są wyłączone z systemu odszkodowań.',
+        legalBasis: null,
+        deadline: null,
+      },
+    },
   }
+
+  it('states the final verdict from the server under the result, in the verdict’s tone', async () => {
+    const { unmount } = renderResult()
+    const due = await screen.findByRole('region', { name: 'Werdykt końcowy' })
+    expect(due.getAttribute('data-tone')).toBe('success')
+    expect(within(due).getByText('Przewoźnik jest zobowiązany do wypłaty odszkodowania')).toBeTruthy()
+    expect(due.textContent).toContain('tj. 74,95 zł.')
+    expect(due.textContent).toContain('Ocena ma charakter informacyjny i nie stanowi porady prawnej.')
+    unmount()
+
+    renderResult({ initial: notCovered })
+    const exempt = await screen.findByRole('region', { name: 'Werdykt końcowy' })
+    expect(exempt.getAttribute('data-tone')).toBe('danger')
+    expect(within(exempt).getByText('Przewoźnik nie ma ustawowego obowiązku wypłaty odszkodowania')).toBeTruthy()
+  })
+
+  it('shows no final verdict while the server has none (no ticket price)', async () => {
+    renderResult({ initial: { ...preset, assessment: { ...eligible, priceRequired: true, compensationAmount: 0, outcome: null } } })
+    await screen.findByRole('heading', { name: 'Do sprawdzenia' })
+    expect(screen.queryByRole('region', { name: 'Werdykt końcowy' })).toBeNull()
+  })
 
   it('keeps an honest verdict for a train that is not covered, and still prepares a complaint under the carrier’s rules', async () => {
     const user = userEvent.setup()

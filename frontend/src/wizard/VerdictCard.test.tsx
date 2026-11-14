@@ -11,6 +11,7 @@ const base: AssessmentDto = {
   belowMinimum: false,
   priceRequired: false,
   refusalRisk: false,
+  outcome: null,
 }
 
 beforeEach(() => {

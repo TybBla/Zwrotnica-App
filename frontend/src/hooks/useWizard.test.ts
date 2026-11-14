@@ -157,7 +157,7 @@ describe('wizardReducer', () => {
     let state = wizardReducer(initialWizardState, { type: 'start', source: 'manual' })
     state = wizardReducer(state, {
       type: 'assessed',
-      assessment: { verdict: 'Eligible', reason: '', compensationAmount: 10, percent: 25, belowMinimum: false, priceRequired: false, refusalRisk: false },
+      assessment: { verdict: 'Eligible', reason: '', compensationAmount: 10, percent: 25, belowMinimum: false, priceRequired: false, refusalRisk: false, outcome: null },
     })
     expect(state.assessment).toBeDefined()
     state = wizardReducer(state, { type: 'ticket', patch: { price: '40' } })

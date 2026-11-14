@@ -11,6 +11,7 @@ import { warsawDate } from '../lib/deadline'
 import { formatDate } from '../lib/format'
 import { verdictStyle } from '../lib/verdict'
 import { usePageTitle } from '../routes/usePageTitle'
+import { FinalVerdict } from '../wizard/FinalVerdict'
 import { LetterChoice } from '../wizard/LetterChoice'
 import { caseLetterKind, caseRoute, caseTitle, caseVerdict, causeLabels, formatPln, incidentText, payoutLabels } from './caseText'
 import { DeadlineBadge } from './DeadlineBadge'
@@ -167,6 +168,10 @@ function CaseDetail({ id }: { id: number | null }) {
       )}
 
       {load.state === 'ready' && <Details item={load.item} />}
+
+      {load.state === 'ready' && load.item.outcome && (
+        <FinalVerdict outcome={load.item.outcome} tone={verdictStyle[caseVerdict(load.item)].tone} headingLevel={2} />
+      )}
 
       {load.state === 'ready' && (
         <>
