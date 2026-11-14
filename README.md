@@ -124,7 +124,7 @@ Działa tak samo na Windows, macOS i Linux. Konfiguracja nie jest wymagana, a kl
 ### 2. Klonowanie
 
 ```bash
-git clone <adres-repozytorium> zwrotnica
+git clone https://github.com/TybBla/Zwrotnica-App.git zwrotnica
 cd zwrotnica
 ```
 
