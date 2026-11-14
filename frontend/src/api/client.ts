@@ -8,6 +8,7 @@ import type {
   ComplaintPdfRequest,
   ComplaintRequest,
   ExtractionDto,
+  FollowUpKind,
   ProfileDto,
   ReferenceDataDto,
   StatsDto,
@@ -101,6 +102,16 @@ async function json<T>(path: string, method = 'GET', body?: unknown, signal?: Ab
   const response = await send(path, { ...jsonInit(method, body), signal })
   const text = await response.text()
   return (text ? JSON.parse(text) : undefined) as T
+}
+
+/** POSTs the letter text and resolves to the rendered PDF file. */
+async function pdf(path: string, letter: ComplaintPdfRequest): Promise<Blob> {
+  const response = await send(path, {
+    method: 'POST',
+    headers: { Accept: 'application/pdf', 'Content-Type': 'application/json' },
+    body: JSON.stringify(letter),
+  })
+  return response.blob()
 }
 
 async function noContent(path: string, method: string, body?: unknown): Promise<void> {
@@ -202,14 +213,14 @@ export const api = {
     json<ComplaintDto>(`/cases/${id}/complaint`, 'POST', request, signal),
 
   /** Renders the (possibly edited) letter; resolves to the PDF file. */
-  downloadComplaintPdf: async (id: number, letter: ComplaintPdfRequest): Promise<Blob> => {
-    const response = await send(`/cases/${id}/complaint/pdf`, {
-      method: 'POST',
-      headers: { Accept: 'application/pdf', 'Content-Type': 'application/json' },
-      body: JSON.stringify(letter),
-    })
-    return response.blob()
-  },
+  downloadComplaintPdf: (id: number, letter: ComplaintPdfRequest) => pdf(`/cases/${id}/complaint/pdf`, letter),
+
+  /** Ponaglenie or skarga do UTK from the template; 409 when the case status does not allow it yet. */
+  generateFollowUp: (id: number, kind: FollowUpKind, signal?: AbortSignal) =>
+    json<ComplaintDto>(`/cases/${id}/letters/${kind}`, 'POST', undefined, signal),
+
+  downloadFollowUpPdf: (id: number, kind: FollowUpKind, letter: ComplaintPdfRequest) =>
+    pdf(`/cases/${id}/letters/${kind}/pdf`, letter),
 }
 
 export type Api = typeof api

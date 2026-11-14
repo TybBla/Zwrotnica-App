@@ -25,6 +25,7 @@ const reference: ReferenceDataDto = {
     { code: 'TLK', label: 'Twoje Linie Kolejowe' },
   ],
   minimumPayout: 16,
+  utk: { name: 'Prezes Urzędu Transportu Kolejowego', complaintUrl: 'https://utk.gov.pl/pl/urzad/kontakt', complaintChannels: 'E-mailem.' },
 }
 
 const eligible = (request: AssessmentRequest): AssessmentDto => {

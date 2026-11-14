@@ -1,12 +1,14 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
-import type { ComplaintDto } from '../api/types'
+import type { ComplaintDto, FollowUpKind } from '../api/types'
+import { AddToCalendarButton } from '../cases/AddToCalendarButton'
 import { Button } from '../components/Button'
-import { AlertCircleIcon, CheckIcon, FileIcon } from '../components/icons'
+import { AlertCircleIcon, CheckIcon, FileIcon, ShieldIcon } from '../components/icons'
 import { copyText } from '../lib/clipboard'
 import { warsawDate } from '../lib/deadline'
 import { formatDate } from '../lib/format'
 import { saveBlob } from '../lib/download'
+import { WhereToSend } from './WhereToSend'
 
 type Format = 'text' | 'pdf'
 type Part = 'subject' | 'body'
@@ -33,13 +35,45 @@ function LetterBody({ text }: { text: string }) {
   )
 }
 
+/** The first letter to the carrier, or one of the letters after it. */
+export type LetterDocument = 'complaint' | FollowUpKind
+
+const documents: Record<LetterDocument, { title: string; lead: string; file: string }> = {
+  complaint: {
+    title: 'Pismo jest gotowe',
+    lead: 'Sprawa jest zapisana na Twoim koncie. Poniżej znajdziesz, gdzie wysłać pismo.',
+    file: 'reklamacja',
+  },
+  reminder: {
+    title: 'Ponaglenie jest gotowe',
+    lead: 'Wyślij je przewoźnikowi tą samą drogą co pierwsze pismo.',
+    file: 'ponaglenie',
+  },
+  'utk-complaint': {
+    title: 'Skarga do UTK jest gotowa',
+    lead: 'Skargę wysyłasz do Urzędu Transportu Kolejowego, nie do przewoźnika. Dołącz kopie pisma do przewoźnika i biletu.',
+    file: 'skarga-utk',
+  },
+}
+
+/** What the letter is about: where it goes and what the calendar event says. */
+export interface LetterTrip {
+  carrier: string
+  route: string | null
+  travelDate: string
+}
+
 interface LetterChoiceProps {
   caseId: number
   letter: ComplaintDto
+  trip: LetterTrip
+  kind?: LetterDocument
 }
 
-/** The finished letter: copy it as text (subject + body) or download the very same text as a PDF. */
-export function LetterChoice({ caseId, letter }: LetterChoiceProps) {
+/** The finished letter: copy it as text (subject + body) or download the very same text as a PDF; then where to send it. */
+export function LetterChoice({ caseId, letter, trip, kind = 'complaint' }: LetterChoiceProps) {
+  const doc = documents[kind]
+  const fileName = `${doc.file}-${caseId}.pdf`
   const id = useId()
   const [format, setFormat] = useState<Format>('text')
   const [copied, setCopied] = useState<Part | null>(null)
@@ -71,8 +105,9 @@ export function LetterChoice({ caseId, letter }: LetterChoiceProps) {
     setDownloadError(null)
     try {
       // Exactly the text on screen – the server only renders it.
-      const blob = await api.downloadComplaintPdf(caseId, { subject: letter.subject, body: letter.body })
-      saveBlob(blob, `reklamacja-${caseId}.pdf`)
+      const text = { subject: letter.subject, body: letter.body }
+      const blob = kind === 'complaint' ? await api.downloadComplaintPdf(caseId, text) : await api.downloadFollowUpPdf(caseId, kind, text)
+      saveBlob(blob, fileName)
     } catch {
       setDownloadError('Nie udało się przygotować pliku PDF. Spróbuj ponownie albo skopiuj tekst.')
     } finally {
@@ -99,15 +134,25 @@ export function LetterChoice({ caseId, letter }: LetterChoiceProps) {
     <section className="letter" aria-labelledby={`${id}-title`}>
       <header className="letter__head">
         <h3 className="letter__title" id={`${id}-title`} ref={headingRef} tabIndex={-1}>
-          Pismo jest gotowe
+          {doc.title}
         </h3>
-        <p className="letter__lead">Sprawa jest zapisana na Twoim koncie. Wyślij pismo przewoźnikowi – e-mailem, przez jego formularz reklamacyjny albo w kasie.</p>
+        <p className="letter__lead">{doc.lead}</p>
         {letter.deadlineStarted && letter.responseDueDate && (
-          <p className="letter__deadline">
-            Zakładamy, że wyślesz pismo dziś, więc termin odpowiedzi przewoźnika (do {formatDate(warsawDate(new Date(letter.responseDueDate)))})
-            liczymy od dzisiaj. Status możesz zmienić w Moich sprawach.
-          </p>
+          <div className="letter__deadline-row">
+            <p className="letter__deadline">
+              Zakładamy, że wyślesz pismo dziś, więc termin odpowiedzi przewoźnika (do {formatDate(warsawDate(new Date(letter.responseDueDate)))})
+              liczymy od dzisiaj. Status możesz zmienić w Moich sprawach.
+            </p>
+            <AddToCalendarButton caseId={caseId} responseDueDate={letter.responseDueDate} {...trip} />
+          </div>
         )}
+        <p className="letter__safety">
+          <ShieldIcon size={16} />
+          <span>
+            Zwrotnica nie wypłaca odszkodowań i nigdy nie prosi o dane karty ani o opłatę. Pismo wysyłasz sam
+            {kind === 'utk-complaint' ? ' do Urzędu Transportu Kolejowego.' : ', oficjalnymi kanałami przewoźnika.'}
+          </span>
+        </p>
       </header>
 
       {missing.length > 0 && (
@@ -151,7 +196,7 @@ export function LetterChoice({ caseId, letter }: LetterChoiceProps) {
         <div className="letter__pdf wizard-swap">
           <FileIcon className="letter__pdf-icon" size={24} />
           <div className="letter__pdf-text">
-            <p className="letter__pdf-name">reklamacja-{caseId}.pdf</p>
+            <p className="letter__pdf-name">{fileName}</p>
             <p className="letter__pdf-hint">Ta sama treść co poniżej – do wydruku lub jako załącznik do e-maila.</p>
           </div>
           <Button loading={downloading} onClick={() => void download()} className="letter__pdf-button">
@@ -182,6 +227,8 @@ export function LetterChoice({ caseId, letter }: LetterChoiceProps) {
           <LetterBody text={letter.body} />
         </div>
       </article>
+
+      <WhereToSend carrier={trip.carrier} recipient={kind === 'utk-complaint' ? 'utk' : 'carrier'} />
 
       <p className="visually-hidden" aria-live="polite">
         {copied === 'subject' ? 'Temat skopiowany do schowka.' : copied === 'body' ? 'Treść skopiowana do schowka.' : ''}

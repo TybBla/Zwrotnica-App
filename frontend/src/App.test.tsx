@@ -36,7 +36,12 @@ beforeEach(() => {
   })
   vi.spyOn(api, 'listCases').mockResolvedValue([])
   vi.spyOn(api, 'getStats').mockResolvedValue({ recovered: 0, pending: 0, totalCases: 0 })
-  vi.spyOn(api, 'getReference').mockResolvedValue({ carriers: [], categories: [], minimumPayout: 16 })
+  vi.spyOn(api, 'getReference').mockResolvedValue({
+    carriers: [],
+    categories: [],
+    minimumPayout: 16,
+    utk: { name: 'Prezes Urzędu Transportu Kolejowego', complaintUrl: 'https://utk.gov.pl/pl/urzad/kontakt', complaintChannels: 'E-mailem.' },
+  })
 })
 
 describe('routing', () => {

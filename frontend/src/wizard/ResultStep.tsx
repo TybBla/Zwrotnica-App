@@ -299,7 +299,8 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
 
   const ticket = toTicketFields(state.ticket)
   const route = caseRoute(ticket) ?? ''
-  const details = tripDetails(ticket, route, state.delay, toCaseRequest(state))
+  const request = toCaseRequest(state)
+  const details = tripDetails(ticket, route, state.delay, request)
   const done = phase === 'done' && letter !== null
   const reset = () => {
     pendingCase.current = null
@@ -437,7 +438,13 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
         </>
       )}
 
-      {done && <LetterChoice caseId={letter.caseId} letter={letter.letter} />}
+      {done && (
+        <LetterChoice
+          caseId={letter.caseId}
+          letter={letter.letter}
+          trip={{ carrier: request?.carrier ?? '', route: caseRoute(ticket), travelDate: request?.travelDate ?? '' }}
+        />
+      )}
 
       {done ? (
         <WizardActions>

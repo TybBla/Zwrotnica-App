@@ -40,6 +40,19 @@ export interface CarrierOption {
   coverage: Verdict
   /** Category codes; empty for a regional carrier. */
   categories: string[]
+  /** Official complaints page (or home page) verified on the carrier's site; null/absent when none was verified. */
+  complaintUrl?: string | null
+  /** Official complaint form (PDF), when one was verified. */
+  complaintFormUrl?: string | null
+  /** How the carrier accepts complaints, as verified on its site. */
+  complaintChannels?: string | null
+}
+
+/** Where a complaint to the rail regulator goes. */
+export interface ComplaintOfficeDto {
+  name: string
+  complaintUrl: string
+  complaintChannels: string
 }
 
 export interface CategoryOption {
@@ -52,6 +65,7 @@ export interface ReferenceDataDto {
   categories: CategoryOption[]
   /** Carrier's minimum payout in PLN; smaller amounts are flagged as possibly not paid out. */
   minimumPayout: number
+  utk: ComplaintOfficeDto
 }
 
 export interface ExtractionDto {
@@ -145,6 +159,18 @@ export interface CaseDto {
   createdAt: IsoDateTime
   /** The same final verdict the wizard shows; null without a ticket price. */
   outcome: OutcomeDto | null
+  /** Which follow-up letters the case allows now (server rule, Warsaw dates). */
+  followUps: FollowUpsDto
+}
+
+/** Letters after the first one: ponaglenie to the carrier, skarga do Prezesa UTK. */
+export type FollowUpKind = 'reminder' | 'utk-complaint'
+
+export interface FollowUpsDto {
+  reminder: boolean
+  utkComplaint: boolean
+  /** Sent and the carrier's deadline has passed. */
+  pastDeadline: boolean
 }
 
 export interface StatsDto {
