@@ -66,7 +66,7 @@ public static class FollowUpTemplate
         // Only a deadline that really passed is stated; before it the passenger only says no answer has come yet.
         var noReply = f.PastDeadline
             ? "Termin na udzielenie odpowiedzi upłynął, a do dnia dzisiejszego nie otrzymałem(-am) odpowiedzi."
-            : "Uprzejmie informuję, że do dnia dzisiejszego nie otrzymałem(-am) odpowiedzi.";
+            : "Informuję, że do dnia dzisiejszego nie otrzymałem(-am) odpowiedzi.";
 
         var body = $"""
             {ComplaintTemplate.FullName}
