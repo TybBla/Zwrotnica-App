@@ -100,7 +100,10 @@ public sealed class CaseService(
             carrier, trainCategory, incidentType, delayMinutes, ticketPrice, delayCause, isSeasonTicket));
 
         target.Carrier = carrier.Trim();
-        target.TrainCategory = Clean(trainCategory);
+        // Regional catalogue carriers have no train categories; a stray one ("Regio") would only duplicate the name.
+        target.TrainCategory = CarrierCatalog.FindCarrier(carrier)?.Coverage == Verdict.NotCovered
+            ? null
+            : Clean(trainCategory);
         target.FromStation = Clean(fromStation);
         target.ToStation = Clean(toStation);
         target.TicketNumber = Clean(ticketNumber);

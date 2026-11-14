@@ -80,6 +80,31 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
     }
 
     [Fact]
+    public async Task PostAndPut_RegionalCatalogueCarrier_DropsTrainCategory()
+    {
+        var client = await LoggedInClientAsync("regional-category@test.pl");
+
+        var created = await CreateAsync(client, NewCase(carrier: "Polregio", category: "Regio"));
+        var id = created.GetProperty("id").GetInt32();
+        var updated = await JsonAsync(await client.PutAsJsonAsync($"/api/cases/{id}", NewCase(carrier: "Polregio", category: "IR")));
+
+        Assert.Equal(JsonValueKind.Null, created.GetProperty("trainCategory").ValueKind);
+        Assert.Equal(JsonValueKind.Null, updated.GetProperty("trainCategory").ValueKind);
+        Assert.Equal("NotCovered", updated.GetProperty("verdict").GetString());
+    }
+
+    [Fact]
+    public async Task Post_UnknownCarrierKeepsTrainCategory()
+    {
+        var client = await LoggedInClientAsync("other-category@test.pl");
+
+        var json = await CreateAsync(client, NewCase(carrier: "Leo Express", category: "IR"));
+
+        Assert.Equal("IR", json.GetProperty("trainCategory").GetString());
+        Assert.Equal("Unknown", json.GetProperty("verdict").GetString());
+    }
+
+    [Fact]
     public async Task Post_SeasonTicket_IsUnknownWithZero()
     {
         var client = await LoggedInClientAsync("season@test.pl");
