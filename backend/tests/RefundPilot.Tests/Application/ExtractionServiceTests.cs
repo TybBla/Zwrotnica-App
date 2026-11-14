@@ -95,11 +95,19 @@ public sealed class ExtractionServiceTests
     }
 
     [Fact]
-    public async Task LongStrings_AreCappedAt100Characters()
+    public async Task LongStrings_AreCappedAtTheCaseRequestLimits()
     {
-        var result = await RunAsync($$"""{"carrier":"{{new string('a', 500)}}","travelDate":"2026-11-01"}""");
+        var result = await RunAsync($$"""
+            {"carrier":"{{new string('a', 500)}}","trainCategory":"{{new string('c', 80)}}",
+             "fromStation":"{{new string('f', 500)}}","toStation":"{{new string('t', 150)}}",
+             "ticketNumber":"{{new string('9', 500)}}","travelDate":"2026-11-01"}
+            """);
 
-        Assert.Equal(100, result.Carrier!.Length);
+        Assert.Equal(200, result.Carrier!.Length);
+        Assert.Equal(50, result.TrainCategory!.Length);
+        Assert.Equal(200, result.FromStation!.Length);
+        Assert.Equal(150, result.ToStation!.Length);
+        Assert.Equal(100, result.TicketNumber!.Length);
     }
 
     [Fact]

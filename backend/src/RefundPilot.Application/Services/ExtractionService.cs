@@ -55,13 +55,13 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         if (root.ValueKind != JsonValueKind.Object)
             throw new AiUnavailableException(Malformed);
 
-        var rawCarrier = Text(root, "carrier", TextField.Carrier);
+        var rawCarrier = Text(root, "carrier", 200, TextField.Carrier);
         var carrier = CarrierCatalog.FindCarrier(rawCarrier)?.Name ?? rawCarrier;
-        var rawCategory = Text(root, "trainCategory", TextField.TrainCategory);
+        var rawCategory = Text(root, "trainCategory", 50, TextField.TrainCategory);
         var category = CarrierCatalog.FindCategory(rawCategory)?.Code ?? rawCategory;
-        var from = Text(root, "fromStation", TextField.Station);
-        var to = Text(root, "toStation", TextField.Station);
-        var number = Text(root, "ticketNumber", TextField.TicketNumber);
+        var from = Text(root, "fromStation", 200, TextField.Station);
+        var to = Text(root, "toStation", 200, TextField.Station);
+        var number = Text(root, "ticketNumber", 100, TextField.TicketNumber);
         var price = Price(root);
         var date = Date(root);
 
@@ -77,8 +77,6 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         return new(carrier, category, from, to, number, price, date, missing, UsedAi: true);
     }
 
-    private const int MaxTextLength = 100;
-
     private static JsonDocument Parse(string raw)
     {
         try
@@ -91,8 +89,8 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         }
     }
 
-    /// <summary>Trimmed string capped at <see cref="MaxTextLength"/>; when a field is given, characters outside its allowlist are dropped.</summary>
-    private static string? Text(JsonElement root, string name, TextField? field = null)
+    /// <summary>Trimmed string capped at <paramref name="max"/> (the case request limit); when a field is given, characters outside its allowlist are dropped.</summary>
+    private static string? Text(JsonElement root, string name, int max, TextField? field = null)
     {
         if (!root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String
             || string.IsNullOrWhiteSpace(value.GetString()))
@@ -100,7 +98,7 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         var text = value.GetString()!.Trim();
         if (field is { } f)
             text = TextRules.Sanitize(f, text);
-        return text is { Length: > MaxTextLength } ? text[..MaxTextLength].TrimEnd() : text;
+        return text is { Length: var length } && length > max ? text[..max].TrimEnd() : text;
     }
 
     private static decimal? Price(JsonElement root)
@@ -124,7 +122,7 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
 
     private DateOnly? Date(JsonElement root)
     {
-        if (Text(root, "travelDate") is not { } text
+        if (Text(root, "travelDate", 100) is not { } text
             || !DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
             return null;
         var today = WarsawClock.Today(clock);
