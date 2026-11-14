@@ -14,7 +14,7 @@ Więcej zrzutów (ciemny motyw, telefon): [`docs/screenshots/`](docs/screenshots
 
 Pociąg dalekobieżny spóźnił się ponad godzinę? Według rozporządzenia (UE) 2021/782 pasażerowi należy się 25% albo 50% ceny biletu, ale mało kto o tym wie i chce pisać reklamację. **Zwrotnica** w trzech krokach (Bilet → Opóźnienie → Wynik) ocenia sprawę, liczy kwotę i generuje pismo (tekst lub PDF). AI czyta bilet i pisze pismo, a o tym, co się należy, i o kwotach decyduje zwykły, przetestowany kod.
 
-Demo online: **https://<nazwa-aplikacji>.azurewebsites.net** (konto demo: dane w mailu).
+Demo online: **https://<nazwa-aplikacji>.azurewebsites.net** (dane konta demo dla wersji online podaję w zgłoszeniu; lokalne konto demo – niżej).
 
 ## Najważniejsze funkcje
 
@@ -107,7 +107,7 @@ Głównym narzędziem był **Claude Code** (Opus i Sonnet) z workflow „superpo
 
 Konfiguracja agenta: [`instructions.md`](instructions.md) to regulamin (wymagania, zasady architektury, „AI tylko tam, gdzie reguły nie wystarczą”), [`skills-lock.json`](skills-lock.json) to zainstalowane umiejętności (m.in. `tdd`, `code-review`, `mobile-native`, `break-ui`). **Playwright** posłużył do nagrania dema i zrzutów ([`tools/demo/`](tools/demo/README.md)). **Gemini** działa w aplikacji w czasie pracy, nie pisał kodu.
 
-**Podział ról:** decyzje produktowe (zakres, uczciwe werdykty, formy wypłaty, prawdziwe konta, szyfrowanie rachunku, kierunek wizualny, model biznesowy) podejmowałem ja. Kod wygenerowało AI, a ja go przeglądałem, testowałem w przeglądarce i kierowałem poprawkami.
+**Podział ról:** decyzje produktowe (zakres, uczciwe werdykty, formy wypłaty, prawdziwe konta, szyfrowanie rachunku, kierunek wizualny, model biznesowy) podejmowałem ja. Kod wygenerowało AI pod moim nadzorem: oceniałem kolejne wersje (zwłaszcza wygląd i treści prawne), zgłaszałem uwagi i decydowałem o poprawkach.
 
 ## Ograniczenia
 
