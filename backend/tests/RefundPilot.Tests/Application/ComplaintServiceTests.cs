@@ -595,9 +595,17 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RenderPdf_WithoutProfileAddress_UsesPlaceholder()
+    public async Task RenderPdf_WithoutProfileAddress_UsesTheDestinationCity()
     {
         await Service(Failing(), Empty).RenderPdfAsync(await AddCaseAsync(Empty), new ComplaintPdfRequest("Temat", "Treść"));
+
+        Assert.Equal("Kraków, 13 listopada 2026 r.", _pdf.LastPlaceAndDate);
+    }
+
+    [Fact]
+    public async Task RenderPdf_WithoutAddressOrStations_UsesPlaceholder()
+    {
+        await Service(Failing(), Empty).RenderPdfAsync(await AddCaseAsync(Empty, noStations: true), new ComplaintPdfRequest("Temat", "Treść"));
 
         Assert.Equal("[miejscowość], 13 listopada 2026 r.", _pdf.LastPlaceAndDate);
     }

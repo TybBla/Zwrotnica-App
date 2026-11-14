@@ -55,11 +55,12 @@ public sealed partial class ComplaintService(
 
     public async Task<byte[]?> RenderPdfAsync(int caseId, ComplaintPdfRequest request)
     {
-        if (currentUser.UserId is not { } id || await cases.GetAsync(caseId, id) is null)
+        if (currentUser.UserId is not { } id || await cases.GetAsync(caseId, id) is not { } refundCase)
             return null;
 
         var address = (await profiles.GetAsync(id))?.Address;
-        var placeAndDate = LetterHeader.PlaceAndDate(LetterHeader.PlaceFromAddress(address), WarsawClock.Today(clock));
+        var place = LetterHeader.Place(address, refundCase.ToStation, refundCase.FromStation);
+        var placeAndDate = LetterHeader.PlaceAndDate(place, WarsawClock.Today(clock));
         return pdf.Render(new ComplaintDto(request.Subject, request.Body, UsedAi: false, []), placeAndDate);
     }
 
