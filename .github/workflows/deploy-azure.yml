@@ -12,6 +12,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-azure
   cancel-in-progress: false
@@ -33,15 +36,24 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Build frontend
+      # Never ship untested code: lint and tests must pass before anything is published.
+      - name: Test and build frontend
         working-directory: frontend
         run: |
           npm ci
+          npm run lint
+          npm run test
           npm run build
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
+      - name: Test backend
+        run: |
+          dotnet restore backend/RefundPilot.sln
+          dotnet build backend/RefundPilot.sln --no-restore -warnaserror
+          dotnet test backend/RefundPilot.sln --no-build
 
       - name: Publish API
         run: |
