@@ -308,8 +308,9 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
         var fetched = await JsonAsync(await client.GetAsync($"/api/cases/{created.GetProperty("id").GetInt32()}"));
 
         var outcome = assessed.GetProperty("outcome");
-        Assert.Equal("Przewoźnik jest zobowiązany do wypłaty odszkodowania", outcome.GetProperty("title").GetString());
+        Assert.Equal("Odszkodowanie przysługuje co do zasady, ale kwota jest poniżej progu wypłaty", outcome.GetProperty("title").GetString());
         Assert.Contains("tj. 10,00 zł", outcome.GetProperty("statement").GetString());
+        Assert.Equal(JsonValueKind.Null, outcome.GetProperty("deadline").ValueKind);
         Assert.Equal(outcome.GetRawText(), created.GetProperty("outcome").GetRawText());
         Assert.Equal(outcome.GetRawText(), fetched.GetProperty("outcome").GetRawText());
     }

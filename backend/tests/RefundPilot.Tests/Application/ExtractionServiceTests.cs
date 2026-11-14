@@ -92,9 +92,12 @@ public sealed class ExtractionServiceTests
 
         await RunAsync("{}", ai);
 
-        Assert.Contains("Polish diacritics", ai.Prompt);
-        Assert.Contains("Kraków Główny", ai.Prompt);
-        Assert.Contains("never strip", ai.Prompt);
+        Assert.Contains(
+            "Write station and carrier names with Polish diacritics when they clearly follow from the ticket or are the obvious " +
+            "official name (e.g. \"Kraków Główny\"); do not guess names that are not visible.", ai.Prompt);
+        // A rule of its own after the field list, not wedged between the field bullets.
+        Assert.True(ai.Prompt!.IndexOf("Write station and carrier names", StringComparison.Ordinal)
+                    > ai.Prompt.IndexOf("- travelDate:", StringComparison.Ordinal));
     }
 
     [Fact]

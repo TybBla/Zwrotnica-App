@@ -64,8 +64,9 @@ public static class ComplaintTemplate
             ? $"Wniosek o zwrot należności za bilet – odwołanie pociągu {f.Carrier} z dnia {f.DateText}"
             : $"Wniosek o wypłatę odszkodowania – opóźnienie pociągu {f.Carrier} z dnia {f.DateText}";
 
+        // The art. 18 refund applies when the passenger gives up the journey, which is what this letter claims.
         var what = cancelled
-            ? "Pociąg został odwołany."
+            ? "Pociąg został odwołany i zrezygnowałem(-am) z podróży."
             : $"Pociąg dotarł do stacji docelowej z opóźnieniem {f.DelayMinutes} min.";
         if (f.CauseText is { } cause)
             what += $" Przyczyna zdarzenia (według dostępnych informacji): {cause}.";

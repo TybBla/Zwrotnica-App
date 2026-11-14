@@ -169,7 +169,7 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
 
         var letter = await GenerateAsync(Failing(), Req());
 
-        Assert.Contains("odwołan", letter.Body);
+        Assert.Contains("Pociąg został odwołany i zrezygnowałem(-am) z podróży.", letter.Body);
         Assert.DoesNotContain("0 min", letter.Body);
     }
 
@@ -220,6 +220,7 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         await GenerateAsync(ai, Req());
 
         Assert.Contains("art. 18", ai.Prompt);
+        Assert.Contains("The train was cancelled and the passenger gave up the journey.", ai.Prompt);
         Assert.DoesNotContain("art. 19", ai.Prompt);
     }
 

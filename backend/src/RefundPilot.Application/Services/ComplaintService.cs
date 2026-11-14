@@ -137,7 +137,7 @@ public sealed partial class ComplaintService(
     internal static string BuildPrompt(ComplaintFacts f)
     {
         var incident = f.Incident == IncidentType.Cancellation
-            ? "The train was cancelled."
+            ? "The train was cancelled and the passenger gave up the journey."
             : $"The train arrived at the destination {f.DelayMinutes} minutes late.";
         var cause = f.CauseText is { } c ? $"\n- Cause of the delay (if relevant): {c}" : "";
         var article = ComplaintTemplate.Article(f.Incident);

@@ -7,6 +7,13 @@ namespace RefundPilot.Tests.Application;
 /// <summary>"Werdykt końcowy": the expected legal effect of the complaint, derived only from the deterministic rules.</summary>
 public sealed class AssessmentOutcomeTests
 {
+    private const string Art19Basis = "Art. 19 rozporządzenia (UE) 2021/782";
+    private const string CompensationDeadline = "Przewoźnik powinien wypłacić odszkodowanie w terminie 1 miesiąca od złożenia wniosku.";
+    private const string ForceMajeure =
+        "Przewoźnik może odmówić wypłaty, jeżeli wykaże, że opóźnienie wynikło z okoliczności nadzwyczajnych (siły wyższej).";
+    private const string BelowMinimumSentence =
+        "Przewoźnik może nie wypłacić odszkodowania niższego niż 16 zł – rozporządzenie pozwala ustalić taki próg minimalny w regulaminie przewoźnika.";
+
     private readonly AssessmentService _service =
         new(new EligibilityService(), new CompensationCalculator(new CompensationOptions()), new CompensationOptions());
 
@@ -21,26 +28,26 @@ public sealed class AssessmentOutcomeTests
     {
         var outcome = Outcome(delay: delay)!;
 
-        Assert.Equal("Przewoźnik jest zobowiązany do wypłaty odszkodowania", outcome.Title);
-        Assert.Equal(
+        Assert.Equal(new OutcomeDto(
+            "Przewoźnik jest zobowiązany do wypłaty odszkodowania",
             $"Na podstawie art. 19 rozporządzenia (UE) 2021/782 przewoźnik jest zobowiązany wypłacić odszkodowanie w wysokości {percent}% ceny biletu, tj. {amount}.",
-            outcome.Statement);
-        Assert.Equal("Art. 19 rozporządzenia (UE) 2021/782", outcome.LegalBasis);
-        Assert.Equal("Przewoźnik powinien wypłacić odszkodowanie w terminie 1 miesiąca od złożenia wniosku.", outcome.Deadline);
+            Art19Basis,
+            CompensationDeadline), outcome);
     }
 
     [Fact]
-    public void CoveredCancellation_CarrierMustRefundTheTicketUnderArticle18_EvenInBadWeather()
+    public void CoveredCancellation_RefundWhenThePassengerGivesUpTheJourney_EvenInBadWeather()
     {
         var outcome = Outcome(type: IncidentType.Cancellation, delay: 0, price: 96.5m, cause: DelayCause.Weather)!;
 
-        Assert.Equal("Przewoźnik jest zobowiązany do zwrotu ceny biletu", outcome.Title);
-        Assert.Contains("art. 18 rozporządzenia (UE) 2021/782", outcome.Statement);
-        Assert.Contains("pełną cenę biletu", outcome.Statement);
-        Assert.Contains("96,50 zł", outcome.Statement);
-        Assert.DoesNotContain("okoliczności nadzwyczajnych", outcome.Statement);
-        Assert.Equal("Art. 18 rozporządzenia (UE) 2021/782", outcome.LegalBasis);
-        Assert.Contains("1 miesiąca", outcome.Deadline);
+        Assert.Equal(new OutcomeDto(
+            "Przysługuje zwrot ceny biletu",
+            "Na podstawie art. 18 ust. 1 lit. a rozporządzenia (UE) 2021/782, w przypadku odwołania pociągu i rezygnacji z podróży " +
+            "przewoźnik jest zobowiązany zwrócić pełną cenę biletu, tj. 96,50 zł. Jeżeli podróż odbyła się innym pociągiem, " +
+            "zamiast zwrotu może przysługiwać odszkodowanie za opóźnienie.",
+            "Art. 18 ust. 1 lit. a w zw. z art. 19 rozporządzenia (UE) 2021/782",
+            "Zwrot powinien nastąpić na tych samych warunkach co wypłata odszkodowania, tj. w terminie 1 miesiąca od złożenia wniosku."),
+            outcome);
     }
 
     [Theory]
@@ -50,19 +57,33 @@ public sealed class AssessmentOutcomeTests
     {
         var outcome = Outcome(cause: cause)!;
 
-        Assert.EndsWith(
-            "Przewoźnik może odmówić wypłaty, jeżeli wykaże, że opóźnienie wynikło z okoliczności nadzwyczajnych (siły wyższej).",
+        Assert.Equal(
+            "Na podstawie art. 19 rozporządzenia (UE) 2021/782 przewoźnik jest zobowiązany wypłacić odszkodowanie w wysokości 25% ceny biletu, tj. 25,00 zł. " +
+            ForceMajeure,
             outcome.Statement);
     }
 
     [Fact]
-    public void BelowMinimum_SaysTheCarrierMayNotPaySoSmallAnAmount()
+    public void BelowMinimum_DoesNotPromisePaymentAndHasNoDeadline()
     {
         var outcome = Outcome(price: 40m)!;
 
-        Assert.Contains("tj. 10,00 zł.", outcome.Statement);
-        Assert.Contains("Przewoźnik może nie wypłacić odszkodowania niższego niż 16 zł", outcome.Statement);
-        Assert.Equal("Przewoźnik jest zobowiązany do wypłaty odszkodowania", outcome.Title);
+        Assert.Equal(new OutcomeDto(
+            "Odszkodowanie przysługuje co do zasady, ale kwota jest poniżej progu wypłaty",
+            "Na podstawie art. 19 rozporządzenia (UE) 2021/782 odszkodowanie wynosi 25% ceny biletu, tj. 10,00 zł. " + BelowMinimumSentence,
+            Art19Basis,
+            null), outcome);
+    }
+
+    [Fact]
+    public void BelowMinimumWithRefusalRisk_HasBothCaveats()
+    {
+        var outcome = Outcome(price: 40m, cause: DelayCause.Weather)!;
+
+        Assert.Equal(
+            "Na podstawie art. 19 rozporządzenia (UE) 2021/782 odszkodowanie wynosi 25% ceny biletu, tj. 10,00 zł. " +
+            BelowMinimumSentence + " " + ForceMajeure,
+            outcome.Statement);
     }
 
     [Fact]
@@ -70,12 +91,12 @@ public sealed class AssessmentOutcomeTests
     {
         var outcome = Outcome(delay: 45)!;
 
-        Assert.Equal("Przewoźnik nie ma obowiązku wypłaty odszkodowania", outcome.Title);
-        Assert.Equal(
-            "Opóźnienie na stacji docelowej nie przekroczyło 60 minut, dlatego przepisy rozporządzenia (UE) 2021/782 " +
-            "nie przewidują odszkodowania. Możesz złożyć reklamację – przewoźnik rozpatrzy ją według swojego regulaminu.",
-            outcome.Statement);
-        Assert.Null(outcome.Deadline);
+        Assert.Equal(new OutcomeDto(
+            "Przewoźnik nie ma obowiązku wypłaty odszkodowania",
+            "Opóźnienie na stacji docelowej wyniosło mniej niż 60 minut, dlatego przepisy rozporządzenia (UE) 2021/782 " +
+            "nie przewidują odszkodowania. Reklamację można jednak złożyć – przewoźnik rozpatrzy ją według swojego regulaminu.",
+            Art19Basis,
+            null), outcome);
     }
 
     [Fact]
@@ -83,26 +104,31 @@ public sealed class AssessmentOutcomeTests
     {
         var outcome = Outcome(carrier: "Polregio", category: null, delay: 200)!;
 
-        Assert.Equal("Przewoźnik nie ma ustawowego obowiązku wypłaty odszkodowania", outcome.Title);
-        Assert.StartsWith("Przewozy regionalne, podmiejskie i miejskie w Polsce są wyłączone z systemu odszkodowań", outcome.Statement);
-        Assert.EndsWith("na zasadach określonych w swoim regulaminie przewozu.", outcome.Statement);
-        Assert.Null(outcome.LegalBasis);
-        Assert.Null(outcome.Deadline);
+        Assert.Equal(new OutcomeDto(
+            "Przewoźnik nie ma ustawowego obowiązku wypłaty odszkodowania",
+            "Przewozy regionalne, podmiejskie i miejskie w Polsce są wyłączone z systemu odszkodowań określonego " +
+            "w rozporządzeniu (UE) 2021/782. Przewoźnik może jednak przyznać rekompensatę na zasadach określonych " +
+            "w swoim regulaminie przewozu.",
+            null,
+            null), outcome);
     }
 
     [Theory]
-    [InlineData("PKP Intercity", "IC", true)]       // season ticket
-    [InlineData("Leo Express", "IR", false)]        // InterRegio with another carrier
-    [InlineData("Nieznany Przewoźnik", null, false)] // unknown carrier
-    public void Unclear_SaysEntitlementCannotBeDeterminedAndWhy(string carrier, string? category, bool season)
+    [InlineData("PKP Intercity", "IC", true,
+        "Bilety okresowe wymagają osobnego wyliczenia – nie podajemy kwoty automatycznie. Należy sprawdzić regulamin przewoźnika. " +
+        "Reklamację można złożyć niezależnie od wyniku.")]
+    [InlineData("Leo Express", "IR", false,
+        "Pociągi InterRegio prowadzi Polregio. Należy sprawdzić w regulaminie przewoźnika, czy przysługuje odszkodowanie. " +
+        "Reklamację można złożyć niezależnie od wyniku.")]
+    [InlineData("Nieznany Przewoźnik", null, false,
+        "Nie udało się jednoznacznie określić przewoźnika lub kategorii pociągu. Należy sprawdzić regulamin przewoźnika. " +
+        "Reklamację można złożyć niezależnie od wyniku.")]
+    public void Unclear_SaysWhyOnceAndThatAComplaintIsPossible(string carrier, string? category, bool season, string statement)
     {
         var assessment = _service.Assess(new AssessmentRequest(carrier, category, IncidentType.Delay, 90, 100m, null, season));
-        var outcome = assessment.Outcome!;
 
         Assert.Equal(Verdict.Unknown, assessment.Verdict);
-        Assert.Equal("Nie można jednoznacznie ustalić uprawnień", outcome.Title);
-        Assert.StartsWith(assessment.Reason, outcome.Statement);
-        Assert.EndsWith("Zalecamy sprawdzenie regulaminu przewoźnika; reklamację można złożyć niezależnie od wyniku.", outcome.Statement);
+        Assert.Equal(new OutcomeDto("Nie można jednoznacznie ustalić uprawnień", statement, null, null), assessment.Outcome);
     }
 
     [Fact]

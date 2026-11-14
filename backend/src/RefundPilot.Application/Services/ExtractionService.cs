@@ -22,11 +22,10 @@ public sealed class ExtractionService(IAiClient ai, TimeProvider clock) : IExtra
         - carrier: railway operator printed on the ticket (e.g. "PKP Intercity", "Polregio").
         - trainCategory: one of EIP, EIC, IC, TLK, or the category exactly as printed.
         - fromStation / toStation: departure and destination station names.
-        Write station names and the carrier with correct Polish diacritics, as printed or as officially named
-        (e.g. "Kraków Główny", "Łódź Fabryczna"); never strip diacritics, even if the ticket prints them without.
         - ticketNumber: the ticket or reservation number.
         - ticketPrice: the total amount actually paid, in PLN, as a number (no currency symbol).
         - travelDate: date of travel in ISO format yyyy-MM-dd.
+        Write station and carrier names with Polish diacritics when they clearly follow from the ticket or are the obvious official name (e.g. "Kraków Główny"); do not guess names that are not visible.
         Do not extract the passenger name or any other personal data.
         """;
 

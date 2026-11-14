@@ -18,7 +18,7 @@ public sealed class EligibilityService
 
         if (CarrierCatalog.IsInterRegio(categoryText))
             return new(Verdict.Unknown,
-                "Pociągi InterRegio prowadzi Polregio. Sprawdź w regulaminie przewoźnika, czy przysługuje odszkodowanie.");
+                "Pociągi InterRegio prowadzi Polregio. Należy sprawdzić w regulaminie przewoźnika, czy przysługuje odszkodowanie.");
 
         if (CarrierCatalog.IsPkpIntercity(carrierText) && CarrierCatalog.HasIntercityCategory(categoryText))
             return new(Verdict.Eligible, "Pociąg PKP Intercity objęty rekompensatą 25%/50% ceny biletu.");
