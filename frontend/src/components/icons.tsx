@@ -103,3 +103,64 @@ export const ShieldIcon = (props: IconProps) => (
     <path d="m9 12 2 2 4-4" />
   </Icon>
 )
+
+export const ArrowLeftIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M19 12H5M11 6l-6 6 6 6" />
+  </Icon>
+)
+
+export const CheckIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m5 12.5 4.5 4.5L19 7.5" />
+  </Icon>
+)
+
+export const CloseIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </Icon>
+)
+
+export const CameraIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 8.5a2 2 0 0 1 2-2h1.6l1.4-2h6l1.4 2H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8.5Z" />
+    <circle cx="12" cy="12.75" r="3.25" />
+  </Icon>
+)
+
+export const ImageIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+    <circle cx="9" cy="10" r="1.75" />
+    <path d="m20.5 15.5-4.5-4.5-8.5 8.5" />
+  </Icon>
+)
+
+export const FileIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8L14 3.5Z" />
+    <path d="M14 3.5V8h4.5M9 13h6M9 16.5h4" />
+  </Icon>
+)
+
+export const UploadIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9" />
+    <path d="M4.5 15v2.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V15" />
+  </Icon>
+)
+
+export const PencilIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4.5 19.5h4l10-10a2.83 2.83 0 0 0-4-4l-10 10v4Z" />
+    <path d="m13.5 6.5 4 4" />
+  </Icon>
+)
+
+export const SparkleIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 3.5c.6 4.2 2.3 5.9 6.5 6.5-4.2.6-5.9 2.3-6.5 6.5-.6-4.2-2.3-5.9-6.5-6.5 4.2-.6 5.9-2.3 6.5-6.5Z" />
+    <path d="M18.5 15.5c.25 1.6.9 2.25 2.5 2.5-1.6.25-2.25.9-2.5 2.5-.25-1.6-.9-2.25-2.5-2.5 1.6-.25 2.25-.9 2.5-2.5Z" />
+  </Icon>
+)

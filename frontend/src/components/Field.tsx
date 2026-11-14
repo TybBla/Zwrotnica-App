@@ -14,12 +14,14 @@ interface FieldProps {
   /** Adds a quiet "opcjonalne" marker; most fields in this app are optional. */
   optional?: boolean
   required?: boolean
+  /** Draws the eye to a field the user still has to fill (e.g. AI could not read it). */
+  attention?: boolean
   id?: string
   children: ReactNode
 }
 
 /** Label + control + hint + error. The child control (TextInput, TextArea, Select) picks up id and ARIA wiring. */
-export function Field({ label, hint, error, tooltip, optional, required = false, id, children }: FieldProps) {
+export function Field({ label, hint, error, tooltip, optional, required = false, attention = false, id, children }: FieldProps) {
   const generatedId = useId()
   const controlId = id ?? generatedId
   const hintId = hint ? `${controlId}-hint` : undefined
@@ -36,7 +38,7 @@ export function Field({ label, hint, error, tooltip, optional, required = false,
   )
 
   return (
-    <div className="field" data-invalid={error ? true : undefined}>
+    <div className="field" data-invalid={error ? true : undefined} data-attention={attention && !error ? true : undefined}>
       <div className="field__label-row">
         <label className="field__label" htmlFor={controlId}>
           {label}

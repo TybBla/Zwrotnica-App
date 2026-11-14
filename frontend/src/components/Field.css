@@ -48,3 +48,14 @@
   flex: none;
   margin-top: 0.1em;
 }
+
+/* Needs the user's input (e.g. AI could not read it): warm border and hint, until filled. */
+.field[data-attention] .field__hint {
+  color: var(--warning);
+  font-weight: var(--weight-medium);
+}
+
+.field[data-attention] .input__control:not(:focus) {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning-tint) 55%, var(--surface));
+}

@@ -1,0 +1,134 @@
+.check {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding-block: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.check[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* The native input stays in the tree (keyboard, screen readers, forms) but is drawn by .check__control. */
+.check__input {
+  position: absolute;
+  top: var(--space-2);
+  left: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.check__control {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.0625rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-on-accent);
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    transform var(--duration-press) var(--ease-out);
+}
+
+.check__control svg {
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity var(--duration-fast) ease,
+    transform var(--duration-base) var(--ease-out);
+}
+
+.check__input:checked + .check__control {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.check__input:checked + .check__control svg {
+  opacity: 1;
+  transform: none;
+}
+
+.check__input:focus-visible + .check__control {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.check:active:not([data-disabled]) .check__control {
+  transform: scale(var(--press-scale));
+}
+
+/* Switch: a track with a sliding thumb */
+.check--switch .check__input {
+  width: 2.75rem;
+}
+
+.check--switch .check__control {
+  position: relative;
+  display: block;
+  width: 2.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+}
+
+.check__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.5rem - 6px);
+  height: calc(1.5rem - 6px);
+  border-radius: 50%;
+  background: var(--border-strong);
+  transition:
+    transform var(--duration-base) var(--ease-out),
+    background-color var(--duration-fast) ease;
+}
+
+.check--switch .check__input:checked + .check__control .check__thumb {
+  background: var(--text-on-accent);
+  transform: translateX(1.25rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .check__thumb {
+    transition: background-color var(--duration-fast) ease;
+  }
+}
+
+.check__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.check__label {
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+  padding-top: 0.125rem;
+}
+
+.check__description {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .check:hover:not([data-disabled]) .check__input:not(:checked) + .check__control {
+    border-color: var(--text-tertiary);
+  }
+}

@@ -1,29 +1,13 @@
 import { useState } from 'react'
-import type { PayoutPreference } from './api/types'
 import { AccountMenu } from './components/AccountMenu'
 import { AppShell } from './components/AppShell'
 import { Badge } from './components/Badge'
 import { Button } from './components/Button'
 import { Card } from './components/Card'
-import { Field } from './components/Field'
-import {
-  AlertCircleIcon,
-  ArrowRightIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ShieldIcon,
-  TicketIcon,
-} from './components/icons'
-import { Select, type SelectOption } from './components/Select'
-import { TextInput } from './components/TextInput'
+import { ArrowRightIcon, CheckCircleIcon, ClockIcon, TicketIcon } from './components/icons'
 import { verdictStyle } from './lib/verdict'
+import { Wizard } from './wizard/Wizard'
 import './App.css'
-
-const payoutOptions: SelectOption<PayoutPreference>[] = [
-  { value: 'OriginalPayment', label: 'Zwrot na kartę lub konto, z którego płaciłeś' },
-  { value: 'BankTransfer', label: 'Przelew na inne konto' },
-  { value: 'Voucher', label: 'Bon na kolejną podróż' },
-]
 
 const steps = [
   { icon: <TicketIcon />, title: 'Dodaj bilet', text: 'Zdjęcie lub PDF – dane odczytamy za Ciebie albo wpiszesz je sam.' },
@@ -31,15 +15,30 @@ const steps = [
   { icon: <CheckCircleIcon />, title: 'Wyślij reklamację', text: 'Gotowe pismo do przewoźnika, w PDF, w minutę.' },
 ]
 
-export default function App() {
-  const [station, setStation] = useState('')
-  const [payout, setPayout] = useState<PayoutPreference | ''>('')
-  const [checking, setChecking] = useState(false)
+type View = 'home' | 'wizard'
 
-  const scrollToPreview = () => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+export default function App() {
+  // No router yet (Task 11): a local switch between the home page and the wizard.
+  const [view, setView] = useState<View>('home')
+
+  const show = (next: View) => {
+    setView(next)
+    window.scrollTo({ top: 0 })
+  }
+  // Sign-in arrives with the inline auth panel (Task 10) and account pages (Task 11).
+  const signIn = () => {}
+  const scrollToSteps = () => document.getElementById('how')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  if (view === 'wizard') {
+    return (
+      <AppShell account={<AccountMenu onSignIn={signIn} />} onHome={() => show('home')}>
+        <Wizard />
+      </AppShell>
+    )
+  }
 
   return (
-    <AppShell account={<AccountMenu onSignIn={scrollToPreview} />}>
+    <AppShell account={<AccountMenu onSignIn={signIn} />} onHome={() => show('home')}>
       <section className="hero">
         <div className="container hero__inner">
           <Badge tone="accent">Pociągi dalekobieżne w Polsce</Badge>
@@ -48,17 +47,17 @@ export default function App() {
             Sprawdź w minutę, ile Ci się należy, i wyślij gotową reklamację. Bez prawniczego języka i bez zgadywania.
           </p>
           <div className="hero__actions">
-            <Button iconEnd={<ArrowRightIcon size={18} />} onClick={scrollToPreview}>
+            <Button iconEnd={<ArrowRightIcon size={18} />} onClick={() => show('wizard')}>
               Sprawdź swój bilet
             </Button>
-            <Button variant="ghost" onClick={scrollToPreview}>
+            <Button variant="ghost" onClick={scrollToSteps}>
               Jak to działa?
             </Button>
           </div>
         </div>
       </section>
 
-      <section className="container steps" aria-label="Jak to działa">
+      <section id="how" className="container steps" aria-label="Jak to działa">
         {steps.map((step, index) => (
           <Card key={step.title} className="step">
             <span className="step__icon">{step.icon}</span>
@@ -97,47 +96,6 @@ export default function App() {
           </div>
         </Card>
 
-        <Card padding="lg" className="form-preview">
-          <form
-            className="stack"
-            onSubmit={(event) => {
-              event.preventDefault()
-              setChecking(true)
-              window.setTimeout(() => setChecking(false), 900)
-            }}
-          >
-            <Field
-              label="Stacja początkowa"
-              optional
-              hint="Litery, cyfry i znaki . - ' ( ) /. Emoji się nie wpiszą."
-              tooltip="Nazwa z biletu, np. „Kraków Główny”. Nie wpływa na kwotę – pomaga przewoźnikowi znaleźć Twój przejazd."
-            >
-              <TextInput field="station" value={station} onValueChange={setStation} placeholder="np. Kraków Główny" autoComplete="off" />
-            </Field>
-            <Field
-              label="Forma wypłaty"
-              tooltip="Bilet kupiony gotówką w kasie? Wybierz przelew na konto."
-            >
-              <Select value={payout} onValueChange={setPayout} options={payoutOptions} placeholder="Wybierz formę wypłaty" />
-            </Field>
-            <p className="form-preview__note">
-              <ShieldIcon size={18} />
-              Numer konta jest szyfrowany, widoczny tylko dla Ciebie i nigdy nie trafia do AI.
-            </p>
-            <div className="form-preview__actions">
-              <Button type="submit" loading={checking} block>
-                Sprawdź, ile mi się należy
-              </Button>
-              <Button variant="secondary" block onClick={() => setStation('')}>
-                Wyczyść
-              </Button>
-            </div>
-            <p className="form-preview__hint">
-              <AlertCircleIcon size={16} />
-              Podgląd komponentów – pełny formularz pojawi się w kreatorze.
-            </p>
-          </form>
-        </Card>
       </section>
     </AppShell>
   )

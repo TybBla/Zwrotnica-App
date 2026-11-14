@@ -1,0 +1,234 @@
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent, { type UserEvent } from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError, api } from '../api/client'
+import type { AssessmentDto, AssessmentRequest, ExtractionDto, ReferenceDataDto } from '../api/types'
+import { Wizard } from './Wizard'
+
+const reference: ReferenceDataDto = {
+  carriers: [
+    { name: 'PKP Intercity', coverage: 'Eligible', categories: ['EIP', 'EIC', 'IC', 'TLK'] },
+    { name: 'Polregio', coverage: 'NotCovered', categories: [] },
+  ],
+  categories: [
+    { code: 'EIP', label: 'Express InterCity Premium' },
+    { code: 'EIC', label: 'Express InterCity' },
+    { code: 'IC', label: 'InterCity' },
+    { code: 'TLK', label: 'Twoje Linie Kolejowe' },
+    { code: 'IR', label: 'InterRegio' },
+  ],
+}
+
+const eligible = (request: AssessmentRequest): AssessmentDto => {
+  const percent = request.delayMinutes >= 120 ? 50 : request.delayMinutes >= 60 ? 25 : 0
+  return {
+    verdict: 'Eligible',
+    reason: `${percent}% ceny zapłaconego biletu.`,
+    compensationAmount: percent === 50 ? 24.95 : percent === 25 ? 12.48 : 0,
+    percent,
+    belowMinimum: false,
+    priceRequired: false,
+    refusalRisk: false,
+  }
+}
+
+const ticketPhoto = () => new File([new Uint8Array(2048)], 'bilet.jpg', { type: 'image/jpeg' })
+
+/** Text of everything an element's aria-describedby points at (hints, errors). */
+function description(element: HTMLElement): string {
+  return (element.getAttribute('aria-describedby') ?? '')
+    .split(' ')
+    .filter(Boolean)
+    .map((id) => document.getElementById(id)?.textContent ?? '')
+    .join(' ')
+}
+
+const nextButton = () => screen.getByRole('button', { name: 'Dalej' }) as HTMLButtonElement
+
+async function uploadAndRead(user: UserEvent, container: HTMLElement) {
+  const input = container.querySelector<HTMLInputElement>('input[type="file"]')
+  if (!input) throw new Error('no file input')
+  await user.upload(input, ticketPhoto())
+  await user.click(screen.getByRole('button', { name: 'Odczytaj dane z biletu' }))
+}
+
+async function fillManualTicket(user: UserEvent) {
+  await user.selectOptions(screen.getByLabelText('Przewoźnik'), 'PKP Intercity')
+  await user.selectOptions(screen.getByLabelText(/^Kategoria pociągu/), 'IC')
+  fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
+  await user.type(screen.getByLabelText('Cena biletu'), '49,90')
+}
+
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
+  vi.spyOn(api, 'getReference').mockResolvedValue(reference)
+  vi.spyOn(api, 'assess').mockImplementation(async (request) => eligible(request))
+})
+
+describe('Wizard – ticket step', () => {
+  it('shows all three steps and both ways to start', async () => {
+    render(<Wizard />)
+    const steps = screen.getByRole('list', { name: 'Postęp' })
+    expect(within(steps).getByText('Bilet')).toBeTruthy()
+    expect(within(steps).getByText('Opóźnienie')).toBeTruthy()
+    expect(within(steps).getByText('Wynik')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Wgraj bilet/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Wpisz ręcznie/ })).toBeTruthy()
+  })
+
+  it('switches to manual entry with a message on 502 and keeps what was typed', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'extractTicket').mockRejectedValue(new ApiError(502, 'Model AI nie odpowiedział.'))
+    const { container } = render(<Wizard />)
+
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    await user.selectOptions(await screen.findByLabelText('Przewoźnik'), 'PKP Intercity')
+    await user.type(screen.getByLabelText('Cena biletu'), '49,90')
+
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+
+    const notice = await screen.findByRole('status', { name: /Wpisz dane ręcznie/ })
+    expect(notice.textContent).toMatch(/niedostępn/)
+    expect((screen.getByLabelText('Przewoźnik') as HTMLSelectElement).value).toBe('PKP Intercity')
+    expect((screen.getByLabelText('Cena biletu') as HTMLInputElement).value).toBe('49,90')
+    expect(container.querySelector('input[type="file"]')).toBeNull()
+  })
+
+  it('switches to manual entry when AI is disabled (409) or rate limited (429)', async () => {
+    const user = userEvent.setup()
+    const extract = vi.spyOn(api, 'extractTicket').mockRejectedValueOnce(new ApiError(409, 'AI wyłączone – wpisz dane ręcznie.'))
+    const { container } = render(<Wizard />)
+
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+    expect((await screen.findByRole('status', { name: /Wpisz dane ręcznie/ })).textContent).toMatch(/wyłączony/)
+    expect(screen.getByLabelText('Przewoźnik')).toBeTruthy()
+
+    extract.mockRejectedValueOnce(new ApiError(429, 'Zbyt wiele zapytań.'))
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await user.click(screen.getByRole('button', { name: 'Odczytaj dane z biletu' }))
+    expect((await screen.findByRole('status', { name: /Wpisz dane ręcznie/ })).textContent).toMatch(/Spróbuj ponownie za minutę/)
+  })
+
+  it('fills the form from the ticket and highlights what AI could not read', async () => {
+    const user = userEvent.setup()
+    const extraction: ExtractionDto = {
+      carrier: 'PKP Intercity',
+      trainCategory: 'IC',
+      fromStation: 'Kraków Główny',
+      toStation: null,
+      ticketNumber: null,
+      ticketPrice: null,
+      travelDate: null,
+      missingFields: ['toStation', 'ticketNumber', 'ticketPrice', 'travelDate'],
+      usedAi: true,
+    }
+    vi.spyOn(api, 'extractTicket').mockResolvedValue(extraction)
+    const { container } = render(<Wizard />)
+
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+
+    const price = await screen.findByLabelText('Cena biletu')
+    expect((screen.getByLabelText('Przewoźnik') as HTMLSelectElement).value).toBe('PKP Intercity')
+    expect((screen.getByLabelText(/^Stacja początkowa/) as HTMLInputElement).value).toBe('Kraków Główny')
+    const missingHint = 'Uzupełnij – nie udało się odczytać'
+    expect(description(price)).toContain(missingHint)
+    expect(description(screen.getByLabelText('Data przejazdu'))).toContain(missingHint)
+    expect(description(screen.getByLabelText(/^Stacja docelowa/))).toContain(missingHint)
+    expect(description(screen.getByLabelText('Przewoźnik'))).not.toContain(missingHint)
+    expect(nextButton().disabled).toBe(true)
+
+    fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
+    await user.type(price, '120')
+
+    // Stations and ticket number stay optional.
+    expect(nextButton().disabled).toBe(false)
+    expect(description(price)).not.toContain(missingHint)
+  })
+
+  it('blocks "Dalej" only while carrier, travel date or price are missing', async () => {
+    const user = userEvent.setup()
+    render(<Wizard />)
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    await screen.findByLabelText('Przewoźnik')
+    expect(nextButton().disabled).toBe(true)
+
+    await user.selectOptions(screen.getByLabelText('Przewoźnik'), 'PKP Intercity')
+    fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
+    expect(nextButton().disabled).toBe(true)
+
+    await user.type(screen.getByLabelText('Cena biletu'), '49,90')
+    expect(nextButton().disabled).toBe(false)
+
+    await user.selectOptions(screen.getByLabelText('Przewoźnik'), 'Inny')
+    expect(nextButton().disabled).toBe(true)
+    await user.type(screen.getByLabelText('Nazwa przewoźnika'), 'Leo Express')
+    expect(nextButton().disabled).toBe(false)
+
+    fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2999-01-01' } })
+    expect(nextButton().disabled).toBe(true)
+  })
+})
+
+describe('Wizard – delay step', () => {
+  it('re-assesses when minutes change, does not require a cause and keeps data when going back', async () => {
+    const user = userEvent.setup()
+    const assess = vi.mocked(api.assess)
+    render(<Wizard />)
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    await screen.findByLabelText('Przewoźnik')
+    await fillManualTicket(user)
+    await user.click(nextButton())
+
+    const minutes = await screen.findByLabelText(/^Opóźnienie/)
+    await user.type(minutes, '75')
+    await waitFor(() =>
+      expect(assess).toHaveBeenLastCalledWith(
+        expect.objectContaining({ carrier: 'PKP Intercity', trainCategory: 'IC', delayMinutes: 75, ticketPrice: 49.9, delayCause: null, incidentType: 'Delay' }),
+      ),
+    )
+    expect(await screen.findByText(/12,48/)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: '120 min' }))
+    await waitFor(() => expect(assess).toHaveBeenLastCalledWith(expect.objectContaining({ delayMinutes: 120 })))
+
+    // No cause chosen – still allowed to see the result.
+    const toResult = screen.getByRole('button', { name: 'Zobacz wynik' }) as HTMLButtonElement
+    expect(toResult.disabled).toBe(false)
+    await user.click(toResult)
+    expect(await screen.findByText(/24,95/)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Wstecz' }))
+    expect(((await screen.findByLabelText(/^Opóźnienie/)) as HTMLInputElement).value).toBe('120')
+    await user.click(screen.getByRole('button', { name: 'Wstecz' }))
+    expect(((await screen.findByLabelText('Cena biletu')) as HTMLInputElement).value).toBe('49,90')
+  })
+
+  it('hides minutes for a cancelled train and sends the cause when chosen', async () => {
+    const user = userEvent.setup()
+    const assess = vi.mocked(api.assess)
+    render(<Wizard />)
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    await screen.findByLabelText('Przewoźnik')
+    await fillManualTicket(user)
+    await user.click(nextButton())
+
+    await user.click(await screen.findByRole('switch', { name: 'Pociąg odwołany' }))
+    expect(screen.queryByLabelText(/^Opóźnienie/)).toBeNull()
+    await user.selectOptions(screen.getByLabelText(/^Przyczyna opóźnienia/), 'Pogoda')
+    await user.click(screen.getByRole('checkbox', { name: /Bilet okresowy/ }))
+
+    await waitFor(() =>
+      expect(assess).toHaveBeenLastCalledWith(
+        expect.objectContaining({ incidentType: 'Cancellation', delayCause: 'Weather', isSeasonTicket: true }),
+      ),
+    )
+  })
+})

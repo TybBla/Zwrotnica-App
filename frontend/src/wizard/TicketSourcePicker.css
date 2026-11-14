@@ -1,0 +1,185 @@
+.source {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.source__buttons {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.source__drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-5);
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  text-align: center;
+  transition:
+    border-color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+}
+
+.source__drop[data-dragging] {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+
+.source__drop[data-disabled] {
+  opacity: 0.6;
+}
+
+.source__drop-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--accent-text);
+  box-shadow: var(--card-highlight);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.source__drop[data-dragging] .source__drop-icon {
+  transform: translateY(-2px);
+}
+
+.source__drop-title {
+  font-weight: var(--weight-semibold);
+}
+
+.source__drop-or {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.source__limits {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+}
+
+.source__errors {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--danger);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+}
+
+.source__errors p {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.source__errors svg {
+  flex: none;
+  margin-top: 0.1em;
+}
+
+.source__files {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.source__file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  padding-right: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--card-highlight);
+  animation: source-file-in var(--duration-base) var(--ease-out) both;
+}
+
+@keyframes source-file-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-shift));
+  }
+}
+
+.source__thumb {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+
+.source__thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Until the image has a source, the icon underneath shows through. */
+.source__thumb img:not([src]) {
+  visibility: hidden;
+}
+
+.source__file-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.source__file-name {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source__file-meta {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.source__remove {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-press) var(--ease-out);
+}
+
+.source__remove:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  background: var(--surface-sunken);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .source__remove:hover:not(:disabled) {
+    background: var(--surface-sunken);
+    color: var(--text);
+  }
+}
