@@ -9,10 +9,12 @@ interface AppShellProps {
   onHome?: () => void
   /** Page footer (legal note, sources). */
   footer?: ReactNode
+  /** A non-blocking line right under the header (e.g. "Brak połączenia z serwerem"). */
+  notice?: ReactNode
   children: ReactNode
 }
 
-export function AppShell({ account, onHome, footer, children }: AppShellProps) {
+export function AppShell({ account, onHome, footer, notice, children }: AppShellProps) {
   return (
     <div className="shell">
       <a className="shell__skip" href="#main">
@@ -40,6 +42,7 @@ export function AppShell({ account, onHome, footer, children }: AppShellProps) {
           </div>
         </div>
       </header>
+      {notice}
       <main id="main" className="shell__main" tabIndex={-1}>
         {children}
       </main>

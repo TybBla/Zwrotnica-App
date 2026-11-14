@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from './AuthProvider'
+import { ConnectionNotice } from './ConnectionNotice'
 import { useAuth } from './useAuth'
 
 function Probe() {
@@ -56,5 +57,85 @@ describe('AuthProvider', () => {
 
     await user.click(screen.getByRole('button', { name: 'logout' }))
     await waitFor(() => expect(screen.getByText('wylogowany')).toBeTruthy())
+  })
+})
+
+function OfflineProbe() {
+  const { user, loading, offline } = useAuth()
+  if (loading) return <p>sprawdzanie</p>
+  return <p>{offline ? 'offline' : user ? `zalogowany: ${user.email}` : 'wylogowany'}</p>
+}
+
+describe('AuthProvider when the API is unreachable', () => {
+  it('does not treat a network error as signed out, and recovers on "Spróbuj ponownie"', async () => {
+    let reachable = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url !== '/api/auth/manage/info') return Promise.reject(new Error(`unexpected ${url}`))
+        return reachable
+          ? Promise.resolve(json({ email: 'demo@refundpilot.pl', isEmailConfirmed: true }))
+          : Promise.reject(new TypeError('Failed to fetch'))
+      }),
+    )
+    const user = userEvent.setup()
+    render(
+      <AuthProvider>
+        <ConnectionNotice />
+        <OfflineProbe />
+      </AuthProvider>,
+    )
+
+    expect(await screen.findByText('offline')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toContain('Brak połączenia z serwerem.')
+
+    reachable = true
+    await user.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(await screen.findByText('zalogowany: demo@refundpilot.pl')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe('')
+  })
+
+  it('treats a 5xx on the session check as offline, and a 401 as signed out', async () => {
+    let status = 503
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response(null, { status }))),
+    )
+    const user = userEvent.setup()
+    render(
+      <AuthProvider>
+        <ConnectionNotice />
+        <OfflineProbe />
+      </AuthProvider>,
+    )
+
+    expect(await screen.findByText('offline')).toBeTruthy()
+
+    status = 401
+    await user.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(await screen.findByText('wylogowany')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Spróbuj ponownie' })).toBeNull()
+  })
+
+  it('checks again by itself when the browser comes back online', async () => {
+    let reachable = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        reachable
+          ? Promise.resolve(json({ email: 'demo@refundpilot.pl', isEmailConfirmed: true }))
+          : Promise.reject(new TypeError('Failed to fetch')),
+      ),
+    )
+    render(
+      <AuthProvider>
+        <OfflineProbe />
+      </AuthProvider>,
+    )
+    expect(await screen.findByText('offline')).toBeTruthy()
+
+    reachable = true
+    window.dispatchEvent(new Event('online'))
+    expect(await screen.findByText('zalogowany: demo@refundpilot.pl')).toBeTruthy()
   })
 })

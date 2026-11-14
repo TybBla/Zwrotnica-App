@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { AuthDialog } from './auth/AuthDialog'
+import { ConnectionNotice } from './auth/ConnectionNotice'
 import { LoginPage } from './auth/LoginPage'
 import { RegisterPage } from './auth/RegisterPage'
 import { CaseDetailPage } from './cases/CaseDetailPage'
@@ -50,6 +51,7 @@ export default function App() {
           }}
         />
       }
+      notice={<ConnectionNotice />}
       onHome={() => navigate('/')}
       footer={<SiteFooter />}
     >
