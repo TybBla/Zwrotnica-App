@@ -15,8 +15,8 @@ public interface IComplaintService
     /// <summary>NotFound when the case does not exist or belongs to someone else; NotEligible when no compensation is due.</summary>
     Task<ComplaintResult> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct);
 
-    /// <summary>True when the case exists and belongs to the current user.</summary>
-    Task<bool> CaseExistsAsync(int caseId);
+    /// <summary>Renders the posted (possibly edited) letter as PDF; null when the case is not the current user's. No AI, no writes.</summary>
+    Task<byte[]?> RenderPdfAsync(int caseId, ComplaintPdfRequest request);
 }
 
 /// <summary>
@@ -24,7 +24,8 @@ public interface IComplaintService
 /// are tokens that the server substitutes (sanitized) afterwards. Anything unusable from the AI falls back to the template.
 /// </summary>
 public sealed partial class ComplaintService(
-    ICaseRepository cases, IUserProfileStore profiles, ICurrentUser currentUser, IAiClient ai, IUnitOfWork unitOfWork)
+    ICaseRepository cases, IUserProfileStore profiles, ICurrentUser currentUser, IAiClient ai, IUnitOfWork unitOfWork,
+    IComplaintPdfRenderer pdf)
     : IComplaintService
 {
     internal const string Schema = """
@@ -40,12 +41,10 @@ public sealed partial class ComplaintService(
 
     private const int MaxName = 200, MaxAddress = 300, MaxIban = 34, MaxSubject = 200, MaxBody = 6000;
 
-    private const string PayoutOriginal = "Proszę o wypłatę odszkodowania na rachunek bankowy lub kartę, z których opłacono bilet.";
-    private const string PayoutTransfer = "Proszę o wypłatę odszkodowania przelewem na rachunek nr {{IBAN}}.";
-    private const string PayoutVoucher = "Proszę o wypłatę odszkodowania w formie bonu.";
-
-    public async Task<bool> CaseExistsAsync(int caseId) =>
-        currentUser.UserId is { } id && await cases.GetAsync(caseId, id) is not null;
+    public async Task<byte[]?> RenderPdfAsync(int caseId, ComplaintPdfRequest request) =>
+        currentUser.UserId is { } id && await cases.GetAsync(caseId, id) is not null
+            ? pdf.Render(new ComplaintDto(request.Subject, request.Body, UsedAi: false, []))
+            : null;
 
     public async Task<ComplaintResult> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct)
     {
@@ -64,16 +63,22 @@ public sealed partial class ComplaintService(
         var (subject, body) = draft ?? ComplaintTemplate.Build(facts);
 
         var iban = oneTimeIban ?? Sanitize(profile.Iban, MaxIban);
-        var (finalBody, missing) = Fill(body, request.Payout, Sanitize(profile.FullName, MaxName),
-            Sanitize(profile.Address, MaxAddress), iban);
+        var (finalBody, missing) = Fill(body, PayoutSentence(request.Payout, refundCase.IncidentType),
+            Sanitize(profile.FullName, MaxName), Sanitize(profile.Address, MaxAddress), iban);
 
         await unitOfWork.ExecuteInTransactionAsync(async () =>
         {
             refundCase.PayoutPreference = request.Payout;
             await cases.UpdateAsync(refundCase);
 
-            var savedIban = request.SaveIbanToProfile && oneTimeIban is not null ? oneTimeIban : profile.Iban;
-            await profiles.UpdateAsync(userId, profile with { Iban = savedIban, PreferredPayout = request.Payout });
+            // The profile is written only for what the user explicitly changed here: the payout or a saved account number.
+            var updated = profile with
+            {
+                Iban = request.SaveIbanToProfile && oneTimeIban is not null ? oneTimeIban : profile.Iban,
+                PreferredPayout = request.Payout,
+            };
+            if (updated != profile)
+                await profiles.UpdateAsync(userId, updated);
         }, ct);
 
         return new(ComplaintStatus.Generated, new ComplaintDto(subject, finalBody, UsedAi: draft is not null, missing));
@@ -118,9 +123,13 @@ public sealed partial class ComplaintService(
             ? "The train was cancelled."
             : $"The train arrived at the destination {f.DelayMinutes} minutes late.";
         var cause = f.CauseText is { } c ? $"\n- Cause of the delay (if relevant): {c}" : "";
+        var article = ComplaintTemplate.Article(f.Incident);
+        var request = f.Incident == IncidentType.Cancellation
+            ? $"requesting a refund of the ticket price (\"zwrot należności za bilet\", not compensation) under {article} of Regulation (EU) 2021/782"
+            : $"requesting compensation (\"odszkodowanie\") under {article} of Regulation (EU) 2021/782";
         return $"""
             You write a formal complaint letter in Polish from a rail passenger to the railway carrier,
-            requesting compensation under art. 19 of Regulation (EU) 2021/782.
+            {request}.
 
             Case facts:
             - Carrier: {f.Carrier}
@@ -130,12 +139,12 @@ public sealed partial class ComplaintService(
             - Ticket number: {f.TicketNumber ?? "not given"}
             - Ticket price: {f.PriceText}
             - Incident: {incident}{cause}
-            - Compensation requested: {f.AmountText}
+            - Amount requested: {f.AmountText}
 
             Rules:
             - Output JSON with "subject" and "body". Write in formal Polish, 150-250 words in the body.
-            - Quote the compensation amount exactly as "{f.AmountText}". Do not compute or change any numbers.
-            - Cite art. 19 rozporządzenia (UE) 2021/782.
+            - Quote the requested amount exactly as "{f.AmountText}". Do not compute or change any numbers.
+            - Cite {article} rozporządzenia (UE) 2021/782 and no other article.
             - Use these literal tokens, each at least once, and do not invent any other tokens:
               {ComplaintTemplate.FullName} (passenger name, in the sender block and the signature),
               {ComplaintTemplate.Address} (passenger address, in the sender block),
@@ -160,6 +169,12 @@ public sealed partial class ComplaintService(
             return null;
 
         if (!body.Contains(facts.AmountText, StringComparison.Ordinal) || !body.Contains("2021/782", StringComparison.Ordinal))
+            return null;
+
+        // The legal basis must be the right one: art. 19 (compensation) for a delay, art. 18 (refund) for a cancellation.
+        var cited = ArticlePattern().Matches(body).Select(m => m.Groups[1].Value).ToHashSet();
+        var required = facts.Incident == IncidentType.Cancellation ? "18" : "19";
+        if (!cited.Contains(required) || (facts.Incident == IncidentType.Cancellation && cited.Contains("19")))
             return null;
 
         // The AI is told to use only the supplied numbers; anything else (other sums, account numbers,
@@ -191,17 +206,23 @@ public sealed partial class ComplaintService(
         return (subject, body);
     }
 
+    /// <summary>Compensation for a delay (art. 19), a refund of the ticket price for a cancellation (art. 18).</summary>
+    private static string PayoutSentence(PayoutPreference payout, IncidentType incident)
+    {
+        var ask = incident == IncidentType.Cancellation ? "zwrot należności" : "wypłatę odszkodowania";
+        return payout switch
+        {
+            PayoutPreference.BankTransfer => $"Proszę o {ask} przelewem na rachunek nr {ComplaintTemplate.Iban}.",
+            PayoutPreference.Voucher => $"Proszę o {ask} w formie bonu.",
+            _ => $"Proszę o {ask} na rachunek bankowy lub kartę, z których opłacono bilet.",
+        };
+    }
+
     private static (string Body, IReadOnlyList<string> Missing) Fill(
-        string body, PayoutPreference payout, string? name, string? address, string? iban)
+        string body, string payoutSentence, string? name, string? address, string? iban)
     {
         // Payout wording is chosen by the server so it is always exactly as agreed, whatever the AI wrote.
-        var sentence = payout switch
-        {
-            PayoutPreference.BankTransfer => PayoutTransfer,
-            PayoutPreference.Voucher => PayoutVoucher,
-            _ => PayoutOriginal,
-        };
-        body = body.Replace(ComplaintTemplate.Payout, sentence);
+        body = body.Replace(ComplaintTemplate.Payout, payoutSentence);
 
         var missing = new List<string>();
         if (body.Contains(ComplaintTemplate.FullName) && name is null) missing.Add("imię i nazwisko");
@@ -245,8 +266,12 @@ public sealed partial class ComplaintService(
     [GeneratedRegex(@"\d+(?:[\s.]\d{3})*(?:,\d{2})?\s*(?:zł|PLN)", RegexOptions.IgnoreCase)]
     private static partial Regex MoneyPattern();
 
-    [GeneratedRegex(@"\b[A-Z]{2}\d{2}[\d ]{10,}")]
+    // An IBAN with a country code, or a bare Polish account number (26 digits, optionally spaced as 2 + 6x4).
+    [GeneratedRegex(@"\b[A-Z]{2}\d{2}[\d ]{10,}|\b\d{26}\b|\b\d{2}(?: \d{4}){6}\b")]
     private static partial Regex IbanLike();
+
+    [GeneratedRegex(@"\bart(?:\.|ykuł\p{L}*)\s*(\d+)", RegexOptions.IgnoreCase)]
+    private static partial Regex ArticlePattern();
 
     [GeneratedRegex(@"\{\{[A-Z_]+\}\}")]
     private static partial Regex TokenPattern();

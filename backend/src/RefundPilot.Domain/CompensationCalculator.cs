@@ -8,7 +8,7 @@ public sealed record CompensationResult(
 public sealed class CompensationCalculator(CompensationOptions options)
 {
     // Art. 19 Reg. (EU) 2021/782: delay at destination of 60-119 min = 25%, >=120 min = 50%
-    // of the price actually paid; cancellation = 100% refund.
+    // of the price actually paid; cancellation = 100% refund of the ticket (art. 18).
     public CompensationResult Calculate(IncidentType type, int delayMinutes, decimal ticketPrice)
     {
         if (ticketPrice <= 0)
@@ -22,7 +22,9 @@ public sealed class CompensationCalculator(CompensationOptions options)
         var belowMinimum = amount < options.MinimumPayout;
         var reason = belowMinimum
             ? $"{percent}% ceny biletu, ale kwota jest poniżej minimalnej wypłaty ({options.MinimumPayout:0.##} zł) – przewoźnik może jej nie wypłacić."
-            : $"{percent}% ceny zapłaconego biletu.";
+            : type == IncidentType.Cancellation
+                ? "Zwrot pełnej ceny zapłaconego biletu za odwołany pociąg."
+                : $"{percent}% ceny zapłaconego biletu.";
 
         return new(amount, percent, belowMinimum, false, reason);
     }

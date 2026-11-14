@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RefundPilot.Application.Abstractions;
 using RefundPilot.Application.Dtos;
 using RefundPilot.Application.Services;
 
@@ -9,7 +8,7 @@ namespace RefundPilot.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/cases/{id:int}/complaint")]
-public sealed class ComplaintsController(IComplaintService complaints, IComplaintPdfRenderer pdf) : ControllerBase
+public sealed class ComplaintsController(IComplaintService complaints) : ControllerBase
 {
     /// <summary>Generates the complaint letter text for one of the user's cases.</summary>
     [HttpPost]
@@ -29,8 +28,7 @@ public sealed class ComplaintsController(IComplaintService complaints, IComplain
     /// <summary>Renders the posted letter text as a PDF download (ownership checked; no AI call, no writes).</summary>
     [HttpPost("pdf")]
     public async Task<IActionResult> RenderPdf(int id, ComplaintPdfRequest request) =>
-        await complaints.CaseExistsAsync(id)
-            ? File(pdf.Render(new ComplaintDto(request.Subject, request.Body, UsedAi: false, [])),
-                "application/pdf", $"reklamacja-{id}.pdf")
+        await complaints.RenderPdfAsync(id, request) is { } pdf
+            ? File(pdf, "application/pdf", $"reklamacja-{id}.pdf")
             : NotFound();
 }

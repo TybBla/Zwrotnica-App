@@ -27,6 +27,7 @@ public class CompensationCalculatorTests
 
         Assert.Equal(100, result.Percent);
         Assert.Equal(40.00m, result.Amount);
+        Assert.Equal("Zwrot pełnej ceny zapłaconego biletu za odwołany pociąg.", result.Reason);
     }
 
     [Theory]

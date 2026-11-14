@@ -93,8 +93,36 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         return c.Id;
     }
 
+    private sealed class FakePdf : IComplaintPdfRenderer
+    {
+        public int Calls { get; private set; }
+        public ComplaintDto? Last { get; private set; }
+
+        public byte[] Render(ComplaintDto letter)
+        {
+            Calls++;
+            Last = letter;
+            return [1, 2, 3];
+        }
+    }
+
+    /// <summary>Records profile writes made through the service (seeding in InitializeAsync goes to the inner store).</summary>
+    private sealed class RecordingStore(IUserProfileStore inner, List<UserProfile> writes) : IUserProfileStore
+    {
+        public Task<UserProfile?> GetAsync(string userId) => inner.GetAsync(userId);
+
+        public Task<bool> UpdateAsync(string userId, UserProfile profile)
+        {
+            writes.Add(profile);
+            return inner.UpdateAsync(userId, profile);
+        }
+    }
+
+    private readonly FakePdf _pdf = new();
+    private readonly List<UserProfile> _profileWrites = [];
+
     private ComplaintService Service(IAiClient ai, string userId = Anna) =>
-        new(_cases, _store, new FakeUser(userId), ai, new EfUnitOfWork(_db));
+        new(_cases, new RecordingStore(_store, _profileWrites), new FakeUser(userId), ai, new EfUnitOfWork(_db), _pdf);
 
     private static FakeAi Failing() => new(fail: new AiUnavailableException("down"));
 
@@ -143,6 +171,82 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
 
         Assert.Contains("odwołan", letter.Body);
         Assert.DoesNotContain("0 min", letter.Body);
+    }
+
+    private async Task MakeAnnaCaseCancellationAsync()
+    {
+        var c = await _cases.GetAsync(_annaCaseId, Anna);
+        c!.IncidentType = IncidentType.Cancellation;
+        c.DelayMinutes = 0;
+        c.CompensationAmount = 40m;
+        await _cases.UpdateAsync(c);
+    }
+
+    [Theory]
+    [InlineData(PayoutPreference.OriginalPayment)]
+    [InlineData(PayoutPreference.BankTransfer)]
+    [InlineData(PayoutPreference.Voucher)]
+    public async Task Template_Cancellation_RequestsTicketRefundUnderArticle18(PayoutPreference payout)
+    {
+        await MakeAnnaCaseCancellationAsync();
+
+        var letter = await GenerateAsync(Failing(), Req(payout));
+
+        Assert.StartsWith("Wniosek o zwrot należności za bilet – odwołanie pociągu PKP Intercity", letter.Subject);
+        Assert.Contains("art. 18 rozporządzenia (UE) 2021/782", letter.Body);
+        Assert.Contains("zwrot należności za bilet w wysokości 40,00 zł", letter.Body);
+        Assert.Contains("Proszę o zwrot należności", letter.Body);
+        Assert.DoesNotContain("art. 19", letter.Body);
+        Assert.DoesNotContain("odszkodowa", letter.Body);
+        Assert.DoesNotContain("odszkodowa", letter.Subject);
+    }
+
+    [Fact]
+    public async Task Template_Delay_RequestsCompensationUnderArticle19()
+    {
+        var letter = await GenerateAsync(Failing(), Req());
+
+        Assert.StartsWith("Wniosek o wypłatę odszkodowania – opóźnienie pociągu", letter.Subject);
+        Assert.Contains("odszkodowania na podstawie art. 19 rozporządzenia (UE) 2021/782", letter.Body);
+        Assert.DoesNotContain("art. 18", letter.Body);
+    }
+
+    [Fact]
+    public async Task AiPrompt_Cancellation_AsksForRefundUnderArticle18()
+    {
+        await MakeAnnaCaseCancellationAsync();
+        var ai = new FakeAi(ValidAiJson());
+
+        await GenerateAsync(ai, Req());
+
+        Assert.Contains("art. 18", ai.Prompt);
+        Assert.DoesNotContain("art. 19", ai.Prompt);
+    }
+
+    [Theory]
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot 40,00 zł na podstawie art. 18 rozporządzenia (UE) 2021/782 {{PAYOUT}}", true)]
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} odszkodowanie 40,00 zł na podstawie art. 19 rozporządzenia (UE) 2021/782 {{PAYOUT}}", false)]
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot 40,00 zł, art. 18 i art. 19 rozporządzenia (UE) 2021/782 {{PAYOUT}}", false)]
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} zwrot 40,00 zł zgodnie z rozporządzeniem (UE) 2021/782 {{PAYOUT}}", false)]
+    public async Task AiOutput_Cancellation_MustCiteArticle18(string body, bool usedAi)
+    {
+        await MakeAnnaCaseCancellationAsync();
+
+        var letter = await GenerateAsync(new FakeAi(ValidAiJson(body)), Req());
+
+        Assert.Equal(usedAi, letter.UsedAi);
+        Assert.Contains("art. 18", letter.Body);
+    }
+
+    [Fact]
+    public async Task AiOutput_Delay_CitingArticle18Only_FallsBackToTemplate()
+    {
+        var body = "{{FULL_NAME}} {{ADDRESS}} odszkodowanie 10,00 zł, art. 18 rozporządzenia (UE) 2021/782 {{PAYOUT}}";
+
+        var letter = await GenerateAsync(new FakeAi(ValidAiJson(body)), Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.Contains("art. 19", letter.Body);
     }
 
     [Fact]
@@ -282,6 +386,8 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł oraz dodatkowo 500,00 zł")] // extra sum
     [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł, cena 99 zł")]               // extra integer sum
     [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł. Konto PL61 1090 1014 0000 0712 1981 2874")] // IBAN-like
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł. Konto 61109010140000071219812874")] // bare 26-digit account
+    [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł. Konto 61 1090 1014 0000 0712 1981 2874")] // spaced account
     [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł wyłącznie przelewem")]       // exclusive clause
     [InlineData("{{FULL_NAME}} {{ADDRESS}} art. 19 2021/782 {{PAYOUT}} 10,00 zł, nie przyjmę gotówki")]     // cash wording
     public async Task InvalidAiOutput_FallsBackToTemplate(string body)
@@ -381,6 +487,17 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.True(letter.UsedAi);
     }
 
+    [Fact]
+    public async Task AiOutput_DatesTicketNumberAndAmounts_AreNotMistakenForAccountNumbers()
+    {
+        var body = "{{FULL_NAME}} {{ADDRESS}} W dniu 01.11.2026 (bilet nr IC-4821-0093, 2026-11-01) opóźnienie 70 min. "
+                   + "Odszkodowanie 10,00 zł od ceny 40,00 zł, art. 19 rozporządzenia (UE) 2021/782. {{PAYOUT}}";
+
+        var letter = await GenerateAsync(new FakeAi(ValidAiJson(body)), Req());
+
+        Assert.True(letter.UsedAi);
+    }
+
     [Theory]
     [InlineData(Verdict.NotCovered, 0, 10)]
     [InlineData(Verdict.Unknown, 0, 10)]
@@ -406,10 +523,35 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CaseExists_OnlyForOwner()
+    public async Task RenderPdf_RendersPostedTextForOwnerOnly()
     {
-        Assert.True(await Service(Failing()).CaseExistsAsync(_annaCaseId));
-        Assert.False(await Service(Failing()).CaseExistsAsync(_otherCaseId));
+        var request = new ComplaintPdfRequest("Temat", "Treść");
+
+        var own = await Service(Failing()).RenderPdfAsync(_annaCaseId, request);
+        var foreign = await Service(Failing()).RenderPdfAsync(_otherCaseId, request);
+
+        Assert.Equal([1, 2, 3], own);
+        Assert.Equal("Temat", _pdf.Last!.Subject);
+        Assert.Equal("Treść", _pdf.Last.Body);
+        Assert.Null(foreign);
+        Assert.Equal(1, _pdf.Calls);
+    }
+
+    [Fact]
+    public async Task Generating_WithUnchangedPayoutAndNoIbanToSave_DoesNotWriteProfile()
+    {
+        await GenerateAsync(Failing(), Req(PayoutPreference.OriginalPayment, "PL27114020040000300201355387"));
+
+        Assert.Empty(_profileWrites);
+    }
+
+    [Fact]
+    public async Task Generating_WithChangedPayout_WritesOnlyThePayoutChange()
+    {
+        await GenerateAsync(Failing(), Req(PayoutPreference.Voucher));
+
+        var written = Assert.Single(_profileWrites);
+        Assert.Equal(new UserProfile("Anna Kowalska", "ul. Lipowa 12/4, 80-001 Gdańsk", Iban, PayoutPreference.Voucher), written);
     }
 
     [Fact]

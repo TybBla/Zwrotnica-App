@@ -46,14 +46,22 @@ public static class ComplaintTemplate
     public const string FromStation = "{{FROM_STATION}}";
     public const string ToStation = "{{TO_STATION}}";
 
+    /// <summary>
+    /// Legal basis in Reg. (EU) 2021/782: a cancelled train means reimbursement of the ticket (art. 18),
+    /// a delay at the destination means compensation (art. 19).
+    /// </summary>
+    public static string Article(IncidentType incident) =>
+        incident == IncidentType.Cancellation ? "art. 18" : "art. 19";
+
     public static (string Subject, string Body) Build(ComplaintFacts f)
     {
         var cancelled = f.Incident == IncidentType.Cancellation;
         var ticket = string.IsNullOrWhiteSpace(f.TicketNumber) ? "" : $" nr {f.TicketNumber}";
         var category = string.IsNullOrWhiteSpace(f.TrainCategory) ? "" : $" kat. {f.TrainCategory}";
+        var claim = cancelled ? "zwrot należności za bilet" : "wypłatę odszkodowania";
 
         var subject = cancelled
-            ? $"Wniosek o wypłatę odszkodowania – odwołanie pociągu {f.Carrier} z dnia {f.DateText}"
+            ? $"Wniosek o zwrot należności za bilet – odwołanie pociągu {f.Carrier} z dnia {f.DateText}"
             : $"Wniosek o wypłatę odszkodowania – opóźnienie pociągu {f.Carrier} z dnia {f.DateText}";
 
         var what = cancelled
@@ -72,11 +80,11 @@ public static class ComplaintTemplate
 
             Szanowni Państwo,
 
-            zwracam się z wnioskiem o wypłatę odszkodowania na podstawie art. 19 rozporządzenia (UE) 2021/782 Parlamentu Europejskiego i Rady z dnia 29 kwietnia 2021 r. w sprawie praw i obowiązków pasażerów kolejowych.
+            zwracam się z wnioskiem o {claim} na podstawie {Article(f.Incident)} rozporządzenia (UE) 2021/782 Parlamentu Europejskiego i Rady z dnia 29 kwietnia 2021 r. w sprawie praw i obowiązków pasażerów kolejowych.
 
             W dniu {f.DateText} odbyłem(-am) podróż pociągiem{category} relacją {f.FromText} – {f.ToText} na podstawie biletu{ticket}, za który zapłaciłem(-am) {f.PriceText}. {what}
 
-            Wnoszę o wypłatę odszkodowania w wysokości {f.AmountText}.
+            Wnoszę o {claim} w wysokości {f.AmountText}.
 
             {Payout}
 
