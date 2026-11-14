@@ -51,17 +51,15 @@ public sealed partial class ComplaintService(
     private const string CancelledIncident =
         "The train was cancelled. Do not state whether the passenger travelled or gave up the journey.";
 
-    private const int MaxName = 200, MaxAddress = 300, MaxIban = 34, MaxSubject = 200, MaxBody = 6000;
+    internal const int MaxName = 200, MaxAddress = 300, MaxIban = 34;
+    private const int MaxSubject = 200, MaxBody = 6000;
 
     public async Task<byte[]?> RenderPdfAsync(int caseId, ComplaintPdfRequest request)
     {
         if (currentUser.UserId is not { } id || await cases.GetAsync(caseId, id) is not { } refundCase)
             return null;
 
-        var address = (await profiles.GetAsync(id))?.Address;
-        var place = LetterHeader.Place(address, refundCase.ToStation, refundCase.FromStation);
-        var placeAndDate = LetterHeader.PlaceAndDate(place, WarsawClock.Today(clock));
-        return pdf.Render(new ComplaintDto(request.Subject, request.Body, UsedAi: false, []), placeAndDate);
+        return await LetterPdf.RenderAsync(profiles, pdf, clock, id, refundCase, request);
     }
 
     public async Task<ComplaintResult> GenerateAsync(int caseId, ComplaintRequest request, CancellationToken ct)
@@ -73,14 +71,7 @@ public sealed partial class ComplaintService(
         if (refundCase.TicketPrice <= 0)
             return new(ComplaintStatus.PriceRequired, null);
 
-        // Money due: a formal demand under art. 19 / art. 18. A regional carrier with costs entered: a claim for those
-        // documented costs. Anything else - not covered, unclear, or a covered train with nothing due under the EU
-        // rules - a complaint asking the carrier to decide under its own rules.
-        var letterKind = refundCase.Verdict == Verdict.Eligible && refundCase.CompensationAmount > 0
-            ? LetterKind.Compensation
-            : refundCase.Verdict == Verdict.NotCovered && refundCase.ExpenseAmount > 0
-                ? LetterKind.DocumentedCosts
-                : LetterKind.CarrierRules;
+        var letterKind = ComplaintTemplate.KindOf(refundCase);
 
         var profile = await profiles.GetAsync(userId) ?? new UserProfile(null, null, null, request.Payout);
         var oneTimeIban = Sanitize(request.OneTimeIban is { } raw && !string.IsNullOrWhiteSpace(raw) ? Domain.Iban.Normalize(raw) : null, MaxIban);
@@ -95,7 +86,7 @@ public sealed partial class ComplaintService(
         };
 
         var iban = oneTimeIban ?? Sanitize(profile.Iban, MaxIban);
-        var payoutSentence = PayoutSentence(letterKind, request.Payout, refundCase.IncidentType, refundCase.Verdict);
+        var payoutSentence = ComplaintTemplate.PayoutSentence(letterKind, request.Payout, refundCase.IncidentType, refundCase.Verdict);
         var (finalBody, missing) = Fill(body, payoutSentence,
             Sanitize(profile.FullName, MaxName), Sanitize(profile.Address, MaxAddress), iban, facts.ExpenseDescription);
 
@@ -431,44 +422,7 @@ public sealed partial class ComplaintService(
         return body.Split("{{").Length - 1 == TokenPattern().Matches(body).Count;
     }
 
-    /// <summary>
-    /// Compensation for a delay (art. 19), a refund of the ticket price for a cancellation (art. 18), or a refund of the
-    /// documented costs. Under the carrier's rules nothing is guaranteed, so the payout form is stated only for the case
-    /// something is granted; a regional carrier's complaint also reserves the right to claim documented costs later.
-    /// </summary>
-    private static string PayoutSentence(LetterKind kind, PayoutPreference payout, IncidentType incident, Verdict verdict)
-    {
-        var form = payout switch
-        {
-            PayoutPreference.BankTransfer => $"przelewem na rachunek nr {ComplaintTemplate.Iban}",
-            PayoutPreference.Voucher => "w formie bonu",
-            _ => "na rachunek bankowy lub kartę, z których opłacono bilet",
-        };
-        if (kind == LetterKind.DocumentedCosts)
-            return $"Proszę o przekazanie zwrotu kosztów {form}.";
-        if (kind == LetterKind.CarrierRules)
-        {
-            var conditional = incident == IncidentType.Cancellation
-                ? $"W przypadku przyznania zwrotu należności lub rekompensaty proszę o wypłatę {form}."
-                : $"W przypadku przyznania rekompensaty proszę o jej wypłatę {form}.";
-            if (verdict != Verdict.NotCovered)
-                return conditional;
-            var withIncident = incident == IncidentType.Cancellation ? "z odwołaniem pociągu" : "z opóźnieniem pociągu";
-            return $"{conditional} Jednocześnie zastrzegam sobie prawo do dochodzenia zwrotu udokumentowanych kosztów " +
-                $"poniesionych w związku {withIncident}.";
-        }
-
-        var ask = incident == IncidentType.Cancellation ? "zwrot należności" : "wypłatę odszkodowania";
-        return $"Proszę o {ask} {form}.";
-    }
-
-    /// <summary>
-    /// Compensation: a demand under Reg. (EU) 2021/782. CarrierRules: a complaint the carrier decides under its own terms.
-    /// DocumentedCosts: a regional carrier's passenger claims back proven costs.
-    /// </summary>
-    private enum LetterKind { Compensation, CarrierRules, DocumentedCosts }
-
-    private static (string Body, IReadOnlyList<string> Missing) Fill(
+    internal static (string Body, IReadOnlyList<string> Missing) Fill(
         string body, string payoutSentence, string? name, string? address, string? iban, string? expenseDescription)
     {
         var expensesMissing = ComplaintTemplate.ExpensesText(expenseDescription) == ComplaintTemplate.ExpensePlaceholder
@@ -514,7 +468,7 @@ public sealed partial class ComplaintService(
         return text.Length == 0 ? null : text;
     }
 
-    private static ComplaintFacts ToFacts(RefundCase c) => new(
+    internal static ComplaintFacts ToFacts(RefundCase c) => new(
         c.Carrier, c.TrainCategory, c.FromStation, c.ToStation, c.TravelDate, c.TicketNumber, c.TicketPrice,
         c.CompensationAmount, c.IncidentType, c.DelayMinutes, c.DelayCause, c.ExpenseDescription, c.ExpenseAmount);
 

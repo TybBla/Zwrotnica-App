@@ -20,6 +20,22 @@ public sealed record ComplaintFacts(
     public string PriceText => FormatMoney(TicketPrice);
     public string DateText => TravelDate.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
 
+    /// <summary>" nr IC-1" after "bilet", or nothing when the number is unknown.</summary>
+    public string TicketRef => string.IsNullOrWhiteSpace(TicketNumber) ? "" : $" nr {TicketNumber}";
+    public string CategoryRef => string.IsNullOrWhiteSpace(TrainCategory) ? "" : $" kat. {TrainCategory}";
+
+    /// <summary>What happened to the train, with the cause when one is known.</summary>
+    public string IncidentText
+    {
+        get
+        {
+            var what = Incident == IncidentType.Cancellation
+                ? "Pociąg został odwołany."
+                : $"Pociąg dotarł do stacji docelowej z opóźnieniem {DelayMinutes} min.";
+            return CauseText is { } cause ? $"{what} Przyczyna zdarzenia (według dostępnych informacji): {cause}." : what;
+        }
+    }
+
     public string? CauseText => Cause switch
     {
         DelayCause.Weather => "warunki pogodowe",
@@ -36,11 +52,60 @@ public sealed record ComplaintFacts(
 }
 
 /// <summary>
+/// Compensation: a demand under Reg. (EU) 2021/782. CarrierRules: a complaint the carrier decides under its own terms.
+/// DocumentedCosts: a regional carrier's passenger claims back proven costs.
+/// </summary>
+public enum LetterKind { Compensation, CarrierRules, DocumentedCosts }
+
+/// <summary>
 /// Deterministic Polish complaint letter used when AI is off or its output fails validation.
 /// Contains the tokens {{FULL_NAME}}, {{ADDRESS}} and {{PAYOUT}}, filled in by the service.
 /// </summary>
 public static class ComplaintTemplate
 {
+    /// <summary>
+    /// Money due: a formal demand under art. 19 / art. 18. A regional carrier with costs entered: a claim for those
+    /// documented costs. Anything else - not covered, unclear, or a covered train with nothing due under the EU
+    /// rules - a complaint asking the carrier to decide under its own rules.
+    /// </summary>
+    public static LetterKind KindOf(RefundCase c) =>
+        c.Verdict == Verdict.Eligible && c.CompensationAmount > 0
+            ? LetterKind.Compensation
+            : c.Verdict == Verdict.NotCovered && c.ExpenseAmount > 0
+                ? LetterKind.DocumentedCosts
+                : LetterKind.CarrierRules;
+
+    /// <summary>
+    /// Compensation for a delay (art. 19), a refund of the ticket price for a cancellation (art. 18), or a refund of the
+    /// documented costs. Under the carrier's rules nothing is guaranteed, so the payout form is stated only for the case
+    /// something is granted; a regional carrier's complaint also reserves the right to claim documented costs later.
+    /// </summary>
+    public static string PayoutSentence(LetterKind kind, PayoutPreference payout, IncidentType incident, Verdict verdict)
+    {
+        var form = payout switch
+        {
+            PayoutPreference.BankTransfer => $"przelewem na rachunek nr {Iban}",
+            PayoutPreference.Voucher => "w formie bonu",
+            _ => "na rachunek bankowy lub kartę, z których opłacono bilet",
+        };
+        if (kind == LetterKind.DocumentedCosts)
+            return $"Proszę o przekazanie zwrotu kosztów {form}.";
+        if (kind == LetterKind.CarrierRules)
+        {
+            var conditional = incident == IncidentType.Cancellation
+                ? $"W przypadku przyznania zwrotu należności lub rekompensaty proszę o wypłatę {form}."
+                : $"W przypadku przyznania rekompensaty proszę o jej wypłatę {form}.";
+            if (verdict != Verdict.NotCovered)
+                return conditional;
+            var withIncident = incident == IncidentType.Cancellation ? "z odwołaniem pociągu" : "z opóźnieniem pociągu";
+            return $"{conditional} Jednocześnie zastrzegam sobie prawo do dochodzenia zwrotu udokumentowanych kosztów " +
+                $"poniesionych w związku {withIncident}.";
+        }
+
+        var ask = incident == IncidentType.Cancellation ? "zwrot należności" : "wypłatę odszkodowania";
+        return $"Proszę o {ask} {form}.";
+    }
+
     public const string FullName = "{{FULL_NAME}}";
     public const string Address = "{{ADDRESS}}";
     public const string Iban = "{{IBAN}}";
@@ -64,19 +129,15 @@ public static class ComplaintTemplate
     public static (string Subject, string Body) Build(ComplaintFacts f)
     {
         var cancelled = f.Incident == IncidentType.Cancellation;
-        var ticket = string.IsNullOrWhiteSpace(f.TicketNumber) ? "" : $" nr {f.TicketNumber}";
-        var category = string.IsNullOrWhiteSpace(f.TrainCategory) ? "" : $" kat. {f.TrainCategory}";
+        var ticket = f.TicketRef;
+        var category = f.CategoryRef;
+        var what = f.IncidentText;
         var claim = cancelled ? "zwrot należności za bilet" : "wypłatę odszkodowania";
 
         var subject = cancelled
             ? $"Wniosek o zwrot należności za bilet – odwołanie pociągu {f.Carrier} z dnia {f.DateText}"
             : $"Wniosek o wypłatę odszkodowania – opóźnienie pociągu {f.Carrier} z dnia {f.DateText}";
 
-        var what = cancelled
-            ? "Pociąg został odwołany."
-            : $"Pociąg dotarł do stacji docelowej z opóźnieniem {f.DelayMinutes} min.";
-        if (f.CauseText is { } cause)
-            what += $" Przyczyna zdarzenia (według dostępnych informacji): {cause}.";
         // A cancelled train: the wizard never asks whether the passenger travelled another way, so say neither.
         var trip = cancelled ? $"Wniosek dotyczy przejazdu w dniu {f.DateText}" : $"W dniu {f.DateText} odbyłem(-am) podróż";
 
@@ -115,16 +176,12 @@ public static class ComplaintTemplate
     public static (string Subject, string Body) BuildCarrierRules(ComplaintFacts f)
     {
         var cancelled = f.Incident == IncidentType.Cancellation;
-        var ticket = string.IsNullOrWhiteSpace(f.TicketNumber) ? "" : $" nr {f.TicketNumber}";
-        var category = string.IsNullOrWhiteSpace(f.TrainCategory) ? "" : $" kat. {f.TrainCategory}";
+        var ticket = f.TicketRef;
+        var category = f.CategoryRef;
+        var what = f.IncidentText;
 
         var subject = $"Reklamacja – {(cancelled ? "odwołanie" : "opóźnienie")} pociągu {f.Carrier} z dnia {f.DateText}";
 
-        var what = cancelled
-            ? "Pociąg został odwołany."
-            : $"Pociąg dotarł do stacji docelowej z opóźnieniem {f.DelayMinutes} min.";
-        if (f.CauseText is { } cause)
-            what += $" Przyczyna zdarzenia (według dostępnych informacji): {cause}.";
 
         var body = $"""
             {FullName}
@@ -159,19 +216,15 @@ public static class ComplaintTemplate
     public static (string Subject, string Body) BuildDocumentedCosts(ComplaintFacts f)
     {
         var cancelled = f.Incident == IncidentType.Cancellation;
-        var ticket = string.IsNullOrWhiteSpace(f.TicketNumber) ? "" : $" nr {f.TicketNumber}";
-        var category = string.IsNullOrWhiteSpace(f.TrainCategory) ? "" : $" kat. {f.TrainCategory}";
+        var ticket = f.TicketRef;
+        var category = f.CategoryRef;
+        var what = f.IncidentText;
         var withIncident = cancelled ? "z odwołaniem pociągu" : "z opóźnieniem pociągu";
         var ofIncident = cancelled ? "odwołania pociągu" : "opóźnienia pociągu";
 
         var subject = $"Wniosek o zwrot kosztów poniesionych w związku {withIncident} – " +
             (string.IsNullOrWhiteSpace(f.TicketNumber) ? $"przejazd z dnia {f.DateText}" : $"bilet nr {f.TicketNumber}");
 
-        var what = cancelled
-            ? "Pociąg został odwołany."
-            : $"Pociąg dotarł do stacji docelowej z opóźnieniem {f.DelayMinutes} min.";
-        if (f.CauseText is { } cause)
-            what += $" Przyczyna zdarzenia (według dostępnych informacji): {cause}.";
         var trip = cancelled ? $"Wniosek dotyczy przejazdu w dniu {f.DateText}" : $"W dniu {f.DateText} odbyłem(-am) podróż";
 
         var body = $"""
