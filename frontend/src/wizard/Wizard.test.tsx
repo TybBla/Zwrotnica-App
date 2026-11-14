@@ -102,6 +102,22 @@ describe('Wizard – ticket step', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Dane z biletu' })).toBeTruthy()
   })
 
+  it('suggests official station names on both station fields and still accepts free text', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+
+    for (const label of [/^Stacja początkowa/, /^Stacja docelowa/]) {
+      const input = (await screen.findByLabelText(label)) as HTMLInputElement
+      const list = input.list
+      expect(list).not.toBeNull()
+      expect([...list!.options].map((option) => option.value)).toContain('Kraków Główny')
+    }
+    const from = screen.getByLabelText(/^Stacja początkowa/) as HTMLInputElement
+    await user.type(from, 'Przystanek Nowy')
+    expect(from.value).toBe('Przystanek Nowy')
+  })
+
   it('requires the ticket number before "Dalej" and says where to find it', async () => {
     const user = userEvent.setup()
     renderWizard()

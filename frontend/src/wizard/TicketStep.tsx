@@ -6,6 +6,7 @@ import { Field } from '../components/Field'
 import { AlertCircleIcon, ArrowRightIcon, CloseIcon, InfoIcon, PencilIcon, ShieldIcon, ScanIcon, UploadIcon } from '../components/icons'
 import { Select, type SelectOption } from '../components/Select'
 import { TextInput } from '../components/TextInput'
+import { STATIONS } from '../lib/stations'
 import {
   OTHER_CARRIER,
   ticketIssues,
@@ -27,6 +28,7 @@ interface TicketStepProps {
 }
 
 const MISSING_HINT = 'Uzupełnij – nie udało się odczytać'
+const STATION_LIST_ID = 'station-suggestions'
 const TICKET_NUMBER_HINT = 'Numer znajdziesz na bilecie (np. przy kodzie QR lub w e-mailu z biletem).'
 
 /** A failed read never strands the user: say what happened in plain words and continue with manual entry. */
@@ -438,7 +440,7 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
           attention={attention('fromStation', ticket.fromStation)}
           hint={attention('fromStation', ticket.fromStation) ? MISSING_HINT : undefined}
         >
-          <TextInput field="station" maxLength={200} value={ticket.fromStation} onValueChange={(fromStation) => onChange({ fromStation })} placeholder="np. Kraków Główny" autoComplete="off" />
+          <TextInput field="station" maxLength={200} value={ticket.fromStation} onValueChange={(fromStation) => onChange({ fromStation })} placeholder="np. Kraków Główny" autoComplete="off" list={STATION_LIST_ID} />
         </Field>
         <Field
           label="Stacja docelowa"
@@ -446,8 +448,14 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
           attention={attention('toStation', ticket.toStation)}
           hint={attention('toStation', ticket.toStation) ? MISSING_HINT : undefined}
         >
-          <TextInput field="station" maxLength={200} value={ticket.toStation} onValueChange={(toStation) => onChange({ toStation })} placeholder="np. Warszawa Centralna" autoComplete="off" />
+          <TextInput field="station" maxLength={200} value={ticket.toStation} onValueChange={(toStation) => onChange({ toStation })} placeholder="np. Warszawa Centralna" autoComplete="off" list={STATION_LIST_ID} />
         </Field>
+        {/* Native suggestions: a hint while typing, any other station can still be entered. */}
+        <datalist id={STATION_LIST_ID}>
+          {STATIONS.map((station) => (
+            <option key={station} value={station} />
+          ))}
+        </datalist>
       </div>
 
       <Field
