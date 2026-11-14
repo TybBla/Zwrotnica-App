@@ -1,6 +1,8 @@
-# Refund Pilot
+# Zwrotnica
 
-Pociąg dalekobieżny spóźnił się ponad godzinę? Według rozporządzenia (UE) 2021/782 pasażerowi należy się wtedy 25% albo 50% ceny biletu. Mało kto o tym wie, a jeszcze mniej osób chce pisać reklamację. **Refund Pilot** w trzech krokach (Bilet → Opóźnienie → Wynik) mówi uczciwie, czy coś się należy, ile dokładnie, i przygotowuje gotowe pismo reklamacyjne. AI czyta bilet i pisze pismo, a o tym, co się należy, i o kwotach decyduje zwykły kod.
+Pociąg dalekobieżny spóźnił się ponad godzinę? Według rozporządzenia (UE) 2021/782 pasażerowi należy się wtedy 25% albo 50% ceny biletu. Mało kto o tym wie, a jeszcze mniej osób chce pisać reklamację. **Zwrotnica** (zwrotnica kolejowa, a w nazwie słychać „zwrot”) w trzech krokach (Bilet → Opóźnienie → Wynik) mówi uczciwie, czy coś się należy, ile dokładnie, i przygotowuje gotowe pismo reklamacyjne. AI czyta bilet i pisze pismo, a o tym, co się należy, i o kwotach decyduje zwykły kod.
+
+Nazwy projektów i przestrzeni nazw w kodzie (`RefundPilot.*`, `RefundPilot.sln`, plik bazy `refundpilot.db`) to robocza nazwa techniczna z początku prac. Zostały bez zmian, żeby nie mieszać w historii i konfiguracji. Dla użytkownika produkt nazywa się Zwrotnica.
 
 ![Demo: odczyt biletu przez AI, opóźnienie, werdykt, pismo, sprawa na liście](docs/demo.gif)
 
@@ -119,8 +121,8 @@ Działa tak samo na Windows, macOS i Linux. Konfiguracja nie jest wymagana, a kl
 ### 2. Klonowanie
 
 ```bash
-git clone <adres-repozytorium> refund-pilot
-cd refund-pilot
+git clone <adres-repozytorium> zwrotnica
+cd zwrotnica
 ```
 
 ### 3. (Opcjonalnie) klucz Gemini
@@ -166,7 +168,7 @@ Aplikacja: **http://localhost:5173**. Vite przekazuje `/api` do backendu na porc
 
 | E-mail | Hasło |
 |---|---|
-| `demo@refundpilot.test` | `Demo!2026pass` |
+| `demo@zwrotnica.test` | `Demo!2026pass` |
 
 To lokalne dane testowe z `appsettings.Development.json` (fikcyjna osoba, 5 fikcyjnych spraw), nie prawdziwe konto. Możesz też założyć własne konto albo korzystać z kreatora jako gość.
 
@@ -259,7 +261,7 @@ Głównym narzędziem był **Claude Code** (modele Claude Opus i Sonnet). Pracow
 ### Kierunki rozwoju i model biznesowy
 
 - **Limity odczytu AI:** w MVP gość może odczytać bilet maksymalnie 5 razy na minutę (limit per IP, `RateLimiting:ExtractionsPerMinute`), co chroni darmowy limit Gemini. Przy komercjalizacji limit zależałby od planu konta: mały dla darmowych użytkowników, wyższy albo bez limitu dla płatnych.
-- **Lepiej jako moduł większego systemu niż samodzielna aplikacja.** Reklamacje za opóźnienia zdarzają się rzadko (np. 1–2 razy w roku), więc trudno o abonament. Refund Pilot ma więcej sensu jako funkcja aplikacji przewoźnika, wyszukiwarki połączeń, planera podróży, aplikacji biletowej lub bankowej, gdzie wartość dla pasażera rośnie, a koszt rozkłada się na cały produkt.
+- **Lepiej jako moduł większego systemu niż samodzielna aplikacja.** Reklamacje za opóźnienia zdarzają się rzadko (np. 1–2 razy w roku), więc trudno o abonament. Zwrotnica ma więcej sensu jako funkcja aplikacji przewoźnika, wyszukiwarki połączeń, planera podróży, aplikacji biletowej lub bankowej, gdzie wartość dla pasażera rośnie, a koszt rozkłada się na cały produkt.
 - **Jeśli jako samodzielny produkt:** obok abonamentu płatność jednorazowa za pojedynczą reklamację, w cenie minimalnie niższej niż miesięczny abonament. Abonament opłaca się przy częstym korzystaniu, płatność jednorazowa przy sporadycznym.
 - Poza zakresem MVP pozostały pozostałe prawa pasażera z rozporządzenia: pomoc w czasie opóźnienia, zwrot biletu zamiast kontynuacji podróży przy przewidywanym opóźnieniu, zmiana trasy. Z art. 18 aplikacja obsługuje tylko zwrot ceny biletu po odwołaniu pociągu. Pominięte są też inne środki transportu (autobusy, loty).
 

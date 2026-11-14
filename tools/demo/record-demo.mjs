@@ -1,4 +1,4 @@
-// Records demo frames of Refund Pilot with headless Chromium. Fictional ticket only.
+// Records demo frames of Zwrotnica with headless Chromium. Fictional ticket only.
 // Usage: node record-demo.mjs <outDir> <demoJsonPath>
 import { chromium } from "playwright";
 import { mkdirSync, readFileSync } from "node:fs";

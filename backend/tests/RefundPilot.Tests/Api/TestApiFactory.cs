@@ -14,7 +14,7 @@ namespace RefundPilot.Tests.Api;
 /// </summary>
 public sealed class TestApiFactory : WebApplicationFactory<Program>
 {
-    public const string DemoEmail = "demo@refundpilot.test";
+    public const string DemoEmail = "demo@zwrotnica.test";
     public const string DemoPassword = "Demo!2026pass";
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 13, 10, 0, 0, TimeSpan.Zero));

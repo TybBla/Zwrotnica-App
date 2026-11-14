@@ -1,4 +1,4 @@
-# Refund Pilot – kierunek projektowy (v2)
+# Zwrotnica – kierunek projektowy (v2)
 
 Status: obowiązujący od 2026-11-14. Zastępuje pierwszą wersję wyglądu (Geist + fiolet `#4b45e0`, poświata gradientowa w hero, wyśrodkowany hero + trzy karty).
 

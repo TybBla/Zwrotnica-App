@@ -11,7 +11,7 @@ function Probe() {
   return (
     <div>
       <p>{user ? `zalogowany: ${user.email}` : 'wylogowany'}</p>
-      <button type="button" onClick={() => login('demo@refundpilot.pl', 'Demo123!')}>
+      <button type="button" onClick={() => login('demo@zwrotnica.test', 'Demo123!')}>
         login
       </button>
       <button type="button" onClick={() => logout()}>
@@ -31,7 +31,7 @@ describe('AuthProvider', () => {
       'fetch',
       vi.fn((url: string) => {
         if (url === '/api/auth/manage/info')
-          return Promise.resolve(signedIn ? json({ email: 'demo@refundpilot.pl', isEmailConfirmed: true }) : new Response(null, { status: 401 }))
+          return Promise.resolve(signedIn ? json({ email: 'demo@zwrotnica.test', isEmailConfirmed: true }) : new Response(null, { status: 401 }))
         if (url.startsWith('/api/auth/login')) {
           signedIn = true
           return Promise.resolve(new Response(null, { status: 200 }))
@@ -53,7 +53,7 @@ describe('AuthProvider', () => {
     expect(await screen.findByText('wylogowany')).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: 'login' }))
-    await waitFor(() => expect(screen.getByText('zalogowany: demo@refundpilot.pl')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('zalogowany: demo@zwrotnica.test')).toBeTruthy())
 
     await user.click(screen.getByRole('button', { name: 'logout' }))
     await waitFor(() => expect(screen.getByText('wylogowany')).toBeTruthy())
@@ -74,7 +74,7 @@ describe('AuthProvider when the API is unreachable', () => {
       vi.fn((url: string) => {
         if (url !== '/api/auth/manage/info') return Promise.reject(new Error(`unexpected ${url}`))
         return reachable
-          ? Promise.resolve(json({ email: 'demo@refundpilot.pl', isEmailConfirmed: true }))
+          ? Promise.resolve(json({ email: 'demo@zwrotnica.test', isEmailConfirmed: true }))
           : Promise.reject(new TypeError('Failed to fetch'))
       }),
     )
@@ -91,7 +91,7 @@ describe('AuthProvider when the API is unreachable', () => {
 
     reachable = true
     await user.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
-    expect(await screen.findByText('zalogowany: demo@refundpilot.pl')).toBeTruthy()
+    expect(await screen.findByText('zalogowany: demo@zwrotnica.test')).toBeTruthy()
     expect(screen.getByRole('status').textContent).toBe('')
   })
 
@@ -123,7 +123,7 @@ describe('AuthProvider when the API is unreachable', () => {
       'fetch',
       vi.fn(() =>
         reachable
-          ? Promise.resolve(json({ email: 'demo@refundpilot.pl', isEmailConfirmed: true }))
+          ? Promise.resolve(json({ email: 'demo@zwrotnica.test', isEmailConfirmed: true }))
           : Promise.reject(new TypeError('Failed to fetch')),
       ),
     )
@@ -136,6 +136,6 @@ describe('AuthProvider when the API is unreachable', () => {
 
     reachable = true
     window.dispatchEvent(new Event('online'))
-    expect(await screen.findByText('zalogowany: demo@refundpilot.pl')).toBeTruthy()
+    expect(await screen.findByText('zalogowany: demo@zwrotnica.test')).toBeTruthy()
   })
 })

@@ -76,11 +76,6 @@
   flex: none;
 }
 
-.wordmark__accent {
-  color: var(--text-secondary);
-  font-weight: var(--weight-regular);
-}
-
 /* ---------- Footer ---------- */
 .shell__footer {
   border-top: 1px solid var(--border);

@@ -33,7 +33,7 @@ export function AppShell({ account, onHome, footer, notice, children }: AppShell
           >
             <Logo />
             <span className="wordmark__text">
-              Refund<span className="wordmark__accent"> Pilot</span>
+              Zwrotnica
             </span>
           </a>
           <div className="shell__actions">

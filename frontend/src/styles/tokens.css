@@ -1,5 +1,5 @@
 /*
- * Refund Pilot design tokens (design direction v2, docs/design-direction.md).
+ * Zwrotnica design tokens (design direction v2, docs/design-direction.md).
  * One design language, two color schemes: type, spacing, radii, sizes and motion are defined once on :root;
  * [data-theme] swaps only colors. Brand: ink navy (timetable posters, station signage). Single accent: signal yellow
  * ("Odjazdy" poster), used sparingly – the amount plate, the current wizard step, the focus ring.

@@ -80,7 +80,7 @@ export const faq: FaqItem[] = [
         Nie. Polska wyłączyła pociągi miejskie, podmiejskie i regionalne z unijnego systemu 25%/50% (art. 3a ustawy o
         transporcie kolejowym). Dotyczy to polskich przewoźników regionalnych, m.in. Polregio (także jego pociągów
         InterRegio), Kolei Mazowieckich, Kolei Śląskich, Kolei Dolnośląskich, SKM i WKD. Reklamację możesz jednak złożyć
-        na zasadach z regulaminu przewoźnika – Refund Pilot przygotuje ją za Ciebie: opisze przejazd i poprosi o
+        na zasadach z regulaminu przewoźnika – Zwrotnica przygotuje ją za Ciebie: opisze przejazd i poprosi o
         rozpatrzenie sprawy według regulaminu, bez żądania konkretnej kwoty. To, czy i ile przewoźnik zwróci, zależy od
         jego regulaminu. Jeśli znasz tylko kategorię
         InterRegio (IR), a przewoźnik jest inny niż Polregio albo go nie podasz, wynik to „Do sprawdzenia”.

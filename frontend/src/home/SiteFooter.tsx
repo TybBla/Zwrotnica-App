@@ -7,7 +7,7 @@ export function SiteFooter() {
   return (
     <div className="container container--wide site-footer">
       <div className="site-footer__about">
-        <p className="site-footer__name">Refund Pilot</p>
+        <p className="site-footer__name">Zwrotnica</p>
         <p>
           <strong>Narzędzie pomocnicze. Nie stanowi porady prawnej.</strong> Przed wysłaniem reklamacji sprawdź regulamin
           swojego przewoźnika.
