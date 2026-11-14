@@ -78,7 +78,7 @@ function unreadSummary(ticket: TicketForm, missing: string[], regional: boolean)
   return { labels: unread.map(([, label]) => label), nothingRead: keyFields.every((key) => keys.includes(key)) }
 }
 
-const isInterRegio = (category: string) => /^s*(ir|interregio)s*$/i.test(category)
+const isInterRegio = (category: string) => /^\s*(ir|interregio)\s*$/i.test(category)
 
 const requiredNames: Record<TicketIssue['field'], string> = {
   carrier: 'przewoźnika',

@@ -342,6 +342,31 @@ describe('Wizard – ticket step', () => {
     expect(nextButton().disabled).toBe(false)
   })
 
+  it('recognises InterRegio only as "IR" or "InterRegio" (surrounding spaces allowed), not as a longer code', async () => {
+    const user = userEvent.setup()
+    const read = (trainCategory: string): ExtractionDto => ({
+      carrier: 'Inny Przewoźnik',
+      trainCategory,
+      fromStation: null,
+      toStation: null,
+      ticketNumber: 'X-1',
+      ticketPrice: 30,
+      travelDate: '2025-06-01',
+      missingFields: [],
+      usedAi: true,
+    })
+    const extract = vi.spyOn(api, 'extractTicket').mockResolvedValueOnce(read('sIRs'))
+    const { container } = renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+    expect(description(await screen.findByLabelText(/^Kategoria pociągu/))).not.toMatch(/Do sprawdzenia/)
+
+    extract.mockResolvedValueOnce(read(' InterRegio '))
+    await user.click(screen.getByRole('button', { name: 'Zmień pliki' }))
+    await uploadAndRead(user, container)
+    expect(description(await screen.findByLabelText(/^Kategoria pociągu/))).toMatch(/^Do sprawdzenia/)
+  })
+
   it('blocks "Dalej" only while carrier, travel date, price or ticket number are missing', async () => {
     const user = userEvent.setup()
     renderWizard()
