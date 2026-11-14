@@ -20,16 +20,19 @@ export function shownVerdict(assessment: Pick<AssessmentDto, 'verdict' | 'compen
 
 /**
  * Which letter a case gets, mirroring ComplaintService: money due → a demand under the EU rules ('compensation');
+ * a regional train with an amount of costs entered → a claim for those documented costs ('documentedCosts');
  * anything else – a train outside the EU 25%/50% scheme, an unclear one, or a covered train with nothing due (e.g.
  * 45 min late) → a complaint the carrier decides under its own rules ('carrierRules'). Filing is never blocked;
  * only a missing price means no letter yet (the API answers 409).
  */
-export type LetterKind = 'compensation' | 'carrierRules'
+export type LetterKind = 'compensation' | 'carrierRules' | 'documentedCosts'
 
 export function letterKind(
   assessment: Pick<AssessmentDto, 'verdict' | 'compensationAmount' | 'priceRequired'> | undefined,
+  expenseAmount?: number | null,
 ): LetterKind | null {
   if (!assessment) return null
   if (assessment.verdict === 'Eligible' && assessment.priceRequired) return null
+  if (assessment.verdict === 'NotCovered' && expenseAmount != null && expenseAmount > 0) return 'documentedCosts'
   return shownVerdict(assessment) === 'Eligible' ? 'compensation' : 'carrierRules'
 }

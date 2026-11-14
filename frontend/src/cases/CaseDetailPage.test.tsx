@@ -27,6 +27,8 @@ const item: CaseDto = {
   filedAt: null,
   responseDueDate: null,
   notes: null,
+  expenseDescription: null,
+  expenseAmount: null,
   createdAt: '2026-10-21T08:00:00Z',
   outcome: {
     title: 'Przewoźnik jest zobowiązany do wypłaty odszkodowania',
@@ -51,6 +53,24 @@ beforeEach(() => {
 })
 
 describe('CaseDetailPage', () => {
+  it('shows the documented costs of a regional case', async () => {
+    vi.mocked(api.getCase).mockResolvedValue({
+      ...item,
+      carrier: 'Polregio',
+      trainCategory: null,
+      verdict: 'NotCovered',
+      compensationAmount: 0,
+      expenseDescription: 'Taksówka do Stargardu',
+      expenseAmount: 85,
+    })
+    renderAt('/sprawy/7')
+
+    const costs = (await screen.findByText('Poniesione koszty')).closest('div')!
+    expect(costs.textContent).toContain('85,00 zł')
+    expect(costs.textContent).toContain('Taksówka do Stargardu')
+    expect(screen.getByRole('button', { name: 'Przygotuj wniosek o zwrot kosztów ponownie' })).toBeTruthy()
+  })
+
   it('shows the case and prepares the letter again from the saved case', async () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'generateComplaint').mockResolvedValue({

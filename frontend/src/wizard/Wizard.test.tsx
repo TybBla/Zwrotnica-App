@@ -300,7 +300,7 @@ describe('Wizard – ticket step', () => {
     expect(screen.getByRole('status', { name: /Nie udało się odczytać/ }).textContent).toContain('numer biletu')
   })
 
-  it('shows at once that a regional carrier is outside the EU 25% / 50% rules, without blocking', async () => {
+  it('shows at once that a regional carrier is outside the EU 25% / 50% rules and refunds only proven damage, without blocking', async () => {
     const user = userEvent.setup()
     renderWizard()
     await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
@@ -308,8 +308,9 @@ describe('Wizard – ticket step', () => {
 
     const carrier = screen.getByLabelText('Przewoźnik')
     expect(description(carrier)).toContain(
-      'Polregio to przewoźnik regionalny. Przepisy UE o odszkodowaniu 25% / 50% go nie obejmują, więc nie wyliczymy kwoty. ' +
-        'Możesz kontynuować i przygotować reklamację – przewoźnik rozpatrzy ją według swojego regulaminu.',
+      'Polregio to przewoźnik regionalny – nie obejmują go automatyczne odszkodowania z rozporządzenia (UE) 2021/782 ' +
+        '(25% / 50% ceny biletu). Tacy przewoźnicy zwykle uwzględniają jedynie roszczenia o zwrot udowodnionej szkody, ' +
+        'np. kosztów taksówki lub noclegu. Jeśli poniosłeś takie koszty, przygotujemy wniosek o ich zwrot.',
     )
     expect(carrier.getAttribute('aria-invalid')).not.toBe('true')
     expect(screen.queryByRole('alert')).toBeNull()
@@ -455,6 +456,50 @@ describe('Wizard – delay step', () => {
     // The cause can be cleared again.
     await user.selectOptions(screen.getByLabelText(/^Przyczyna opóźnienia/), '— nie wiem —')
     await waitFor(() => expect(assess.mock.lastCall?.[0]).toEqual(expect.objectContaining({ delayCause: null })))
+  })
+
+  it('asks a regional train for the costs incurred and sends them with the assessment', async () => {
+    const user = userEvent.setup()
+    const assess = vi.mocked(api.assess)
+    renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    await user.selectOptions(await screen.findByLabelText('Przewoźnik'), 'Polregio')
+    fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
+    await user.type(screen.getByLabelText('Cena biletu'), '19,90')
+    await user.type(screen.getByLabelText('Numer biletu'), 'PR-1')
+    await user.click(nextButton())
+    await user.type(await screen.findByLabelText(/^Opóźnienie/), '70')
+
+    const costs = screen.getByRole('group', { name: 'Poniesione koszty (opcjonalnie)' })
+    const text = within(costs).getByLabelText(/^Opis kosztów/) as HTMLTextAreaElement
+    const amount = within(costs).getByLabelText(/^Kwota kosztów/)
+    expect(text.maxLength).toBe(500)
+    expect(text.placeholder).toBe('np. taksówka do Szczecina po odwołaniu pociągu')
+    expect(costs.textContent).toContain('Zachowaj rachunki – trzeba je dołączyć do wniosku.')
+
+    await user.type(text, 'Taksówka 🚕 do Stargardu')
+    expect(text.value).toBe('Taksówka do Stargardu')
+    await user.type(amount, '85,50')
+    await waitFor(() => expect(assess.mock.lastCall?.[0]).toEqual(expect.objectContaining({ carrier: 'Polregio', expenseAmount: 85.5 })))
+
+    await user.clear(amount)
+    await user.type(amount, 'abc8,5,0')
+    expect((amount as HTMLInputElement).value).toBe('8,5,0')
+    await user.tab()
+    expect(description(amount)).toContain('Wpisz kwotę, np. 85,00.')
+    expect((screen.getByRole('button', { name: 'Zobacz wynik' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('does not ask about costs for a train covered by the EU rules', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    await screen.findByLabelText('Przewoźnik')
+    await fillManualTicket(user)
+    await user.click(nextButton())
+
+    await screen.findByLabelText(/^Opóźnienie/)
+    expect(screen.queryByRole('group', { name: /Poniesione koszty/ })).toBeNull()
   })
 })
 

@@ -9,7 +9,7 @@ import { AlertCircleIcon, ArrowLeftIcon, FileIcon, TrashIcon } from '../componen
 import { statusLabels } from '../hooks/useCases'
 import { warsawDate } from '../lib/deadline'
 import { formatDate } from '../lib/format'
-import { verdictStyle } from '../lib/verdict'
+import { verdictStyle, type LetterKind } from '../lib/verdict'
 import { usePageTitle } from '../routes/usePageTitle'
 import { FinalVerdict } from '../wizard/FinalVerdict'
 import { LetterChoice } from '../wizard/LetterChoice'
@@ -33,6 +33,12 @@ export function CaseDetailPage() {
 }
 
 const notFoundMessage = 'Nie ma takiej sprawy – mogła zostać usunięta.'
+
+const letterButtonLabels: Record<LetterKind, string> = {
+  compensation: 'Przygotuj pismo ponownie',
+  carrierRules: 'Przygotuj reklamację ponownie',
+  documentedCosts: 'Przygotuj wniosek o zwrot kosztów ponownie',
+}
 
 function CaseDetail({ id }: { id: number | null }) {
   const navigate = useNavigate()
@@ -212,7 +218,9 @@ function CaseDetail({ id }: { id: number | null }) {
                   <p className="case-detail__hint">
                     {caseLetterKind(load.item) === 'carrierRules'
                       ? 'Przygotujemy reklamację od nowa – przewoźnik rozpatrzy ją według swojego regulaminu, bez gwarantowanej kwoty. Użyjemy'
-                      : 'Przygotujemy pismo od nowa z'}{' '}
+                      : caseLetterKind(load.item) === 'documentedCosts'
+                        ? 'Przygotujemy wniosek o zwrot udokumentowanych kosztów od nowa – dołącz do niego rachunki. Użyjemy'
+                        : 'Przygotujemy pismo od nowa z'}{' '}
                     danych tej sprawy i Twojego profilu (forma wypłaty: {payoutLabels[load.item.payoutPreference].toLowerCase()}).
                   </p>
                   <div>
@@ -222,7 +230,7 @@ function CaseDetail({ id }: { id: number | null }) {
                       loading={letterBusy}
                       onClick={() => void prepareLetter(load.item)}
                     >
-                      {caseLetterKind(load.item) === 'carrierRules' ? 'Przygotuj reklamację ponownie' : 'Przygotuj pismo ponownie'}
+                      {letterButtonLabels[caseLetterKind(load.item) ?? 'compensation']}
                     </Button>
                   </div>
                   {letterBusy && (
@@ -307,6 +315,12 @@ function Details({ item }: { item: CaseDto }) {
         {item.ticketNumber && (
           <Fact term="Numer biletu">
             <span className="mono">{item.ticketNumber}</span>
+          </Fact>
+        )}
+        {item.expenseAmount !== null && (
+          <Fact term="Poniesione koszty">
+            <span className="mono tabular">{formatPln(item.expenseAmount)}</span>
+            {item.expenseDescription && <span className="case-facts__detail">{item.expenseDescription}</span>}
           </Fact>
         )}
         <Fact term="Forma wypłaty">{payoutLabels[item.payoutPreference]}</Fact>

@@ -448,3 +448,11 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
+
+.case-facts__detail {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

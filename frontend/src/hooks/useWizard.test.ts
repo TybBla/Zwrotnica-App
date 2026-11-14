@@ -3,6 +3,7 @@ import type { ExtractionDto } from '../api/types'
 import {
   OTHER_CARRIER,
   emptyTicket,
+  expenseIssue,
   initialWizardState,
   parsePrice,
   ticketIssues,
@@ -257,5 +258,55 @@ describe('result step state', () => {
     const other = wizardReducer(filled, { type: 'accountChanged', email: 'b@b.pl' })
     expect(other.savedCase).toBeUndefined()
     expect(other.payout.iban).toBe('')
+  })
+})
+
+describe('documented costs (regional carriers)', () => {
+  const regionalAssessment = {
+    verdict: 'NotCovered' as const,
+    reason: 'Pociąg regionalny.',
+    compensationAmount: 0,
+    percent: 0,
+    belowMinimum: false,
+    priceRequired: false,
+    refusalRisk: false,
+    outcome: null,
+  }
+  const regional = {
+    ...initialWizardState,
+    step: 'result' as const,
+    ticket: { ...filled, carrierChoice: 'Polregio', trainCategory: '' },
+    delay: { incidentType: 'Delay' as const, minutes: 70, isSeasonTicket: false },
+    expenses: { description: ' Taksówka do Stargardu\r\n', amount: '85,50' },
+    assessment: regionalAssessment,
+  }
+
+  it('starts empty and keeps what the user typed', () => {
+    expect(initialWizardState.expenses).toEqual({ description: '', amount: '' })
+    const state = wizardReducer(initialWizardState, { type: 'expenses', patch: { amount: '12' } })
+    expect(state.expenses).toEqual({ description: '', amount: '12' })
+  })
+
+  it('validates the amount like the ticket price, empty being fine', () => {
+    expect(expenseIssue('')).toBeNull()
+    expect(expenseIssue('85,50')).toBeNull()
+    expect(expenseIssue('abc')).toBe('Wpisz kwotę, np. 85,00.')
+    expect(expenseIssue('0')).toBe('Kwota musi być większa niż 0 zł.')
+    expect(expenseIssue('100000,01')).toBe('Ta kwota wygląda na zbyt wysoką – sprawdź ją.')
+  })
+
+  it('sends the costs with the assessment and the case of a regional train', () => {
+    expect(toAssessmentRequest(regional)?.expenseAmount).toBe(85.5)
+    expect(toCaseRequest(regional)).toMatchObject({ expenseDescription: 'Taksówka do Stargardu', expenseAmount: 85.5 })
+  })
+
+  it('leaves the costs out for a train that is not regional, or while the amount is invalid', () => {
+    const covered = { ...regional, assessment: { ...regionalAssessment, verdict: 'Eligible' as const } }
+    expect(toCaseRequest(covered)).not.toHaveProperty('expenseAmount')
+    expect(toCaseRequest(covered)).not.toHaveProperty('expenseDescription')
+    const invalid = { ...regional, expenses: { description: '', amount: 'x' } }
+    expect(toAssessmentRequest(invalid)).not.toHaveProperty('expenseAmount')
+    expect(toCaseRequest(invalid)).not.toHaveProperty('expenseAmount')
+    expect(toCaseRequest(invalid)).not.toHaveProperty('expenseDescription')
   })
 })

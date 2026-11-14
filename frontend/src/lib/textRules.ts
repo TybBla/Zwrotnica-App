@@ -11,6 +11,7 @@ export type TextField =
   | 'ticketNumber'
   | 'iban'
   | 'notes'
+  | 'expenseDescription'
 
 // Character-class bodies, same as the backend's (`\p{L}` letters of any script, `\p{N}` digits).
 const classBodies: Record<TextField, string> = {
@@ -22,6 +23,7 @@ const classBodies: Record<TextField, string> = {
   ticketNumber: String.raw`\p{L}\p{N} \-/`,
   iban: String.raw`A-Za-z0-9 `,
   notes: String.raw`\p{L}\p{N} \n.,;:!?\-()/'"%`,
+  expenseDescription: String.raw`\p{L}\p{N} \n.,;:!?\-()/'"%`,
 }
 
 // .NET regexes work on UTF-16 code units: a code point above U+FFFF is a surrogate pair (category Cs) and never
@@ -37,7 +39,7 @@ const fullMatch = Object.fromEntries(
   Object.entries(classBodies).map(([field, body]) => [field, new RegExp(`^(?:(?![${ASTRAL}])[${body}])+$`, 'u')]),
 ) as Record<TextField, RegExp>
 
-const isMultiline = (field: TextField) => field === 'notes'
+const isMultiline = (field: TextField) => field === 'notes' || field === 'expenseDescription'
 
 const replacements: Record<string, string> = {
   '’': "'", '‘': "'", 'ʼ': "'",

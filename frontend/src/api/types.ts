@@ -74,6 +74,8 @@ export interface AssessmentRequest {
   ticketPrice: number
   delayCause: DelayCause | null
   isSeasonTicket: boolean
+  /** Documented costs (regional carriers only); stated in the final verdict. */
+  expenseAmount?: number
 }
 
 /** "Werdykt końcowy": the expected legal effect of the complaint, worded by the server from its rules. */
@@ -111,6 +113,10 @@ export interface CaseRequest {
   isSeasonTicket: boolean
   payoutPreference: PayoutPreference
   notes: string | null
+  /** Costs the passenger incurred (regional carriers only; the server drops them otherwise). */
+  expenseDescription?: string | null
+  /** PLN, 0 < x ≤ 100 000. */
+  expenseAmount?: number
 }
 
 export interface CaseDto {
@@ -134,6 +140,8 @@ export interface CaseDto {
   filedAt: IsoDateTime | null
   responseDueDate: IsoDateTime | null
   notes: string | null
+  expenseDescription: string | null
+  expenseAmount: number | null
   createdAt: IsoDateTime
   /** The same final verdict the wizard shows; null without a ticket price. */
   outcome: OutcomeDto | null

@@ -18,7 +18,7 @@ import {
 } from '../hooks/useWizard'
 import { formatAmount, formatDate } from '../lib/format'
 import { isValidIban, normalizeIban } from '../lib/textRules'
-import { letterKind, shownVerdict, verdictStyle } from '../lib/verdict'
+import { letterKind, shownVerdict, verdictStyle, type LetterKind } from '../lib/verdict'
 import { FinalVerdict } from './FinalVerdict'
 import { LetterChoice } from './LetterChoice'
 import { PayoutChoice } from './PayoutChoice'
@@ -60,7 +60,13 @@ type SaveError =
   /** Temporary trouble (AI down, timeout, network): try again. */
   | { kind: 'retry'; message: string }
 
-const delayFields = new Set(['incidentType', 'delayMinutes', 'delayCause', 'isSeasonTicket'])
+const delayFields = new Set(['incidentType', 'delayMinutes', 'delayCause', 'isSeasonTicket', 'expenseDescription', 'expenseAmount'])
+
+const saveLabels: Record<LetterKind, string> = {
+  compensation: 'Zapisz sprawę i przygotuj pismo',
+  carrierRules: 'Zapisz sprawę i przygotuj reklamację',
+  documentedCosts: 'Zapisz sprawę i przygotuj wniosek o zwrot kosztów',
+}
 
 interface ResultStepProps {
   state: WizardState
@@ -92,9 +98,10 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
   const inFlight = useRef<AbortController | null>(null)
   const ownPending = useRef<PendingCase | null>(null)
   const pendingCase = sharedPending ?? ownPending
-  const kind = letterKind(assessment)
+  const costs = toCaseRequest(state)?.expenseAmount ?? null
+  const kind = letterKind(assessment, costs)
   const claimable = kind !== null
-  const saveLabel = kind === 'carrierRules' ? 'Zapisz sprawę i przygotuj reklamację' : 'Zapisz sprawę i przygotuj pismo'
+  const saveLabel = saveLabels[kind ?? 'compensation']
   const busy = phase === 'saving' || phase === 'writing'
   const sessionNoticeId = useId()
   const authOpen = (phase === 'auth' || phase === 'reauth') && !user && !loading
@@ -292,7 +299,7 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
 
   const ticket = toTicketFields(state.ticket)
   const route = caseRoute(ticket) ?? ''
-  const details = tripDetails(ticket, route, state.delay)
+  const details = tripDetails(ticket, route, state.delay, toCaseRequest(state))
   const done = phase === 'done' && letter !== null
   const reset = () => {
     pendingCase.current = null
@@ -344,9 +351,20 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
               Reklamacja poprosi przewoźnika o rozpatrzenie sprawy według jego regulaminu, bez gwarantowanej kwoty.
             </p>
           )}
+          {kind === 'documentedCosts' && (
+            <p className="result__explain">
+              Wniosek poprosi przewoźnika o zwrot udokumentowanych kosztów – dołącz do niego rachunki lub paragony.
+            </p>
+          )}
 
           <PayoutChoice
-            legend={kind === 'carrierRules' ? 'Jak chcesz otrzymać pieniądze, jeśli przewoźnik coś przyzna?' : undefined}
+            legend={
+              kind === 'carrierRules'
+                ? 'Jak chcesz otrzymać pieniądze, jeśli przewoźnik coś przyzna?'
+                : kind === 'documentedCosts'
+                  ? 'Jak chcesz otrzymać zwrot kosztów?'
+                  : undefined
+            }
             value={payout.choice}
             onChange={(choice) => dispatch({ type: 'payout', patch: { choice } })}
             iban={payout.iban}
@@ -477,7 +495,12 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
  * The trip as printed on the result's stub: only what the passenger actually entered.
  * Short facts first (they pair up in two columns), then the long ones that take a full row.
  */
-function tripDetails(ticket: ReturnType<typeof toTicketFields>, route: string, delay: WizardState['delay']): VerdictDetail[] {
+function tripDetails(
+  ticket: ReturnType<typeof toTicketFields>,
+  route: string,
+  delay: WizardState['delay'],
+  request: CaseRequest | null,
+): VerdictDetail[] {
   const rows: (VerdictDetail | null)[] = [
     ticket.carrier ? { label: 'Przewoźnik', value: [ticket.carrier, ticket.trainCategory].filter(Boolean).join(' · ') } : null,
     ticket.travelDate ? { label: 'Data przejazdu', value: formatDate(ticket.travelDate) } : null,
@@ -489,6 +512,9 @@ function tripDetails(ticket: ReturnType<typeof toTicketFields>, route: string, d
         : null,
     route ? { label: 'Trasa', value: route, wide: true } : null,
     ticket.ticketNumber ? { label: 'Numer biletu', value: ticket.ticketNumber, mono: true, wide: true } : null,
+    // Only what will be saved: a regional train with a usable amount.
+    request?.expenseAmount != null ? { label: 'Poniesione koszty', value: `${formatAmount(request.expenseAmount)} zł`, mono: true } : null,
+    request?.expenseDescription ? { label: 'Opis kosztów', value: request.expenseDescription, wide: true } : null,
   ]
   return rows.filter((row): row is VerdictDetail => row !== null)
 }
@@ -504,7 +530,11 @@ function NextSteps({ state, dispatch }: { state: WizardState; dispatch: Dispatch
 
   if (assessment.verdict === 'NotCovered') {
     items.push('Ten przewoźnik nie wypłaca odszkodowań wg przepisów UE – sprawdź jego regulamin.')
-    items.push('Możesz złożyć reklamację – przygotujemy ją poniżej. Wyślesz ją przewoźnikowi e-mailem, przez jego formularz albo w kasie.')
+    items.push(
+      state.expenses.amount.trim() !== ''
+        ? 'Przygotujemy poniżej wniosek o zwrot poniesionych kosztów. Wyślesz go przewoźnikowi e-mailem, przez jego formularz albo w kasie – z kopiami rachunków.'
+        : 'Możesz złożyć reklamację – przygotujemy ją poniżej. Wyślesz ją przewoźnikowi e-mailem, przez jego formularz albo w kasie.',
+    )
     items.push('Jeśli przewoźnik lub kategoria pociągu są inne niż wpisane, popraw dane biletu.')
     fix = 'ticket'
   } else if (state.delay.isSeasonTicket) {

@@ -8,9 +8,10 @@ import { Field } from '../components/Field'
 import { AlertCircleIcon, ArrowRightIcon } from '../components/icons'
 import { Select, type SelectOption } from '../components/Select'
 import { TextInput } from '../components/TextInput'
-import { toAssessmentRequest, type WizardAction, type WizardState } from '../hooks/useWizard'
+import { expenseIssue, toAssessmentRequest, type WizardAction, type WizardState } from '../hooks/useWizard'
 import { formatAmount } from '../lib/format'
 import { verdictStyle } from '../lib/verdict'
+import { ExpensesFieldset } from './ExpensesFieldset'
 import { WizardActions } from './WizardActions'
 
 const QUICK_MINUTES = [60, 90, 120, 180] as const
@@ -34,6 +35,8 @@ const CAUSE_TOOLTIP =
 interface DelayStepProps {
   state: WizardState
   dispatch: Dispatch<WizardAction>
+  /** A regional carrier (outside the EU 25%/50% scheme): ask for the documented costs instead. */
+  regional?: boolean
 }
 
 /**
@@ -108,7 +111,7 @@ function useLiveAssessment(request: AssessmentRequest | null, onResult: (assessm
   }
 }
 
-export function DelayStep({ state, dispatch }: DelayStepProps) {
+export function DelayStep({ state, dispatch, regional = false }: DelayStepProps) {
   const { delay, assessment } = state
   const cancelled = delay.incidentType === 'Cancellation'
   const request = toAssessmentRequest(state)
@@ -134,6 +137,7 @@ export function DelayStep({ state, dispatch }: DelayStepProps) {
   }
 
   const minutesMissing = !cancelled && delay.minutes === null
+  const costsInvalid = regional && expenseIssue(state.expenses.amount) !== null
 
   return (
     <div className="wizard-step">
@@ -206,6 +210,8 @@ export function DelayStep({ state, dispatch }: DelayStepProps) {
           checked={delay.isSeasonTicket}
           onCheckedChange={(isSeasonTicket) => dispatch({ type: 'delay', patch: { isSeasonTicket } })}
         />
+
+        {regional && <ExpensesFieldset value={state.expenses} onChange={(patch) => dispatch({ type: 'expenses', patch })} />}
       </div>
 
       <WizardActions
@@ -215,14 +221,16 @@ export function DelayStep({ state, dispatch }: DelayStepProps) {
             ? 'Nie udało się teraz sprawdzić wyniku. Spróbuj ponownie.'
             : minutesMissing
               ? 'Podaj opóźnienie w minutach albo zaznacz, że pociąg odwołano.'
-              : undefined
+              : costsInvalid
+                ? 'Popraw kwotę kosztów albo ją usuń.'
+                : undefined
         }
       >
         {(hintId) => (
           <Button
             className="wizard-actions__primary"
             iconEnd={<ArrowRightIcon size={18} />}
-            disabled={request === null}
+            disabled={request === null || costsInvalid}
             loading={moving}
             aria-describedby={hintId}
             onClick={showResult}

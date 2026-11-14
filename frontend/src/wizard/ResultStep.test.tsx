@@ -151,7 +151,7 @@ describe('ResultStep – verdicts', () => {
       percent: 0,
       reason: 'Pociągi regionalne nie są objęte.',
       outcome: {
-        title: 'Przewoźnik nie ma ustawowego obowiązku wypłaty odszkodowania',
+        title: 'Przewoźnik nie ma obowiązku wypłaty automatycznego odszkodowania',
         statement: 'Przewozy regionalne, podmiejskie i miejskie w Polsce są wyłączone z systemu odszkodowań.',
         legalBasis: null,
         deadline: null,
@@ -171,7 +171,32 @@ describe('ResultStep – verdicts', () => {
     renderResult({ initial: notCovered })
     const exempt = await screen.findByRole('region', { name: 'Werdykt końcowy' })
     expect(exempt.getAttribute('data-tone')).toBe('danger')
-    expect(within(exempt).getByText('Przewoźnik nie ma ustawowego obowiązku wypłaty odszkodowania')).toBeTruthy()
+    expect(within(exempt).getByText('Przewoźnik nie ma obowiązku wypłaty automatycznego odszkodowania')).toBeTruthy()
+  })
+
+  it('prepares a claim for the documented costs of a regional train when an amount is given', async () => {
+    const user = userEvent.setup()
+    signedIn = true
+    renderResult({ initial: { ...notCovered, expenses: { description: 'Taksówka do Stargardu', amount: '85,50' } } })
+
+    expect(await screen.findByText('Poniesione koszty')).toBeTruthy()
+    expect(screen.getByText('85,50 zł')).toBeTruthy()
+    expect(screen.getByText('Taksówka do Stargardu')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Zapisz sprawę i przygotuj reklamację' })).toBeNull()
+
+    await user.click(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj wniosek o zwrot kosztów' }))
+
+    await waitFor(() => expect(api.createCase).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(api.createCase).mock.calls[0][0]).toMatchObject({
+      carrier: 'Polregio',
+      expenseDescription: 'Taksówka do Stargardu',
+      expenseAmount: 85.5,
+    })
+  })
+
+  it('keeps the complaint label for a regional train without an amount of costs', async () => {
+    renderResult({ initial: { ...notCovered, expenses: { description: 'Taksówka', amount: '' } } })
+    expect(await screen.findByRole('button', { name: 'Zapisz sprawę i przygotuj reklamację' })).toBeTruthy()
   })
 
   it('shows no final verdict while the server has none (no ticket price)', async () => {

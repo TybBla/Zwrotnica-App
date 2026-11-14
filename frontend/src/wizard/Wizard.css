@@ -592,3 +592,30 @@
     white-space: nowrap;
   }
 }
+
+/* Documented costs of a regional train: a plain group under the delay fields, not a card. */
+.expenses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-5) 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+
+.expenses__legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.expenses__hint {
+  clear: left;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

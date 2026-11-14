@@ -22,8 +22,8 @@ export const caseVerdict = (item: Pick<CaseDto, 'verdict' | 'compensationAmount'
   shownVerdict({ verdict: item.verdict, compensationAmount: item.compensationAmount, priceRequired: false })
 
 /** The letter a saved case gets (a saved case always has a price). */
-export const caseLetterKind = (item: Pick<CaseDto, 'verdict' | 'compensationAmount'>) =>
-  letterKind({ verdict: item.verdict, compensationAmount: item.compensationAmount, priceRequired: false })
+export const caseLetterKind = (item: Pick<CaseDto, 'verdict' | 'compensationAmount' | 'expenseAmount'>) =>
+  letterKind({ verdict: item.verdict, compensationAmount: item.compensationAmount, priceRequired: false }, item.expenseAmount)
 
 export const formatPln = (value: number) => `${formatAmount(value)} zł`
 

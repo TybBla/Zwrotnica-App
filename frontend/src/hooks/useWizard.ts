@@ -54,6 +54,13 @@ export interface PayoutInput {
   touched: boolean
 }
 
+/** Costs a passenger of a regional carrier incurred (taxi, overnight stay…), as typed. Only regional trains use them. */
+export interface ExpensesInput {
+  description: string
+  /** As typed, e.g. "85,00"; same format as the ticket price. */
+  amount: string
+}
+
 /** Extraction field names (ExtractionDto.missingFields) the form highlights until filled. */
 export type TicketFieldKey = 'carrier' | 'trainCategory' | 'fromStation' | 'toStation' | 'ticketNumber' | 'ticketPrice' | 'travelDate'
 
@@ -76,6 +83,7 @@ export interface WizardState {
   /** Friendly message after a failed read (the wizard switched to manual entry). */
   notice?: string
   delay: DelayInput
+  expenses: ExpensesInput
   /** Latest assessment of the current ticket + delay (live preview and the result step). */
   assessment?: AssessmentDto
   payout: PayoutInput
@@ -107,6 +115,7 @@ export const initialWizardState: WizardState = {
   edited: [],
   reviewing: false,
   delay: { incidentType: 'Delay', minutes: null, isSeasonTicket: false },
+  expenses: { description: '', amount: '' },
   payout: { choice: 'OriginalPayment', iban: '', remember: false, touched: false },
 }
 
@@ -120,6 +129,7 @@ export type WizardAction =
   | { type: 'extractionFailed'; notice: string }
   | { type: 'dismissNotice' }
   | { type: 'delay'; patch: Partial<DelayInput> }
+  | { type: 'expenses'; patch: Partial<ExpensesInput> }
   | { type: 'assessed'; assessment: AssessmentDto | undefined }
   | { type: 'payout'; patch: Partial<Omit<PayoutInput, 'touched'>> }
   /** The signed-in user's profile: preselects their payout and account number unless the user already chose. */
@@ -190,6 +200,20 @@ export function ticketIssues(ticket: TicketForm, today: IsoDate = todayIso()): T
   return issues
 }
 
+/** Why the typed amount of costs cannot be used (Polish, for the field), or null when it is empty or fine. */
+export function expenseIssue(amount: string): string | null {
+  if (amount.trim() === '') return null
+  const value = parsePrice(amount)
+  if (value === null) return 'Wpisz kwotę, np. 85,00.'
+  if (value <= 0) return 'Kwota musi być większa niż 0 zł.'
+  if (value > 100_000) return 'Ta kwota wygląda na zbyt wysoką – sprawdź ją.'
+  return null
+}
+
+/** A usable amount of costs, or null (empty or invalid). */
+const expenseAmount = (expenses: ExpensesInput) =>
+  expenses.amount.trim() !== '' && expenseIssue(expenses.amount) === null ? parsePrice(expenses.amount) : null
+
 const optional = (value: string, field: 'station' | 'ticketNumber' | 'carrier' | 'trainCategory') =>
   finalizeText(field, value) || null
 
@@ -207,12 +231,15 @@ export function toTicketFields(ticket: TicketForm) {
 }
 
 /** The request for live assessment, or null while price or minutes are not usable yet. */
-export function toAssessmentRequest(state: Pick<WizardState, 'ticket' | 'delay'>): AssessmentRequest | null {
+export function toAssessmentRequest(state: Pick<WizardState, 'ticket' | 'delay' | 'expenses'>): AssessmentRequest | null {
   const { carrier, trainCategory, ticketPrice } = toTicketFields(state.ticket)
   const { incidentType, minutes, cause, isSeasonTicket } = state.delay
   if (ticketPrice === null || ticketPrice <= 0) return null
   if (incidentType === 'Delay' && minutes === null) return null
+  // The server states the costs only for a regional train, so they can go along whatever the carrier.
+  const costs = expenseAmount(state.expenses)
   return {
+    ...(costs !== null ? { expenseAmount: costs } : {}),
     carrier,
     trainCategory,
     incidentType,
@@ -223,8 +250,20 @@ export function toAssessmentRequest(state: Pick<WizardState, 'ticket' | 'delay'>
   }
 }
 
+/**
+ * The costs to save with the case: only for a regional train (verdict NotCovered) and only with a usable amount, so a
+ * value left in the form after switching to a covered carrier is never sent.
+ */
+function caseExpenses(state: Pick<WizardState, 'expenses' | 'assessment'>) {
+  const amount = expenseAmount(state.expenses)
+  if (state.assessment?.verdict !== 'NotCovered' || amount === null) return {}
+  return { expenseDescription: finalizeText('expenseDescription', state.expenses.description) || null, expenseAmount: amount }
+}
+
 /** The case to save, or null while the ticket is incomplete (the ticket step normally prevents that). */
-export function toCaseRequest(state: Pick<WizardState, 'ticket' | 'delay' | 'payout'>): CaseRequest | null {
+export function toCaseRequest(
+  state: Pick<WizardState, 'ticket' | 'delay' | 'payout' | 'expenses' | 'assessment'>,
+): CaseRequest | null {
   const ticket = toTicketFields(state.ticket)
   const { incidentType, minutes, cause, isSeasonTicket } = state.delay
   if (!ticket.carrier || !ticket.ticketNumber || !ticket.travelDate || ticket.ticketPrice === null) return null
@@ -241,6 +280,7 @@ export function toCaseRequest(state: Pick<WizardState, 'ticket' | 'delay' | 'pay
     isSeasonTicket,
     payoutPreference: state.payout.choice,
     notes: null,
+    ...caseExpenses(state),
   }
 }
 
@@ -319,6 +359,8 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, notice: undefined }
     case 'delay':
       return { ...state, delay: { ...state.delay, ...action.patch } }
+    case 'expenses':
+      return { ...state, expenses: { ...state.expenses, ...action.patch } }
     case 'assessed':
       return { ...state, assessment: action.assessment }
     case 'payout':

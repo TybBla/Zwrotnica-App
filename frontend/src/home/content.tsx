@@ -22,7 +22,7 @@ export const rules: Rule[] = [
   {
     situation: 'Pociąg regionalny, podmiejski lub miejski w Polsce',
     detail: 'np. Polregio (wszystkie jego pociągi, także InterRegio), Koleje Mazowieckie, Koleje Śląskie, SKM',
-    outcome: 'Brak odszkodowania wg przepisów UE. Reklamacja wg regulaminu przewoźnika – przygotujemy ją.',
+    outcome: 'Brak automatycznego odszkodowania wg przepisów UE. Zwrot udowodnionej szkody (np. taksówki, noclegu) – przygotujemy wniosek.',
     kind: 'none',
   },
 ]
@@ -79,11 +79,12 @@ export const faq: FaqItem[] = [
       <p>
         Nie. Polska wyłączyła pociągi miejskie, podmiejskie i regionalne z unijnego systemu 25%/50% (art. 3a ustawy o
         transporcie kolejowym). Dotyczy to polskich przewoźników regionalnych, m.in. Polregio (także jego pociągów
-        InterRegio), Kolei Mazowieckich, Kolei Śląskich, Kolei Dolnośląskich, SKM i WKD. Reklamację możesz jednak złożyć
-        na zasadach z regulaminu przewoźnika – Zwrotnica przygotuje ją za Ciebie: opisze przejazd i poprosi o
-        rozpatrzenie sprawy według regulaminu, bez żądania konkretnej kwoty. To, czy i ile przewoźnik zwróci, zależy od
-        jego regulaminu. Jeśli znasz tylko kategorię
-        InterRegio (IR), a przewoźnik jest inny niż Polregio albo go nie podasz, wynik to „Do sprawdzenia”.
+        InterRegio), Kolei Mazowieckich, Kolei Śląskich, Kolei Dolnośląskich, SKM i WKD. Tacy przewoźnicy zwykle
+        uwzględniają tylko roszczenia o zwrot udowodnionej szkody, czyli kosztów, które poniosłeś przez opóźnienie lub
+        odwołanie pociągu – np. taksówki, noclegu albo biletu na inne połączenie. Jeśli je wpiszesz, Zwrotnica przygotuje
+        wniosek o zwrot tych kosztów; dołącz do niego rachunki. Bez kosztów przygotujemy reklamację według regulaminu
+        przewoźnika, bez żądania konkretnej kwoty. Jeśli znasz tylko kategorię InterRegio (IR), a przewoźnik jest inny
+        niż Polregio albo go nie podasz, wynik to „Do sprawdzenia”.
       </p>
     ),
   },

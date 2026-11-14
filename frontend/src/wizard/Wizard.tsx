@@ -56,6 +56,11 @@ export function Wizard({ onOpenCases, initialSource }: WizardProps = {}) {
     root.querySelector<HTMLElement>('.wizard-step__title')?.focus({ preventScroll: true })
   }, [state.step])
 
+  // From the reference list; a carrier typed in by hand counts once the server has called it regional.
+  const regional =
+    reference?.carriers.find((carrier) => carrier.name === state.ticket.carrierChoice)?.coverage === 'NotCovered' ||
+    state.assessment?.verdict === 'NotCovered'
+
   return (
     <section ref={rootRef} className="wizard" aria-label="Kreator reklamacji">
       <h1 className="page__title">Sprawdź odszkodowanie za przejazd</h1>
@@ -63,7 +68,7 @@ export function Wizard({ onOpenCases, initialSource }: WizardProps = {}) {
       <div className="wizard__body" key={state.step} data-direction={state.direction}>
         {state.step === 'start' && <StartChoice onChoose={(source) => dispatch({ type: 'start', source })} />}
         {state.step === 'ticket' && <TicketStep state={state} dispatch={dispatch} reference={reference} />}
-        {state.step === 'delay' && <DelayStep state={state} dispatch={dispatch} />}
+        {state.step === 'delay' && <DelayStep state={state} dispatch={dispatch} regional={regional} />}
         {state.step === 'result' && (
           <ResultStep
             state={state}
