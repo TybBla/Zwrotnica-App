@@ -173,6 +173,14 @@ Endpoints (authorized): `POST /api/cases/{id}/complaint` → `ComplaintDto`; `PO
 - [ ] **Step 1:** Failing tests: `VerdictCard` renders Należy się / Nie należy się / Do sprawdzenia plus "poniżej progu", "podaj cenę" and `RefusalRisk` warning; NotCovered hides save/letter actions; `PayoutChoice` preselects the profile's `preferredPayout`; anonymous "Zapisz sprawę" shows `AuthPanel` and after successful login/registration saves the case without losing wizard state.
 - [ ] **Step 2:** Run – FAIL. **Step 3:** Implement result with animated amount, payout choice (Zwrot na konto/kartę użyte do zakupu – domyślnie / Przelew na inny rachunek / Bon, with the cash-ticket hint), account number field shown only for "Przelew na inny rachunek" (prefilled from profile, "zapamiętaj na koncie" checkbox, ⓘ security note), save, then "Wybierz format": **Tekst** (subject + body with copy buttons) or **PDF** (download); after generation a clear notice lists `MissingFields` ("Uzupełnij w piśmie: …"). **Step 4:** PASS; `npm run build`. Commit `feat(web): result, inline auth, letter formats`.
 
+### Task 10a: Visual redesign (user decision 2026-11-14)
+
+The first visual version was rejected as "AI slop". Binding direction: `docs/design-direction.md`.
+
+**Files:** Modify `frontend/src/styles/{tokens,base}.css`, `frontend/index.html` (remove Google Fonts), component CSS, `App.tsx`/`App.css` (home page rebuilt as the tool + rules table + FAQ + footer), result card styling; add `@fontsource/ibm-plex-sans`, `@fontsource/ibm-plex-mono`, `lucide-react` (replace ad-hoc icons).
+
+- [ ] Rebuild tokens (navy brand, signal-yellow accent, signal-semantic verdicts, both schemes; no gradients/glow/glass/purple), self-hosted IBM Plex, lucide icons; home page per direction doc (task-first, left-aligned two-column desktop, rules table, "co przygotować", FAQ, footer with disclaimer + sources); remove decorative count-up; ticket-style result card. Tests stay green, `npm run build` clean, WCAG AA contrast (state ratios), 375 px check. Commit `style(web): professional redesign`.
+
 ### Task 11: Account pages and cases list with deadline countdown
 
 **Files:** Create `src/auth/{LoginPage,RegisterPage}.tsx`, `src/profile/ProfilePage.tsx`, `src/cases/{CasesPage,StatsHeader,CaseCard,StatusSelect,DeadlineBadge,EmptyState}.tsx`, `src/hooks/useCases.ts`; simple routing (hash or `react-router` – one dependency allowed).
