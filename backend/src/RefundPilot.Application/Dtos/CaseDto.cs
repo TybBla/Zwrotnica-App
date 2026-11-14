@@ -7,4 +7,5 @@ public sealed record CaseDto(
     DateOnly TravelDate, decimal TicketPrice, IncidentType IncidentType, int DelayMinutes, DelayCause? DelayCause,
     bool IsSeasonTicket, Verdict Verdict, bool RefusalRisk, decimal CompensationAmount,
     PayoutPreference PayoutPreference, CaseStatus Status, DateTime? FiledAt, DateTime? ResponseDueDate,
-    string? Notes, string? ExpenseDescription, decimal? ExpenseAmount, DateTime CreatedAt, OutcomeDto? Outcome);
+    string? Notes, string? ExpenseDescription, decimal? ExpenseAmount, DateTime CreatedAt, OutcomeDto? Outcome,
+    FollowUpsDto FollowUps);

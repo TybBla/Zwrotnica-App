@@ -130,5 +130,6 @@ public sealed class CaseService(
         c.Notes, c.ExpenseDescription, c.ExpenseAmount, c.CreatedAt,
         assessments.Assess(new AssessmentRequest(
             c.Carrier, c.TrainCategory, c.IncidentType, c.DelayMinutes, c.TicketPrice, c.DelayCause, c.IsSeasonTicket,
-            c.ExpenseAmount)).Outcome);
+            c.ExpenseAmount)).Outcome,
+        FollowUpRules.Of(c, WarsawClock.Today(clock)));
 }
