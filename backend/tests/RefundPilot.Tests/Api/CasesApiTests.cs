@@ -291,11 +291,27 @@ public sealed class CasesApiTests : IClassFixture<TestApiFactory>
     }
 
     [Fact]
-    public async Task Assessment_ZeroPrice_RequiresPrice()
+    public async Task Assessment_ZeroPrice_RequiresPriceAndHasNoOutcome()
     {
         var json = await AssessAsync(Assessment(price: 0m));
 
         Assert.True(json.GetProperty("priceRequired").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("outcome").ValueKind);
+    }
+
+    [Fact]
+    public async Task AssessmentAndCase_ShareTheSameFinalVerdict()
+    {
+        var assessed = await AssessAsync(Assessment());
+        var client = await LoggedInClientAsync("outcome@test.pl");
+        var created = await CreateAsync(client, NewCase());
+        var fetched = await JsonAsync(await client.GetAsync($"/api/cases/{created.GetProperty("id").GetInt32()}"));
+
+        var outcome = assessed.GetProperty("outcome");
+        Assert.Equal("Przewoźnik jest zobowiązany do wypłaty odszkodowania", outcome.GetProperty("title").GetString());
+        Assert.Contains("tj. 10,00 zł", outcome.GetProperty("statement").GetString());
+        Assert.Equal(outcome.GetRawText(), created.GetProperty("outcome").GetRawText());
+        Assert.Equal(outcome.GetRawText(), fetched.GetProperty("outcome").GetRawText());
     }
 
     [Fact]

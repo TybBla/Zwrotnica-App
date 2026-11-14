@@ -122,9 +122,12 @@ public sealed class CaseService(
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static CaseDto ToDto(RefundCase c) => new(
+    /// <summary>The final verdict comes from the same assessment as in the wizard (computed in memory, no query).</summary>
+    private CaseDto ToDto(RefundCase c) => new(
         c.Id, c.Carrier, c.TrainCategory, c.FromStation, c.ToStation, c.TicketNumber, c.TravelDate,
         c.TicketPrice, c.IncidentType, c.DelayMinutes, c.DelayCause, c.IsSeasonTicket, c.Verdict,
         c.RefusalRisk, c.CompensationAmount, c.PayoutPreference, c.Status, c.FiledAt, c.ResponseDueDate,
-        c.Notes, c.CreatedAt);
+        c.Notes, c.CreatedAt,
+        assessments.Assess(new AssessmentRequest(
+            c.Carrier, c.TrainCategory, c.IncidentType, c.DelayMinutes, c.TicketPrice, c.DelayCause, c.IsSeasonTicket)).Outcome);
 }
