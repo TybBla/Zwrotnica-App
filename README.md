@@ -22,18 +22,20 @@ Nazwy projektów i przestrzeni nazw w kodzie (`RefundPilot.*`, `RefundPilot.sln`
 
 ## Co robi aplikacja
 
-- **Odczyt biletu przez AI.** Zdjęcie (aparat lub galeria w telefonie) albo plik, także PDF e-biletu, do 4 plików po 5 MB. Gemini wypełnia pola: przewoźnik, kategoria, stacje, data, cena, numer biletu. Użytkownik sprawdza wynik, a pola, których AI nie odczytało, są wyraźnie oznaczone do uzupełnienia. Na górze formularza komunikat mówi, czego nie udało się odczytać (albo że zdjęcie wygląda na nieostre lub ucięte, gdy brakuje przewoźnika, daty i ceny), z przyciskiem „Wgraj inne zdjęcie”. Kolejny odczyt uzupełnia tylko puste pola i te wypełnione wcześniej przez AI – poprawek użytkownika nie nadpisuje. Pliki są przetwarzane w pamięci i nigdzie nie są zapisywane.
-- **Ścieżka ręczna.** Te same pola wpisuje się samemu. Przewoźnik i kategoria to listy wyboru z opcją „Inny”. Ta ścieżka działa także bez klucza AI.
+- **Odczyt biletu przez AI.** Zdjęcie (aparat lub galeria w telefonie) albo plik, także PDF e-biletu, do 4 plików po 5 MB. Gemini wypełnia pola: przewoźnik, kategoria, stacje, data, cena, numer biletu. Nazwy stacji i przewoźnika mają wracać z polskimi znakami, tak jak brzmią oficjalnie (np. „Kraków Główny”). Użytkownik sprawdza wynik, a pola, których AI nie odczytało, są wyraźnie oznaczone do uzupełnienia. Na górze formularza komunikat mówi, czego nie udało się odczytać (albo że zdjęcie wygląda na nieostre lub ucięte, gdy brakuje przewoźnika, daty i ceny), z przyciskiem „Wgraj inne zdjęcie”. Kolejny odczyt uzupełnia tylko puste pola i te wypełnione wcześniej przez AI – poprawek użytkownika nie nadpisuje. Pliki są przetwarzane w pamięci i nigdzie nie są zapisywane.
+- **Ścieżka ręczna.** Te same pola wpisuje się samemu. Przewoźnik i kategoria to listy wyboru z opcją „Inny”. Pola stacji podpowiadają ok. 150 oficjalnych nazw większych stacji (natywny `<datalist>`, dane w `frontend/src/lib/stations.ts`), ale przyjmują też dowolną inną nazwę. Ta ścieżka działa także bez klucza AI.
+- **Wymagane dane biletu:** przewoźnik, data przejazdu, cena i **numer biletu** (identyfikuje umowę przewozu). Bez nich „Dalej” jest nieaktywne, a API odrzuca sprawę kodem 400. Podpowiedź mówi, gdzie szukać numeru (przy kodzie QR lub w e-mailu z biletem). Stacje i kategoria są opcjonalne.
 - **Krok opóźnienia.** Liczba minut opóźnienia na stacji docelowej albo odwołanie pociągu, przyczyna (opcjonalnie, z podpowiedzią ⓘ, która działa myszą, dotykiem i klawiaturą) i zaznaczenie biletu okresowego.
 - **Uczciwy werdykt: Należy się / Nie należy się / Do sprawdzenia** z krótkim uzasadnieniem.
   - PKP Intercity (EIP, EIC, IC, TLK) i połączenia międzynarodowe są objęte systemem 25%/50%.
-  - Przewoźnicy regionalni, miejscy i podmiejscy (Polregio, Koleje Mazowieckie, Śląskie, Dolnośląskie, Małopolskie, Wielkopolskie, SKM, WKD, ŁKA, Arriva RP) dostają „Nie należy się”, bo Polska wyłącza je z tego systemu. Aplikacja nie pokazuje dla nich błędnej kwoty. Informuje o tym już w kroku biletu, zaraz po wyborze przewoźnika (bez blokowania „Dalej”).
+  - Przewoźnicy regionalni, miejscy i podmiejscy (Polregio, Koleje Mazowieckie, Śląskie, Dolnośląskie, Małopolskie, Wielkopolskie, SKM, WKD, ŁKA, Arriva RP) dostają „Nie należy się”, bo Polska wyłącza je z tego systemu. Aplikacja nie pokazuje dla nich błędnej kwoty. Informuje o tym już w kroku biletu, zaraz po wyborze przewoźnika (bez blokowania „Dalej”); czytnik ekranu odczytuje tę informację od razu (region `role="status"`).
   - Polregio dostaje „Nie należy się” dla wszystkich swoich pociągów, także InterRegio (polskie wyłączenie przewozów regionalnych). Sama kategoria InterRegio (IR) przy innym lub nieznanym przewoźniku oraz nierozpoznany przewoźnik lub kategoria dostają „Do sprawdzenia”.
-  - Przy „Nie należy się” (przewoźnik spoza systemu) i „Do sprawdzenia” sprawę i tak można zapisać przyciskiem „Zapisz sprawę i przygotuj reklamację”. Powstaje wtedy reklamacja na zasadach regulaminu przewoźnika: fakty przejazdu, prośba o rozpatrzenie i przyznanie rekompensaty lub zwrotu według regulaminu oraz o pisemną odpowiedź, bez żądanej kwoty i bez powoływania art. 18/19. Forma wypłaty jest w niej warunkowa („W przypadku przyznania rekompensaty proszę o …”). Objęty pociąg z opóźnieniem poniżej 60 minut nadal nie dostaje pisma (409).
+  - Przy „Nie należy się” (przewoźnik spoza systemu albo objęty pociąg, przy którym przepisy UE nic nie dają, np. 45 minut opóźnienia) i „Do sprawdzenia” sprawę i tak można zapisać przyciskiem „Zapisz sprawę i przygotuj reklamację”. Powstaje wtedy reklamacja na zasadach regulaminu przewoźnika: fakty przejazdu, prośba o rozpatrzenie i przyznanie rekompensaty lub zwrotu według regulaminu oraz o pisemną odpowiedź, bez żądanej kwoty i bez powoływania art. 18/19. Forma wypłaty jest w niej warunkowa („W przypadku przyznania rekompensaty proszę o …”). Zasada: aplikacja nigdy nie blokuje złożenia reklamacji.
 - **Zasady kwot:** 60–119 min to 25%, co najmniej 120 min to 50%, odwołanie to zwrot 100% ceny faktycznie zapłaconej. Pismo za opóźnienie żąda odszkodowania na podstawie art. 19 rozporządzenia (UE) 2021/782, a pismo za odwołany pociąg zwrotu należności za bilet na podstawie art. 18. Kwoty poniżej minimalnej wypłaty przewoźnika (16 zł) są oznaczone ostrzeżeniem. Bez ceny biletu kwota nie jest zgadywana.
 - **Ryzyko siły wyższej.** Gdy przyczyną są pogoda albo osoby na torach, kwota się nie zmienia, ale pojawia się ostrzeżenie o ryzyku odmowy.
 - **Bilet okresowy** dostaje „Do sprawdzenia”. Kwota nie jest liczona automatycznie.
 - **Forma wypłaty (3 opcje):** zwrot na konto lub kartę użyte do zakupu (domyślnie, bez podawania numeru), przelew na inny rachunek albo bon. Pismo zawiera osobne, konkretne zdanie dla każdej opcji.
+- **Werdykt końcowy.** Pod wynikiem (i na stronie sprawy) osobny blok formalnym językiem mówi, jakiego skutku prawnego można się spodziewać: np. „Przewoźnik jest zobowiązany do wypłaty odszkodowania” z podstawą prawną (art. 19 albo art. 18 rozporządzenia (UE) 2021/782), kwotą i terminem (1 miesiąc od złożenia wniosku), z zastrzeżeniem o sile wyższej i o progu minimalnej wypłaty, gdy dotyczy. Dla pociągu regionalnego, opóźnienia poniżej 60 minut i spraw niejasnych werdykt mówi to wprost i nie obiecuje wypłaty. Treść buduje serwer z tych samych reguł co werdykt (bez AI), a pod blokiem jest zdanie „Ocena ma charakter informacyjny i nie stanowi porady prawnej.”
 - **Pismo reklamacyjne** w dwóch formach: jako tekst (temat e-maila i treść, przyciski „Kopiuj”) albo jako PDF do pobrania. Po wygenerowaniu aplikacja pokazuje listę danych do ręcznego uzupełnienia, np. „Uzupełnij w piśmie: numer rachunku, adres”. Te miejsca są oznaczone w treści nawiasami `[ ]`.
 - **Konta użytkowników:** rejestracja e-mailem i hasłem. Profil (imię i nazwisko, adres, rachunek, preferowana forma wypłaty) jest opcjonalny, a **numer rachunku jest szyfrowany w bazie**. Rachunek można też podać jednorazowo w kreatorze, z opcją zapamiętania go na koncie.
 - **Lista spraw** ze statusami Nowa → Wysłana → Wypłacona / Odrzucona i licznikiem kwot odzyskanych i oczekujących. Po oznaczeniu sprawy jako wysłanej startuje **odliczanie miesiąca na odpowiedź przewoźnika**. Po terminie aplikacja podpowiada skargę do UTK.
@@ -68,7 +70,7 @@ Osobne projekty: `backend/` (ASP.NET Core, .NET 10) i `frontend/` (React + Vite 
 - **Dane:** EF Core + SQLite (plik lokalny). Schemat powstaje przy starcie (`EnsureCreated`), a seed tworzy konto demo z 5 fikcyjnymi sprawami. Zapisy obejmujące kilka tabel idą w transakcji, a listy są pobierane bez zapytań w pętlach.
 - **Uwierzytelnianie:** ASP.NET Core Identity (`MapIdentityApi`) z ciasteczkiem `HttpOnly`, `SameSite=Lax`. API zwraca 401/403 zamiast przekierowań. Każda sprawa należy do konta: zapytania filtrują po użytkowniku, a cudza sprawa daje 404.
 - **Szyfrowanie IBAN:** ASP.NET Core Data Protection (osobny „purpose” dla rachunku).
-- **Błędy:** spójny format ProblemDetails (`application/problem+json`) z polskimi komunikatami, 201 + `Location` przy tworzeniu, 204 przy usuwaniu, 409 dla stanów, w których akcja nie ma sensu (np. pismo dla objętego pociągu, przy którym nic się nie należy, bo opóźnienie było krótsze niż 60 minut).
+- **Błędy:** spójny format ProblemDetails (`application/problem+json`) z polskimi komunikatami, 201 + `Location` przy tworzeniu, 204 przy usuwaniu, 409 dla stanów, w których akcja nie ma sensu (np. pismo dla sprawy bez ceny biletu albo odczyt biletu bez klucza AI).
 - **Rate limiting:** odczyt biletu przez AI to stałe okno, domyślnie 5 żądań na minutę na adres IP.
 - **Swagger** pod `/swagger` (w trybie Development).
 - **Frontend:** React 19, Vite, TypeScript, `react-router`, ikony `lucide-react`, fonty IBM Plex Sans/Mono hostowane lokalnie (`@fontsource`, bez Google Fonts). Style to zwykły CSS na tokenach (`styles/tokens.css`), bez frameworka UI. Jeden moduł klienta HTTP (`src/api/client.ts`) z typami kontraktu (`src/api/types.ts`). Testy: Vitest + Testing Library.
@@ -95,13 +97,13 @@ To główna zasada projektu i mój „creative twist”: AI robi tylko to, czego
 
 - **LLM tylko odczytuje dane z biletu i pisze treść pisma.** O tym, czy odszkodowanie się należy, ile wynosi i czy jest ryzyko odmowy, decydują `EligibilityService`, `CompensationCalculator` i `AssessmentService`. Serwer zawsze liczy to od nowa, także przy zapisie sprawy.
 - **Wyjście AI jest walidowane.** Odczyt biletu wymusza JSON Schema (`responseJsonSchema`), a serwer i tak sprawdza typy, długości i znaki. Przewoźnika i kategorię mapuje na słownik, więc AI nie wprowadzi nowego przewoźnika, który niechcący „kwalifikuje się”.
-- **Pismo od AI przechodzi kontrolę, zanim trafi do użytkownika.** Musi zawierać dokładnie wyliczoną kwotę, odwołanie do 2021/782 i właściwy artykuł (art. 19 przy opóźnieniu, art. 18 przy odwołaniu). Odrzucane jest pismo, które zawiera inne sumy niż kwota i cena, ciąg podobny do numeru rachunku (IBAN albo 26 cyfr, także ze spacjami), wyłączające sformułowania o formie wypłaty albo nieznane lub źle zbudowane tokeny. W każdym takim przypadku, a także przy awarii AI, pismo powstaje z szablonu.
+- **Pismo od AI przechodzi kontrolę, zanim trafi do użytkownika.** Musi zawierać dokładnie wyliczoną kwotę, odwołanie do 2021/782 i właściwy artykuł (art. 19 przy opóźnieniu, art. 18 przy odwołaniu). Odrzucane jest pismo, które zawiera inne sumy niż kwota i cena, ciąg podobny do numeru rachunku (IBAN albo 26 cyfr, także ze spacjami), wyłączające sformułowania o formie wypłaty, nieznane lub źle zbudowane tokeny albo tekst bez polskich znaków (np. temat „z tytulu”: typowe słowa bez ogonków jak „prosze”, „pociagu” albo dłuższa treść bez żadnej litery z ogonkiem poza danymi sprawy). W każdym takim przypadku, a także przy awarii AI, pismo powstaje z szablonu.
 - **Zdanie o formie wypłaty wstawia serwer** w miejsce tokenu, więc zawsze brzmi dokładnie tak, jak ustalono dla wybranej opcji.
-- **Dane osobowe z profilu nie trafiają do AI.** Model dostaje tylko fakty sprawy i pisze tokeny `{{FULL_NAME}}`, `{{ADDRESS}}` itd., które serwer zastępuje oczyszczonymi danymi z profilu. Brakujące dane stają się lukami `[ ]` i trafiają na listę do uzupełnienia. Wyjątek: zdjęcie biletu wysłane do odczytu idzie do Gemini w całości, dlatego UI radzi zasłonić dane osobowe albo wpisać dane ręcznie.
+- **Dane osobowe z profilu nie trafiają do AI.** Model dostaje tylko fakty sprawy i pisze tokeny `{{FULL_NAME}}`, `{{ADDRESS}}` itd., które serwer zastępuje oczyszczonymi danymi z profilu. Brakujące dane stają się lukami `[ ]` i trafiają na listę do uzupełnienia. Wyjątek: zdjęcie biletu wysłane do odczytu idzie do Gemini w całości, dlatego przy wgrywaniu UI podpowiada, że dane osobowe na zdjęciu można zasłonić (albo wpisać dane ręcznie).
 
 ### Pozostałe
 
-- **Uczciwe werdykty zamiast optymistycznych.** Regionalny pociąg dostaje „Nie należy się” z wyjaśnieniem, sama kategoria InterRegio bez Polregio i bilet okresowy „Do sprawdzenia”, brak ceny oznacza brak zgadywanej kwoty. Dla przewoźnika spoza systemu albo niejasnej sprawy aplikacja przygotowuje reklamację według regulaminu przewoźnika, bez żądania kwoty (osobny prompt AI i osobna walidacja: tylko cena biletu jako kwota, bez art. 18/19, z fallbackiem do szablonu). Pisma nie da się wygenerować dla objętego pociągu, przy którym nic się nie należy (409).
+- **Uczciwe werdykty zamiast optymistycznych.** Regionalny pociąg dostaje „Nie należy się” z wyjaśnieniem, sama kategoria InterRegio bez Polregio i bilet okresowy „Do sprawdzenia”, brak ceny oznacza brak zgadywanej kwoty. Dla przewoźnika spoza systemu albo niejasnej sprawy aplikacja przygotowuje reklamację według regulaminu przewoźnika, bez żądania kwoty (osobny prompt AI i osobna walidacja: tylko cena biletu jako kwota, bez art. 18/19 i bez powoływania rozporządzenia 2021/782, z fallbackiem do szablonu). Tak samo dla objętego pociągu, przy którym przepisy UE nic nie dają (opóźnienie poniżej 60 minut).
 - **Dozwolone znaki per pole, lustrzane w FE i BE.** Każde pole (imię, adres, stacja, numer biletu, IBAN, notatka…) ma własną listę dozwolonych znaków, bez emoji i symboli. Frontend odrzuca niedozwolone znaki przy wpisywaniu i wklejaniu, z obsługą IME i klawiszy martwych. API odrzuca je z kodem 400. „Inteligentna” interpunkcja z klawiatur telefonów (cudzysłowy drukarskie, półpauzy, twarda spacja) jest zamieniana na zwykłą po obu stronach, tak samo (`TextRules.cs` ↔ `textRules.ts`).
 - **IBAN:** walidacja sumy kontrolnej mod-97 (FE i BE) i szyfrowanie w bazie przez Data Protection. Numer widzi tylko właściciel po zalogowaniu.
 - **Jedna sprawa na jedno przejście kreatora.** Ponowne „Zapisz” lub błąd w połowie nie tworzą duplikatów. Stan kreatora jest powiązany z kontem, więc po wylogowaniu nic nie przecieka do następnej osoby.
@@ -175,9 +177,9 @@ To lokalne dane testowe z `appsettings.Development.json` (fikcyjna osoba, 5 fikc
 ### 7. Testy
 
 ```bash
-dotnet test backend/RefundPilot.sln     # 314 testów: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
+dotnet test backend/RefundPilot.sln     # 347 testów: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
 cd frontend
-npm run test                             # 160 testów (Vitest + Testing Library)
+npm run test                             # 170 testów (Vitest + Testing Library)
 npm run build                            # tsc + build produkcyjny
 npm run lint                             # oxlint
 ```
@@ -208,7 +210,7 @@ Wszystkie ścieżki mają prefiks `/api`. Błędy wracają jako ProblemDetails. 
 |---|---|---|---|
 | GET | `/api/reference` | – | Słownik przewoźników i kategorii oraz minimalna wypłata (`minimumPayout`), cache 1 h |
 | POST | `/api/extractions` | – (limit 5/min/IP) | Odczyt biletu przez AI z 1–4 plików (multipart `files`). 409 bez klucza AI, 502 przy błędzie AI, 429 po przekroczeniu limitu |
-| POST | `/api/assessments` | – | Werdykt, kwota, procent i ryzyko odmowy dla podanych danych (bez zapisu) |
+| POST | `/api/assessments` | – | Werdykt, kwota, procent, ryzyko odmowy i werdykt końcowy (`outcome`) dla podanych danych (bez zapisu) |
 | POST | `/api/auth/register` | – | Rejestracja (Identity API) |
 | POST | `/api/auth/login?useCookies=true` | – | Logowanie, ustawia ciasteczko (Identity API) |
 | GET | `/api/auth/manage/info` | ciasteczko | Dane zalogowanego użytkownika (Identity API) |
@@ -216,13 +218,13 @@ Wszystkie ścieżki mają prefiks `/api`. Błędy wracają jako ProblemDetails. 
 | GET | `/api/profile` | ciasteczko | Profil: imię i nazwisko, adres, rachunek, forma wypłaty |
 | PUT | `/api/profile` | ciasteczko | Aktualizacja profilu |
 | GET | `/api/cases` | ciasteczko | Lista spraw użytkownika |
-| GET | `/api/cases/{id}` | ciasteczko | Szczegóły sprawy (404 dla cudzej) |
+| GET | `/api/cases/{id}` | ciasteczko | Szczegóły sprawy z werdyktem końcowym (`outcome`), 404 dla cudzej |
 | POST | `/api/cases` | ciasteczko | Utworzenie sprawy. Werdykt i kwotę liczy serwer (201 + `Location`) |
 | PUT | `/api/cases/{id}` | ciasteczko | Edycja sprawy (przeliczenie werdyktu) |
 | PATCH | `/api/cases/{id}/status` | ciasteczko | Zmiana statusu. „Wysłana” ustawia termin odpowiedzi (+1 miesiąc) |
 | DELETE | `/api/cases/{id}` | ciasteczko | Usunięcie sprawy (204) |
 | GET | `/api/stats` | ciasteczko | Kwoty odzyskane i oczekujące, liczba spraw |
-| POST | `/api/cases/{id}/complaint` | ciasteczko | Wygenerowanie pisma: `{ payout, oneTimeIban?, saveIbanToProfile }` → temat, treść, lista braków. Dla „Nie należy się”/„Do sprawdzenia” reklamacja wg regulaminu przewoźnika (bez kwoty). 409 tylko dla objętego pociągu, przy którym nic się nie należy |
+| POST | `/api/cases/{id}/complaint` | ciasteczko | Wygenerowanie pisma: `{ payout, oneTimeIban?, saveIbanToProfile }` → temat, treść, lista braków. Gdy nic nie należy się według przepisów UE (także opóźnienie poniżej 60 minut) albo sprawa jest niejasna: reklamacja wg regulaminu przewoźnika (bez kwoty). 409 tylko dla sprawy bez ceny biletu |
 | POST | `/api/cases/{id}/complaint/pdf` | ciasteczko | PDF z podanego tematu i treści (bez wywołania AI, bez zapisu) |
 
 Pozostałe endpointy `MapIdentityApi` (np. `refresh`, `forgotPassword`, `manage/2fa`) są wystawione przez framework, ale frontend ich nie używa.
@@ -251,7 +253,7 @@ Głównym narzędziem był **Claude Code** (modele Claude Opus i Sonnet). Pracow
 ### Ograniczenia MVP
 
 - **Dane prawne pochodzą częściowo ze źródeł wtórnych** (UTK, europa.eu, strony PKP Intercity). Progi 25%/50% potwierdziłem w kilku źródłach, ale przed realnym użyciem trzeba je zweryfikować w tekście art. 19 rozporządzenia i w regulaminach przewoźników. Sformułowania form wypłaty nie są sprawdzone w regulaminach.
-- **Darmowy Gemini:** w darmowym poziomie przesłane treści mogą służyć Google do ulepszania usług. W UI jest krótka informacja i zachęta do zasłonięcia danych na zdjęciu. Wersja produkcyjna korzystałaby z płatnego modelu z odpowiednią konfiguracją prywatności.
+- **Darmowy Gemini:** w darmowym poziomie przesłane treści mogą służyć Google do ulepszania usług. Aplikacja tego nie eksponuje (to informacja dla recenzenta demo), ale przy wgrywaniu biletu podpowiada, że dane osobowe na zdjęciu można zasłonić. Wersja produkcyjna korzystałaby z płatnego modelu z odpowiednią konfiguracją prywatności.
 - **SQLite + `EnsureCreated` bez migracji:** zmiana schematu wymaga usunięcia bazy. Produkcyjnie trzeba by użyć migracji EF Core.
 - **Brak weryfikacji e-maila i resetu hasła** (świadomie poza zakresem MVP).
 - **Klucze Data Protection są per maszyna i użytkownik** (domyślny katalog lub `DataProtection:KeysPath`). Baza przeniesiona na inną maszynę nie odszyfruje rachunków. Produkcyjnie: HTTPS, wspólny magazyn kluczy (np. Key Vault) i ich rotacja.
