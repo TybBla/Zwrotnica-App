@@ -7,10 +7,12 @@ interface AppShellProps {
   account?: ReactNode
   /** Called when the wordmark is pressed (goes home once routing exists). */
   onHome?: () => void
+  /** Page footer (legal note, sources). */
+  footer?: ReactNode
   children: ReactNode
 }
 
-export function AppShell({ account, onHome, children }: AppShellProps) {
+export function AppShell({ account, onHome, footer, children }: AppShellProps) {
   return (
     <div className="shell">
       <a className="shell__skip" href="#main">
@@ -41,24 +43,19 @@ export function AppShell({ account, onHome, children }: AppShellProps) {
       <main id="main" className="shell__main" tabIndex={-1}>
         {children}
       </main>
+      {footer && <footer className="shell__footer">{footer}</footer>}
     </div>
   )
 }
 
-/** A rail line bending into a return arrow: the train trip that pays you back. */
+/** A navy station plate with a signal-yellow return arrow: the train trip that pays you back. */
 function Logo() {
   return (
-    <svg className="wordmark__logo" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
-      <rect width="28" height="28" rx="8" fill="var(--accent)" />
-      <path
-        d="M8 19.5V12a4 4 0 0 1 4-4h6.5"
-        fill="none"
-        stroke="var(--text-on-accent)"
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
-      <path d="m16 5 3.25 3L16 11" fill="none" stroke="var(--text-on-accent)" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="19" cy="18.5" r="2" fill="var(--text-on-accent)" />
+    <svg className="wordmark__logo" width="30" height="30" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+      <rect width="28" height="28" rx="6" fill="#163a70" />
+      <path d="M8 19.5V12a4 4 0 0 1 4-4h6.5" fill="none" stroke="#ffc20e" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="m16 5 3.25 3L16 11" fill="none" stroke="#ffc20e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="19" cy="18.5" r="2" fill="#ffffff" />
     </svg>
   )
 }

@@ -15,11 +15,12 @@ import {
   type WizardState,
   type WizardStep,
 } from '../hooks/useWizard'
+import { formatAmount, formatDate } from '../lib/format'
 import { isValidIban, normalizeIban } from '../lib/textRules'
 import { isClaimable, shownVerdict } from '../lib/verdict'
 import { LetterChoice } from './LetterChoice'
 import { PayoutChoice } from './PayoutChoice'
-import { VerdictCard } from './VerdictCard'
+import { VerdictCard, type VerdictDetail } from './VerdictCard'
 import { WizardActions } from './WizardActions'
 import './Result.css'
 
@@ -282,6 +283,7 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
 
   const ticket = toTicketFields(state.ticket)
   const route = [ticket.fromStation, ticket.toStation].filter(Boolean).join(' → ')
+  const details = tripDetails(ticket, route, state.delay)
   const done = phase === 'done' && letter !== null
   const reset = () => {
     pendingCase.current = null
@@ -294,11 +296,10 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
         <h2 className="wizard-step__title" tabIndex={-1}>
           Wynik
         </h2>
-        <p className="wizard-step__lead">{[ticket.carrier, ticket.trainCategory, route].filter(Boolean).join(' · ')}</p>
       </header>
 
       {assessment ? (
-        <VerdictCard assessment={assessment} />
+        <VerdictCard assessment={assessment} details={details} />
       ) : (
         <p className="wizard-step__lead">Brak wyniku – wróć i sprawdź dane.</p>
       )}
@@ -447,6 +448,23 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
       )}
     </div>
   )
+}
+
+/** The trip as printed on the result's stub: only what the passenger actually entered. */
+function tripDetails(ticket: ReturnType<typeof toTicketFields>, route: string, delay: WizardState['delay']): VerdictDetail[] {
+  const rows: (VerdictDetail | null)[] = [
+    ticket.carrier ? { label: 'Przewoźnik', value: [ticket.carrier, ticket.trainCategory].filter(Boolean).join(' · ') } : null,
+    route ? { label: 'Trasa', value: route } : null,
+    ticket.travelDate ? { label: 'Data przejazdu', value: formatDate(ticket.travelDate) } : null,
+    ticket.ticketPrice !== null ? { label: 'Cena biletu', value: `${formatAmount(ticket.ticketPrice)} zł`, mono: true } : null,
+    delay.incidentType === 'Cancellation'
+      ? { label: 'Zdarzenie', value: 'Pociąg odwołany' }
+      : delay.minutes !== null
+        ? { label: 'Opóźnienie', value: `${delay.minutes} min`, mono: true }
+        : null,
+    ticket.ticketNumber ? { label: 'Numer biletu', value: ticket.ticketNumber, mono: true } : null,
+  ]
+  return rows.filter((row): row is VerdictDetail => row !== null)
 }
 
 /** No money due: say honestly why and what the passenger can still do. */

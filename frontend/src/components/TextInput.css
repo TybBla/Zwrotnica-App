@@ -31,17 +31,23 @@
 
 .input__control:focus-visible,
 .input__control:focus {
-  /* 1 px border + 1 px shadow = a solid 2 px ring in the focus color. */
+  /* 1 px border + 1 px shadow = a solid 2 px ink ring; light mode adds the yellow band outside it. */
   border-color: var(--focus-ring);
-  box-shadow: 0 0 0 1px var(--focus-ring);
+  box-shadow:
+    0 0 0 1px var(--focus-ring),
+    0 0 0 4px var(--focus-halo);
 }
 
 .input__control[aria-invalid='true'] {
   border-color: var(--danger);
+  box-shadow: inset 3px 0 0 var(--danger);
 }
 
 .input__control[aria-invalid='true']:focus {
-  box-shadow: 0 0 0 1px var(--danger);
+  border-color: var(--danger);
+  box-shadow:
+    0 0 0 1px var(--danger),
+    0 0 0 4px var(--focus-halo);
 }
 
 .input__control:disabled {
@@ -59,7 +65,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .input__control:hover:not(:focus, :disabled, [aria-invalid='true']) {
-    border-color: var(--text-tertiary);
+    border-color: var(--text-secondary);
   }
 }
 

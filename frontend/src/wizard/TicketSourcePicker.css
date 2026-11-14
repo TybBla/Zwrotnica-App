@@ -15,7 +15,7 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-8) var(--space-5);
-  border: 1.5px dashed var(--border-strong);
+  border: 2px dashed var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--surface-sunken);
   text-align: center;
@@ -25,8 +25,8 @@
 }
 
 .source__drop[data-dragging] {
-  border-color: var(--accent);
-  background: var(--accent-tint);
+  border-color: var(--brand);
+  background: var(--brand-tint);
 }
 
 .source__drop[data-disabled] {
@@ -41,8 +41,8 @@
   margin-bottom: var(--space-1);
   border-radius: var(--radius-md);
   background: var(--surface);
-  color: var(--accent-text);
-  box-shadow: var(--card-highlight);
+  color: var(--brand-tint-text);
+  border: 1px solid var(--border);
   transition: transform var(--duration-base) var(--ease-out);
 }
 
@@ -99,7 +99,7 @@
   padding-right: var(--space-1);
   border-radius: var(--radius-md);
   background: var(--surface);
-  box-shadow: var(--card-highlight);
+  border: 1px solid var(--border);
   animation: source-file-in var(--duration-base) var(--ease-out) both;
 }
 

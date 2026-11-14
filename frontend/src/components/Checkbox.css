@@ -34,10 +34,10 @@
   width: 1.5rem;
   height: 1.5rem;
   margin-top: 0.0625rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 7px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-xs);
   background: var(--surface);
-  color: var(--text-on-accent);
+  color: var(--text-on-brand);
   transition:
     background-color var(--duration-fast) ease,
     border-color var(--duration-fast) ease,
@@ -53,8 +53,8 @@
 }
 
 .check__input:checked + .check__control {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--brand);
+  background: var(--brand);
 }
 
 .check__input:checked + .check__control svg {
@@ -65,6 +65,7 @@
 .check__input:focus-visible + .check__control {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--focus-halo);
 }
 
 .check:active:not([data-disabled]) .check__control {
@@ -98,7 +99,7 @@
 }
 
 .check--switch .check__input:checked + .check__control .check__thumb {
-  background: var(--text-on-accent);
+  background: var(--text-on-brand);
   transform: translateX(1.25rem);
 }
 

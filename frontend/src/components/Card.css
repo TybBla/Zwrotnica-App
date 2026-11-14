@@ -1,11 +1,12 @@
+/* A panel: 1 px border on the surface. Only truly raised layers (menus, dialogs) get a shadow. */
 .card {
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--card-highlight);
 }
 
 .card--raised {
-  box-shadow: var(--shadow-md), var(--card-highlight);
+  border-color: var(--border-strong);
 }
 
 .card--pad-md {

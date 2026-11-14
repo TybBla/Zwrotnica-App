@@ -17,7 +17,6 @@
     background-color var(--duration-fast) ease,
     border-color var(--duration-fast) ease,
     color var(--duration-fast) ease,
-    box-shadow var(--duration-fast) ease,
     transform var(--duration-press) var(--ease-out);
 }
 
@@ -36,9 +35,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  transition:
-    opacity var(--duration-fast) ease,
-    filter var(--duration-fast) ease;
+  transition: opacity var(--duration-fast) ease;
 }
 
 .button:active:not(:disabled) {
@@ -49,67 +46,62 @@
   cursor: not-allowed;
 }
 
+/* Disabled reads as unavailable without fading into the page: sunken fill, tertiary text (5.4:1). */
 .button:disabled:not([data-loading]) {
-  opacity: 0.5;
+  border-color: var(--border);
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
 }
 
-/* Primary — the one action per screen */
+/* Primary – the one action per screen: solid brand navy (light) / light blue with navy text (dark). */
 .button--primary {
-  background: var(--accent);
-  color: var(--text-on-accent);
-  box-shadow:
-    var(--shadow-sm),
-    inset 0 1px 0 rgb(255 255 255 / 0.14);
+  background: var(--brand);
+  color: var(--text-on-brand);
 }
 
 .button--primary:active:not(:disabled) {
-  background: var(--accent-pressed);
+  background: var(--brand-pressed);
 }
 
-/* Secondary — quiet surface with an outline */
+/* Secondary – an outlined surface button. */
 .button--secondary {
+  border-color: var(--border-strong);
   background: var(--surface);
-  border-color: var(--border);
   color: var(--text);
-  box-shadow: var(--shadow-sm);
 }
 
 .button--secondary:active:not(:disabled) {
   background: var(--surface-sunken);
 }
 
-/* Ghost — text-weight actions */
+/* Ghost – text-weight actions. */
 .button--ghost {
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--link);
 }
 
 .button--ghost:active:not(:disabled) {
-  background: var(--surface-sunken);
+  background: var(--brand-tint);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .button--primary:hover:not(:disabled) {
-    background: var(--accent-hover);
-    box-shadow:
-      0 4px 14px -4px var(--accent-glow),
-      inset 0 1px 0 rgb(255 255 255 / 0.14);
+    background: var(--brand-hover);
   }
 
   .button--secondary:hover:not(:disabled) {
-    border-color: var(--border-strong);
+    border-color: var(--text-secondary);
+    background: var(--surface-sunken);
   }
 
   .button--ghost:hover:not(:disabled) {
-    background: var(--surface-sunken);
-    color: var(--text);
+    background: var(--brand-tint);
   }
 }
 
-/* Loading: the label blurs out in place (width kept), a spinner takes its spot. */
+/* Loading: the label fades out in place (width kept), a spinner takes its spot. */
 .button[data-loading] .button__content {
   opacity: 0;
-  filter: blur(2px);
 }
 
 .button__spinner {

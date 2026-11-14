@@ -3,7 +3,7 @@ import { ApiError, api } from '../api/client'
 import type { CarrierOption, ReferenceDataDto } from '../api/types'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
-import { AlertCircleIcon, ArrowRightIcon, CloseIcon, InfoIcon, PencilIcon, ShieldIcon, SparkleIcon, UploadIcon } from '../components/icons'
+import { AlertCircleIcon, ArrowRightIcon, CloseIcon, InfoIcon, PencilIcon, ShieldIcon, ScanIcon, UploadIcon } from '../components/icons'
 import { Select, type SelectOption } from '../components/Select'
 import { TextInput } from '../components/TextInput'
 import {
@@ -174,7 +174,7 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
         <div className="wizard-swap stack" key="form">
           {state.reviewing ? (
             <div className="source-summary">
-              <SparkleIcon className="source-summary__icon" size={18} />
+              <ScanIcon className="source-summary__icon" size={18} />
               <p className="source-summary__text">
                 Odczytano z {state.files.length === 1 ? '1 pliku' : `${state.files.length} plików`}
                 {state.missing.length > 0 && ' · uzupełnij zaznaczone pola'}
@@ -204,7 +204,7 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
           {() => (
             <Button
               className="wizard-actions__primary"
-              iconStart={<SparkleIcon size={18} />}
+              iconStart={<ScanIcon size={18} />}
               disabled={state.files.length === 0}
               loading={extracting}
               onClick={read}

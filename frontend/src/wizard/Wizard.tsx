@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { ReferenceDataDto } from '../api/types'
 import { useAccountChange } from '../auth/useAccountChange'
-import { useWizard, type PendingCase, type WizardStep } from '../hooks/useWizard'
+import { useWizard, type PendingCase, type TicketSource, type WizardStep } from '../hooks/useWizard'
 import { DelayStep } from './DelayStep'
 import { ResultStep } from './ResultStep'
 import { StartChoice } from './StartChoice'
@@ -13,8 +13,14 @@ import './Wizard.css'
 const indicatorIndex: Record<WizardStep, number> = { start: 0, ticket: 0, delay: 1, result: 2 }
 
 /** Bilet → Opóźnienie → Wynik. Works for guests; nothing entered is lost when moving back or when a read fails. */
-export function Wizard({ onOpenCases }: { onOpenCases?: () => void } = {}) {
-  const { state, dispatch } = useWizard()
+interface WizardProps {
+  onOpenCases?: () => void
+  /** Chosen on the home page: the wizard opens on the ticket step instead of asking again. */
+  initialSource?: TicketSource
+}
+
+export function Wizard({ onOpenCases, initialSource }: WizardProps = {}) {
+  const { state, dispatch } = useWizard(initialSource)
   const [reference, setReference] = useState<ReferenceDataDto | null>(null)
   const rootRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
@@ -51,7 +57,7 @@ export function Wizard({ onOpenCases }: { onOpenCases?: () => void } = {}) {
   }, [state.step])
 
   return (
-    <section ref={rootRef} className="wizard container" aria-label="Kreator reklamacji">
+    <section ref={rootRef} className="wizard" aria-label="Kreator reklamacji">
       <StepIndicator current={indicatorIndex[state.step]} />
       <div className="wizard__body" key={state.step} data-direction={state.direction}>
         {state.step === 'start' && <StartChoice onChoose={(source) => dispatch({ type: 'start', source })} />}

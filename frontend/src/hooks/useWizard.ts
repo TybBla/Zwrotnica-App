@@ -341,8 +341,11 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
  * Wizard state (Bilet → Opóźnienie → Wynik). Everything entered survives moving back and forth and failed reads;
  * the result step (Task 10) reads `source`, `ticket` (via `toTicketFields`), `delay`, `assessment` and `extraction`.
  */
-export function useWizard() {
-  const [state, dispatch] = useReducer(wizardReducer, initialWizardState)
+export function useWizard(initialSource?: TicketSource) {
+  // Started from the home page's start panel: open straight on the ticket step with that source.
+  const [state, dispatch] = useReducer(wizardReducer, initialSource, (source) =>
+    source ? wizardReducer(initialWizardState, { type: 'start', source }) : initialWizardState,
+  )
   return { state, dispatch }
 }
 

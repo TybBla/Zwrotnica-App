@@ -23,13 +23,10 @@ body {
   font-size: var(--text-base);
   line-height: var(--leading-body);
   letter-spacing: var(--tracking-body);
-  font-optical-sizing: auto;
-  font-feature-settings: 'cv11', 'ss01';
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
 }
 
@@ -64,28 +61,39 @@ h2,
 h3,
 h4 {
   font-weight: var(--weight-semibold);
-  line-height: var(--leading-snug);
+  line-height: var(--leading-tight);
   letter-spacing: var(--tracking-heading);
   text-wrap: balance;
 }
 
-p {
+p,
+li,
+dd {
   text-wrap: pretty;
 }
 
 a {
-  color: var(--accent-text);
+  color: var(--link);
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;
 }
 
-::selection {
-  background: var(--accent-glow);
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    text-decoration-thickness: 2px;
+  }
 }
 
+::selection {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* Ink ring with a signal-yellow band in the 2 px gap (light); a plain yellow ring on navy (dark). */
 :focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--focus-halo);
 }
 
 /* Numbers that are compared (amounts, minutes) line up. */
@@ -93,6 +101,7 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+/* Ticket data only: ticket number, IBAN, amounts in tables. */
 .mono {
   font-family: var(--font-mono);
   letter-spacing: 0;

@@ -29,8 +29,8 @@
 }
 
 .tooltip__trigger[aria-describedby] {
-  color: var(--accent-text);
-  background: var(--accent-tint);
+  color: var(--brand-tint-text);
+  background: var(--brand-tint);
 }
 
 .tooltip__trigger:active {
@@ -54,7 +54,8 @@
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
-  box-shadow: var(--shadow-lg), var(--card-highlight);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-raised);
   color: var(--text);
   font-size: var(--text-sm);
   font-weight: var(--weight-regular);
