@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { Button } from '../components/Button'
 import { AlertCircleIcon, CameraIcon, CloseIcon, FileIcon, ImageIcon, UploadIcon } from '../components/icons'
 import { useMediaQuery } from '../hooks/useMediaQuery'
-import { ACCEPT_ATTR, MAX_FILES, addTicketFiles, formatFileSize, isPdf } from './ticketFiles'
+import { ACCEPT_ATTR, CAMERA_ACCEPT_ATTR, MAX_FILES, addTicketFiles, formatFileSize, isPdf } from './ticketFiles'
 import './TicketSourcePicker.css'
 
 interface TicketSourcePickerProps {
@@ -21,6 +21,9 @@ export function TicketSourcePicker({ files, onFilesChange, disabled = false }: T
   const [dragging, setDragging] = useState(false)
   const cameraRef = useRef<HTMLInputElement>(null)
   const pickerRef = useRef<HTMLInputElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  /** Index of a file row that was just removed: focus goes to the row now in its place, or back to the add button. */
+  const removedAt = useRef<number | null>(null)
   const full = files.length >= MAX_FILES
   const blocked = disabled || full
 
@@ -44,14 +47,27 @@ export function TicketSourcePicker({ files, onFilesChange, disabled = false }: T
 
   const remove = (file: File) => {
     setErrors([])
+    removedAt.current = files.indexOf(file)
     onFilesChange(files.filter((existing) => existing !== file))
   }
+
+  useLayoutEffect(() => {
+    const index = removedAt.current
+    const root = rootRef.current
+    if (index === null || !root) return
+    removedAt.current = null
+    const removeButtons = [...root.querySelectorAll<HTMLButtonElement>('.source__remove')]
+    const target =
+      removeButtons[Math.min(index, removeButtons.length - 1)] ??
+      root.querySelector<HTMLButtonElement>('.source__buttons button:not(:disabled), .source__drop button:not(:disabled)')
+    target?.focus()
+  }, [files])
 
   const fileInput = (ref: typeof pickerRef, camera: boolean) => (
     <input
       ref={ref}
       type="file"
-      accept={ACCEPT_ATTR}
+      accept={camera ? CAMERA_ACCEPT_ATTR : ACCEPT_ATTR}
       multiple={!camera}
       {...(camera ? { capture: 'environment' as const } : {})}
       className="visually-hidden"
@@ -63,7 +79,7 @@ export function TicketSourcePicker({ files, onFilesChange, disabled = false }: T
   )
 
   return (
-    <div className="source">
+    <div className="source" ref={rootRef}>
       {touch ? (
         <div className="source__buttons">
           {/* Once a file is in, "Odczytaj dane" becomes the one primary action on screen. */}

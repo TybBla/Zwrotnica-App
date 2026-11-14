@@ -190,14 +190,14 @@ describe('Wizard – delay step', () => {
     const minutes = await screen.findByLabelText(/^Opóźnienie/)
     await user.type(minutes, '75')
     await waitFor(() =>
-      expect(assess).toHaveBeenLastCalledWith(
+      expect(assess.mock.lastCall?.[0]).toEqual(
         expect.objectContaining({ carrier: 'PKP Intercity', trainCategory: 'IC', delayMinutes: 75, ticketPrice: 49.9, delayCause: null, incidentType: 'Delay' }),
       ),
     )
     expect(await screen.findByText(/12,48/)).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: '120 min' }))
-    await waitFor(() => expect(assess).toHaveBeenLastCalledWith(expect.objectContaining({ delayMinutes: 120 })))
+    await waitFor(() => expect(assess.mock.lastCall?.[0]).toEqual(expect.objectContaining({ delayMinutes: 120 })))
 
     // No cause chosen – still allowed to see the result.
     const toResult = screen.getByRole('button', { name: 'Zobacz wynik' }) as HTMLButtonElement
@@ -226,9 +226,105 @@ describe('Wizard – delay step', () => {
     await user.click(screen.getByRole('checkbox', { name: /Bilet okresowy/ }))
 
     await waitFor(() =>
-      expect(assess).toHaveBeenLastCalledWith(
+      expect(assess.mock.lastCall?.[0]).toEqual(
         expect.objectContaining({ incidentType: 'Cancellation', delayCause: 'Weather', isSeasonTicket: true }),
       ),
     )
+    // The cause can be cleared again.
+    await user.selectOptions(screen.getByLabelText(/^Przyczyna opóźnienia/), '— nie wiem —')
+    await waitFor(() => expect(assess.mock.lastCall?.[0]).toEqual(expect.objectContaining({ delayCause: null })))
+  })
+})
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
+const readTicket: ExtractionDto = {
+  carrier: 'Polregio',
+  trainCategory: null,
+  fromStation: 'Gdynia Główna',
+  toStation: null,
+  ticketNumber: null,
+  ticketPrice: 999,
+  travelDate: '2025-01-01',
+  missingFields: [],
+  usedAi: true,
+}
+
+describe('Wizard – late answers and focus', () => {
+  it('cancels a running read when the user switches to typing, and a late result changes nothing', async () => {
+    const user = userEvent.setup()
+    const pending = deferred<ExtractionDto>()
+    const extract = vi.spyOn(api, 'extractTicket').mockReturnValue(pending.promise) // ignores the signal on purpose
+    const { container } = render(<Wizard />)
+
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+    // "Wpisz dane ręcznie" stays usable while reading – it is the escape hatch.
+    await user.click(screen.getByRole('button', { name: 'Wpisz dane ręcznie' }))
+    expect(extract.mock.calls[0][1]?.aborted).toBe(true)
+
+    await user.selectOptions(await screen.findByLabelText('Przewoźnik'), 'PKP Intercity')
+    await user.type(screen.getByLabelText('Cena biletu'), '49,90')
+
+    pending.resolve(readTicket)
+    await new Promise((done) => setTimeout(done, 0))
+
+    expect((screen.getByLabelText('Przewoźnik') as HTMLSelectElement).value).toBe('PKP Intercity')
+    expect((screen.getByLabelText('Cena biletu') as HTMLInputElement).value).toBe('49,90')
+    expect((screen.getByLabelText(/^Stacja początkowa/) as HTMLInputElement).value).toBe('')
+    expect(screen.getByRole('heading', { name: 'Dane z biletu' })).toBeTruthy()
+  })
+
+  it('drops an assessment that answers after the user went back and changed the ticket', async () => {
+    const user = userEvent.setup()
+    const late = deferred<AssessmentDto>()
+    const assess = vi.mocked(api.assess)
+    render(<Wizard />)
+    await user.click(screen.getByRole('button', { name: /Wpisz ręcznie/ }))
+    await screen.findByLabelText('Przewoźnik')
+    await fillManualTicket(user)
+    await user.click(nextButton())
+
+    assess.mockReturnValueOnce(late.promise)
+    await user.type(await screen.findByLabelText(/^Opóźnienie/), '75')
+    await waitFor(() => expect(assess).toHaveBeenCalledTimes(1))
+    const signal = assess.mock.calls[0][1]
+
+    await user.click(screen.getByRole('button', { name: 'Wstecz' }))
+    expect(signal?.aborted).toBe(true)
+    const price = await screen.findByLabelText('Cena biletu')
+    await user.clear(price)
+    await user.type(price, '80')
+
+    late.resolve({ ...eligible({ ...assess.mock.calls[0][0], delayMinutes: 75 }), compensationAmount: 99.99 })
+    await new Promise((done) => setTimeout(done, 0))
+
+    await user.click(nextButton())
+    await screen.findByLabelText(/^Opóźnienie/)
+    expect(screen.queryByText(/99,99/)).toBeNull()
+  })
+
+  it('moves focus to the heading of the form after a read, whether it worked or not', async () => {
+    const user = userEvent.setup()
+    const extract = vi.spyOn(api, 'extractTicket').mockResolvedValueOnce(readTicket)
+    const { container } = render(<Wizard />)
+
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    await uploadAndRead(user, container)
+    const reviewHeading = await screen.findByRole('heading', { name: 'Sprawdź dane z biletu' })
+    expect(document.activeElement).toBe(reviewHeading)
+
+    extract.mockRejectedValueOnce(new ApiError(502, 'AI niedostępne.'))
+    await user.click(screen.getByRole('button', { name: 'Zmień pliki' }))
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Dodaj bilet' }))
+    await user.click(screen.getByRole('button', { name: 'Odczytaj dane z biletu' }))
+    await screen.findByRole('status', { name: /Wpisz dane ręcznie/ })
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Dane z biletu' }))
   })
 })

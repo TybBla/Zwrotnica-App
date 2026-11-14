@@ -16,7 +16,10 @@ import { WizardActions } from './WizardActions'
 const QUICK_MINUTES = [60, 90, 120, 180] as const
 const ASSESS_DEBOUNCE_MS = 300
 
-const causeOptions: SelectOption<DelayCause>[] = [
+const NO_CAUSE = ''
+
+const causeOptions: SelectOption<DelayCause | typeof NO_CAUSE>[] = [
+  { value: NO_CAUSE, label: '— nie wiem —' },
   { value: 'Unknown', label: 'Nieznana' },
   { value: 'Weather', label: 'Pogoda' },
   { value: 'PersonsOnTrack', label: 'Osoby na torach' },
@@ -35,32 +38,50 @@ interface DelayStepProps {
 
 /**
  * Assesses the current request ~300 ms after the last change, so the preview follows typing without a request per
- * keystroke. Answers to an older request are dropped. `assessNow` skips the wait (used by "Zobacz wynik").
+ * keystroke. Answers to an older request are dropped, and nothing is reported after the step unmounts (requests are
+ * aborted). `assessNow` skips the wait (used by "Zobacz wynik").
  */
 function useLiveAssessment(request: AssessmentRequest | null, onResult: (assessment: AssessmentDto) => void) {
   const key = request ? JSON.stringify(request) : null
-  /** The last request that got an answer (or failed). Pending = the current request has not settled yet. */
-  const [settled, setSettled] = useState<{ key: string; failed: boolean } | null>(null)
+  /** The last request that got an answer, and the last one that failed (state, so the preview re-renders). */
+  const [okKey, setOkKey] = useState<string | null>(null)
+  const [failedKey, setFailedKey] = useState<string | null>(null)
   const latestKey = useRef(key)
   const assessedKey = useRef<string | null>(null)
   const timer = useRef<number | undefined>(undefined)
+  const inFlight = useRef<AbortController | null>(null)
+  const mounted = useRef(false)
   const onResultRef = useRef(onResult)
   useEffect(() => {
     onResultRef.current = onResult
     latestKey.current = key
   })
 
-  // An answer for a request the user has already changed is dropped.
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      inFlight.current?.abort()
+    }
+  }, [])
+
+  // Only the newest request matters: starting one aborts the previous; a late or stale answer is dropped.
   const run = async (requestKey: string) => {
+    inFlight.current?.abort()
+    const controller = new AbortController()
+    inFlight.current = controller
     try {
-      const assessment = await api.assess(JSON.parse(requestKey) as AssessmentRequest)
+      const assessment = await api.assess(JSON.parse(requestKey) as AssessmentRequest, controller.signal)
+      if (controller.signal.aborted || !mounted.current) throw new DOMException('Superseded', 'AbortError')
       if (requestKey !== latestKey.current) return
       assessedKey.current = requestKey
-      setSettled({ key: requestKey, failed: false })
+      setOkKey(requestKey)
       onResultRef.current(assessment)
     } catch (error) {
-      if (requestKey === latestKey.current) setSettled({ key: requestKey, failed: true })
+      if (!controller.signal.aborted && mounted.current && requestKey === latestKey.current) setFailedKey(requestKey)
       throw error
+    } finally {
+      if (inFlight.current === controller) inFlight.current = null
     }
   }
 
@@ -73,7 +94,7 @@ function useLiveAssessment(request: AssessmentRequest | null, onResult: (assessm
     return () => window.clearTimeout(handle)
   }, [key])
 
-  /** Resolves once the current request has an assessment; rejects when the call failed. */
+  /** Resolves once the current request has an assessment; rejects when the call failed or was superseded. */
   const assessNow = async () => {
     if (key === null || key === assessedKey.current) return
     window.clearTimeout(timer.current)
@@ -81,8 +102,8 @@ function useLiveAssessment(request: AssessmentRequest | null, onResult: (assessm
   }
 
   return {
-    pending: key !== null && settled?.key !== key,
-    failed: key !== null && settled?.key === key && settled.failed,
+    pending: key !== null && key !== okKey && key !== failedKey,
+    failed: key !== null && key === failedKey && key !== okKey,
     assessNow,
   }
 }
@@ -173,10 +194,9 @@ export function DelayStep({ state, dispatch }: DelayStepProps) {
 
         <Field label="Przyczyna opóźnienia" optional tooltip={CAUSE_TOOLTIP}>
           <Select
-            value={delay.cause ?? ''}
-            onValueChange={(cause) => dispatch({ type: 'delay', patch: { cause } })}
+            value={delay.cause ?? NO_CAUSE}
+            onValueChange={(cause) => dispatch({ type: 'delay', patch: { cause: cause === NO_CAUSE ? undefined : cause } })}
             options={causeOptions}
-            placeholder="Wybierz, jeśli znasz"
           />
         </Field>
 
@@ -232,6 +252,9 @@ function LivePreview({ assessment, pending, failed, waitingFor }: LivePreviewPro
           <p className="live__placeholder">Podaj opóźnienie – od razu pokażemy, ile może Ci się należeć.</p>
         ) : waitingFor === 'price' ? (
           <p className="live__placeholder">Brakuje poprawnej ceny biletu – wróć do poprzedniego kroku.</p>
+        ) : failed ? (
+          // The amount on screen would belong to older answers – say plainly that this one could not be computed.
+          <p className="live__placeholder">Nie udało się teraz policzyć kwoty – sprawdzimy ją po przejściu dalej.</p>
         ) : assessment && style ? (
           <>
             <div className="live__head">
@@ -251,8 +274,6 @@ function LivePreview({ assessment, pending, failed, waitingFor }: LivePreviewPro
               </p>
             )}
           </>
-        ) : failed ? (
-          <p className="live__placeholder">Nie udało się teraz policzyć kwoty – sprawdzimy ją po przejściu dalej.</p>
         ) : (
           <p className="live__placeholder">Liczę…</p>
         )}

@@ -1,7 +1,13 @@
 /** Client-side checks for ticket files; the same limits as the API (POST /api/extractions). */
 
 export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'] as const
-export const ACCEPT_ATTR = ACCEPTED_TYPES.join(',')
+const IMAGE_TYPES = ACCEPTED_TYPES.filter((type) => type.startsWith('image/'))
+// Extensions too: some pickers (Windows, older Android) filter by extension and would grey out HEIC without them.
+const EXTENSIONS = '.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf'
+/** For the gallery/file picker. */
+export const ACCEPT_ATTR = `${ACCEPTED_TYPES.join(',')},${EXTENSIONS}`
+/** For the camera input: images only, otherwise iOS ignores `capture` and offers a document picker. */
+export const CAMERA_ACCEPT_ATTR = IMAGE_TYPES.join(',')
 export const MAX_FILES = 4
 export const MAX_FILE_BYTES = 5 * 1024 * 1024
 

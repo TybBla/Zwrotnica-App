@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { ACCEPT_ATTR, MAX_FILE_BYTES, addTicketFiles } from './ticketFiles'
+import { ACCEPT_ATTR, CAMERA_ACCEPT_ATTR, MAX_FILE_BYTES, addTicketFiles } from './ticketFiles'
 
 const file = (name: string, type: string, bytes = 1024) => new File([new Uint8Array(bytes)], name, { type })
 
 describe('addTicketFiles', () => {
   it('accepts images and PDF', () => {
-    expect(ACCEPT_ATTR).toBe('image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf')
+    expect(ACCEPT_ATTR).toBe('image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf')
+    expect(CAMERA_ACCEPT_ATTR).toBe('image/jpeg,image/png,image/webp,image/heic,image/heif')
     const result = addTicketFiles([], [file('a.jpg', 'image/jpeg'), file('b.pdf', 'application/pdf')])
     expect(result.files.map((f) => f.name)).toEqual(['a.jpg', 'b.pdf'])
     expect(result.errors).toEqual([])

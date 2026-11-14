@@ -97,8 +97,8 @@ function jsonInit(method: string, body?: unknown): RequestInit {
     : { method, headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
 }
 
-async function json<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const response = await send(path, jsonInit(method, body))
+async function json<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
+  const response = await send(path, { ...jsonInit(method, body), signal })
   const text = await response.text()
   return (text ? JSON.parse(text) : undefined) as T
 }
@@ -158,15 +158,16 @@ export const api = {
 
   getReference: () => json<ReferenceDataDto>('/reference'),
 
-  /** 409 = AI disabled, 502 = AI failed, 429 = rate limit, 400 = invalid files. */
-  extractTicket: async (files: File[]): Promise<ExtractionDto> => {
+  /** 409 = AI disabled, 502 = AI failed, 429 = rate limit, 400 = invalid files. Aborting rejects with an AbortError. */
+  extractTicket: async (files: File[], signal?: AbortSignal): Promise<ExtractionDto> => {
     const form = new FormData()
     for (const file of files) form.append('files', file)
-    const response = await send('/extractions', { method: 'POST', body: form, headers: { Accept: 'application/json' } })
+    const response = await send('/extractions', { method: 'POST', body: form, headers: { Accept: 'application/json' }, signal })
     return (await response.json()) as ExtractionDto
   },
 
-  assess: (request: AssessmentRequest) => json<AssessmentDto>('/assessments', 'POST', request),
+  assess: (request: AssessmentRequest, signal?: AbortSignal) =>
+    json<AssessmentDto>('/assessments', 'POST', request, signal),
 
   listCases: () => json<CaseDto[]>('/cases'),
   getCase: (id: number) => json<CaseDto>(`/cases/${id}`),

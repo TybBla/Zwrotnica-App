@@ -1,4 +1,4 @@
-import { useState, type Dispatch } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type Dispatch } from 'react'
 import { ApiError, api } from '../api/client'
 import type { CarrierOption, ReferenceDataDto } from '../api/types'
 import { Button } from '../components/Button'
@@ -49,20 +49,59 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
   const [extracting, setExtracting] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
   const picking = state.source === 'upload' && !state.reviewing
+  const reading = useRef<AbortController | null>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  const cancelRead = () => {
+    reading.current?.abort()
+    reading.current = null
+  }
+
+  // Leaving the step cancels a read that is still running (the reducer also ignores a result that lands late).
+  useEffect(() => cancelRead, [])
+
+  // The picker and the form replace each other inside this step: the control that had focus disappears, so the
+  // heading of the new content takes it (instead of focus falling back to <body>).
+  const shown = useRef({ source: state.source, reviewing: state.reviewing })
+  useLayoutEffect(() => {
+    const previous = shown.current
+    if (previous.source === state.source && previous.reviewing === state.reviewing) return
+    shown.current = { source: state.source, reviewing: state.reviewing }
+    headingRef.current?.focus({ preventScroll: true })
+  }, [state.source, state.reviewing])
 
   const read = async () => {
+    cancelRead()
+    const controller = new AbortController()
+    reading.current = controller
     setExtracting(true)
     setFileError(null)
     try {
-      const extraction = await api.extractTicket(state.files)
+      const extraction = await api.extractTicket(state.files, controller.signal)
+      if (controller.signal.aborted) return
       dispatch({ type: 'extracted', extraction, carriers: reference?.carriers ?? [] })
     } catch (error) {
+      if (controller.signal.aborted) return
       // 400 = something is wrong with the files themselves: stay here so the user can swap them.
       if (error instanceof ApiError && error.status === 400) setFileError(error.detail)
       else dispatch({ type: 'extractionFailed', notice: extractionNotice(error) })
     } finally {
-      setExtracting(false)
+      if (reading.current === controller) {
+        reading.current = null
+        setExtracting(false)
+      }
     }
+  }
+
+  const switchSource = (source: 'upload' | 'manual') => {
+    cancelRead()
+    setExtracting(false)
+    dispatch({ type: 'source', source })
+  }
+
+  const back = () => {
+    cancelRead()
+    dispatch({ type: 'back' })
   }
 
   const issues = ticketIssues(state.ticket)
@@ -77,7 +116,7 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
   return (
     <div className="wizard-step">
       <header className="wizard-step__head">
-        <h2 className="wizard-step__title" tabIndex={-1}>
+        <h2 className="wizard-step__title" tabIndex={-1} ref={headingRef}>
           {picking ? 'Dodaj bilet' : state.reviewing ? 'Sprawdź dane z biletu' : 'Dane z biletu'}
         </h2>
         <p className="wizard-step__lead">
@@ -126,7 +165,7 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
           <p className="visually-hidden" role="status">
             {extracting ? 'Odczytuję bilet, to potrwa kilka sekund.' : ''}
           </p>
-          <button type="button" className="link-button" onClick={() => dispatch({ type: 'source', source: 'manual' })}>
+          <button type="button" className="link-button" onClick={() => switchSource('manual')}>
             <PencilIcon size={16} />
             Wpisz dane ręcznie
           </button>
@@ -140,12 +179,12 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
                 Odczytano z {state.files.length === 1 ? '1 pliku' : `${state.files.length} plików`}
                 {state.missing.length > 0 && ' · uzupełnij zaznaczone pola'}
               </p>
-              <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'source', source: 'upload' })}>
+              <Button variant="ghost" size="sm" onClick={() => switchSource('upload')}>
                 Zmień pliki
               </Button>
             </div>
           ) : (
-            <button type="button" className="link-button" onClick={() => dispatch({ type: 'source', source: 'upload' })}>
+            <button type="button" className="link-button" onClick={() => switchSource('upload')}>
               <UploadIcon size={16} />
               Wgraj bilet – odczytamy dane za Ciebie
             </button>
@@ -161,7 +200,7 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
       )}
 
       {picking ? (
-        <WizardActions onBack={() => dispatch({ type: 'back' })}>
+        <WizardActions onBack={back}>
           {() => (
             <Button
               className="wizard-actions__primary"
@@ -175,7 +214,7 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
           )}
         </WizardActions>
       ) : (
-        <WizardActions onBack={() => dispatch({ type: 'back' })} hint={nextHint}>
+        <WizardActions onBack={back} hint={nextHint}>
           {(hintId) => (
             <Button
               className="wizard-actions__primary"

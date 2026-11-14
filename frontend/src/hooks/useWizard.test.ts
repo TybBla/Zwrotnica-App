@@ -136,4 +136,31 @@ describe('wizardReducer', () => {
     state = wizardReducer(state, { type: 'ticket', patch: { price: '40' } })
     expect(state.assessment).toBeUndefined()
   })
+
+  it('ignores a read that lands after the user switched to typing or left the step', () => {
+    const extraction = {
+      carrier: 'PKP Intercity', trainCategory: 'IC', fromStation: null, toStation: null, ticketNumber: null,
+      ticketPrice: 99, travelDate: null, missingFields: [], usedAi: true,
+    }
+    let state = wizardReducer(initialWizardState, { type: 'start', source: 'upload' })
+    state = wizardReducer(state, { type: 'source', source: 'manual' })
+    state = wizardReducer(state, { type: 'ticket', patch: { price: '30' } })
+    const late = wizardReducer(state, { type: 'extracted', extraction, carriers: [] })
+    expect(late).toBe(state)
+    expect(wizardReducer(state, { type: 'extractionFailed', notice: 'x' })).toBe(state)
+
+    const atStart = wizardReducer(wizardReducer(initialWizardState, { type: 'start', source: 'upload' }), { type: 'back' })
+    expect(wizardReducer(atStart, { type: 'extracted', extraction, carriers: [] })).toBe(atStart)
+  })
+
+  it('starts a new path without the previous review form', () => {
+    let state = wizardReducer(initialWizardState, { type: 'start', source: 'upload' })
+    state = wizardReducer(state, {
+      type: 'extracted',
+      extraction: { carrier: null, trainCategory: null, fromStation: null, toStation: null, ticketNumber: null, ticketPrice: null, travelDate: null, missingFields: [], usedAi: true },
+      carriers: [],
+    })
+    state = wizardReducer(wizardReducer(state, { type: 'back' }), { type: 'start', source: 'upload' })
+    expect(state.reviewing).toBe(false)
+  })
 })

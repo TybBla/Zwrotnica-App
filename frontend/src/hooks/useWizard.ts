@@ -200,10 +200,13 @@ function mergeExtraction(ticket: TicketForm, extraction: ExtractionDto, carriers
   return next
 }
 
+/** True while a ticket read may still land: on the ticket step, upload path, before the review form. */
+const awaitingRead = (state: WizardState) => state.step === 'ticket' && state.source === 'upload' && !state.reviewing
+
 export function wizardReducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case 'start':
-      return { ...state, step: 'ticket', direction: 'forward', source: action.source, notice: undefined }
+      return { ...state, step: 'ticket', direction: 'forward', source: action.source, reviewing: false, notice: undefined }
     case 'source':
       return { ...state, source: action.source, reviewing: false, notice: undefined }
     case 'files':
@@ -212,6 +215,8 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       // The ticket decides eligibility and amount, so an older assessment no longer applies.
       return { ...state, ticket: { ...state.ticket, ...action.patch }, assessment: undefined }
     case 'extracted':
+      // A read that finishes after the user left the upload path (typed by hand, went back) must not touch the form.
+      if (!awaitingRead(state)) return state
       return {
         ...state,
         ticket: mergeExtraction(state.ticket, action.extraction, action.carriers),
@@ -222,6 +227,7 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
         assessment: undefined,
       }
     case 'extractionFailed':
+      if (!awaitingRead(state)) return state
       return { ...state, source: 'manual', reviewing: false, notice: action.notice }
     case 'dismissNotice':
       return { ...state, notice: undefined }
