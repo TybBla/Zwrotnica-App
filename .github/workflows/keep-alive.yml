@@ -1,0 +1,30 @@
+name: Keep Azure app warm
+
+# The free App Service plan (F1) unloads the app after ~20 minutes without traffic, so the next visitor waits
+# for a cold start. Pinging the health endpoint every 10 minutes keeps it warm; each ping costs a few
+# milliseconds of the plan's 60 CPU-minutes/day. GitHub may delay scheduled runs by a few minutes.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Set the repository variable AZURE_WEBAPP_URL to override the default address.
+      APP_URL: ${{ vars.AZURE_WEBAPP_URL || 'https://zwrotnica-d6a2hkftb7emcvc3.belgiumcentral-01.azurewebsites.net' }}
+    steps:
+      - name: Ping /api/health
+        run: |
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$APP_URL/api/health" || echo 000)
+            echo "Attempt $attempt: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "::warning::Health check did not return 200 after 3 attempts"

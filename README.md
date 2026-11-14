@@ -93,7 +93,7 @@ Oba zestawy (oraz build i lint frontendu) uruchamia też GitHub Actions (`.githu
 
 ## Wdrożenie (Azure)
 
-Jedna aplikacja Azure App Service (Linux, plan F1) serwuje API i zbudowany frontend z jednego adresu; wdrożenie robi GitHub Actions. Instrukcja krok po kroku: [`docs/deploy-azure.md`](docs/deploy-azure.md).
+Jedna aplikacja Azure App Service (Linux, plan F1) serwuje API i zbudowany frontend z jednego adresu; wdrożenie robi GitHub Actions. Workflow `keep-alive.yml` co 10 minut odpytuje `/api/health`, żeby darmowy plan nie usypiał aplikacji. Instrukcja krok po kroku: [`docs/deploy-azure.md`](docs/deploy-azure.md).
 
 ## Jak korzystałem z narzędzi AI
 
