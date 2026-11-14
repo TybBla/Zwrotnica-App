@@ -15,6 +15,7 @@ Nazwy projektów i przestrzeni nazw w kodzie (`RefundPilot.*`, `RefundPilot.sln`
 - [Architektura i stack](#architektura-i-stack)
 - [Ciekawsze rozwiązania](#ciekawsze-rozwiązania)
 - [Uruchomienie lokalne](#uruchomienie-lokalne)
+- [Wdrożenie w chmurze (Azure)](#wdrożenie-w-chmurze-azure)
 - [API](#api)
 - [Jak korzystałem z narzędzi AI](#jak-korzystałem-z-narzędzi-ai)
 - [Ograniczenia i dalszy rozwój](#ograniczenia-i-dalszy-rozwój)
@@ -177,7 +178,7 @@ To lokalne dane testowe z `appsettings.Development.json` (fikcyjna osoba, 5 fikc
 ### 7. Testy
 
 ```bash
-dotnet test backend/RefundPilot.sln     # 348 testów: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
+dotnet test backend/RefundPilot.sln     # 361 testów: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
 cd frontend
 npm run test                             # 170 testów (Vitest + Testing Library)
 npm run build                            # tsc + build produkcyjny
@@ -194,13 +195,24 @@ Testy backendu i frontendu uruchamia też GitHub Actions (`.github/workflows/ci.
 | `Gemini:Model` | `gemini-3.5-flash-lite` | Model Gemini. |
 | `RateLimiting:ExtractionsPerMinute` | `5` | Limit odczytów biletu na adres IP na minutę. |
 | `Seed:DemoEmail`, `Seed:DemoPassword` | w `appsettings.Development.json` | Konto demo. Bez nich seed się nie wykonuje. |
-| `DataProtection:KeysPath` | domyślny katalog użytkownika | Gdzie trzymać klucze szyfrujące IBAN. |
-| `ConnectionStrings:Default` | `DataSource=refundpilot.db` | Plik bazy SQLite. |
+| `Seed:Enabled` | `true` (produkcyjnie `false`) | Czy w ogóle tworzyć konto demo. |
+| `DataProtection:KeysPath` | domyślny katalog użytkownika (produkcyjnie `/home/data/keys`) | Gdzie trzymać klucze szyfrujące IBAN. |
+| `ConnectionStrings:Default` | `DataSource=refundpilot.db` (produkcyjnie `/home/data/zwrotnica.db`) | Plik bazy SQLite. |
+
+Wartości produkcyjne są w `appsettings.Production.json`. Zmienne środowiskowe używają `__` zamiast `:` (np. `Seed__DemoEmail`).
 
 ### Rozwiązywanie problemów
 
 - **Po pobraniu zmian w schemacie** usuń bazę `backend/src/RefundPilot.Api/refundpilot.db*`. Projekt używa `EnsureCreated` bez migracji, więc stara baza nie dostanie nowych kolumn. Przy następnym starcie powstanie nowa baza z seedem.
 - **Port 5080 lub 5173 zajęty:** zatrzymaj inny proces. Frontend ma `strictPort`, a proxy wskazuje na 5080.
+
+## Wdrożenie w chmurze (Azure)
+
+Demo online: **https://<nazwa-aplikacji>.azurewebsites.net** (konto demo: dane w mailu).
+
+Jedna aplikacja Azure App Service (Linux, darmowy plan F1) serwuje API i zbudowany frontend z tego samego adresu, więc ciasteczko logowania działa bez CORS. GitHub Actions (`.github/workflows/deploy-azure.yml`) buduje frontend, publikuje API, kopiuje `frontend/dist` do `wwwroot/` i wdraża. W produkcji: HTTPS (HSTS, ciasteczko `Secure`), forwarded headers (prawdziwy IP klienta dla limitu AI), Swagger wyłączony, baza SQLite i klucze szyfrujące w trwałym katalogu `/home/data`, `GET /api/health` do sprawdzenia, czy aplikacja żyje. Wdrożenie nie zmienia uruchomienia lokalnego.
+
+Instrukcja krok po kroku (konto Azure, zasoby, ustawienia, sekrety GitHuba, rozwiązywanie problemów, usuwanie): [`docs/deploy-azure.md`](docs/deploy-azure.md).
 
 ## API
 
@@ -208,6 +220,7 @@ Wszystkie ścieżki mają prefiks `/api`. Błędy wracają jako ProblemDetails. 
 
 | Metoda | Ścieżka | Autoryzacja | Do czego |
 |---|---|---|---|
+| GET | `/api/health` | – | Sprawdzenie, czy aplikacja działa: `{ "status": "ok" }` |
 | GET | `/api/reference` | – | Słownik przewoźników i kategorii oraz minimalna wypłata (`minimumPayout`), cache 1 h |
 | POST | `/api/extractions` | – (limit 5/min/IP) | Odczyt biletu przez AI z 1–4 plików (multipart `files`). 409 bez klucza AI, 502 przy błędzie AI, 429 po przekroczeniu limitu |
 | POST | `/api/assessments` | – | Werdykt, kwota, procent, ryzyko odmowy i werdykt końcowy (`outcome`) dla podanych danych (bez zapisu) |
@@ -258,7 +271,8 @@ Głównym narzędziem był **Claude Code** (modele Claude Opus i Sonnet). Pracow
 - **Brak weryfikacji e-maila i resetu hasła** (świadomie poza zakresem MVP).
 - **Klucze Data Protection są per maszyna i użytkownik** (domyślny katalog lub `DataProtection:KeysPath`). Baza przeniesiona na inną maszynę nie odszyfruje rachunków. Produkcyjnie: HTTPS, wspólny magazyn kluczy (np. Key Vault) i ich rotacja.
 - Typ pliku jest rozpoznawany po nagłówku `Content-Type`, bez sprawdzania sygnatury pliku.
-- **Limit na adres IP za reverse proxy:** bez konfiguracji forwarded headers (`UseForwardedHeaders` ze znanymi proxy) wszyscy użytkownicy mają adres proxy i dzielą jeden limit odczytów AI.
+- **Limit na adres IP za reverse proxy:** poza trybem Development aplikacja ufa jednemu przeskokowi `X-Forwarded-For` (front-end Azure). Za inną liczbą proxy trzeba dopasować `ForwardedHeadersOptions`, inaczej użytkownicy dzielą jeden limit odczytów AI.
+- **SQLite na Azure App Service:** baza leży na udziale sieciowym `/home` (tryb dziennika `DELETE` zamiast WAL). Wystarcza na jedną instancję i ruch demo; przy skalowaniu na kilka instancji trzeba by przejść na serwerową bazę.
 
 ### Kierunki rozwoju i model biznesowy
 
