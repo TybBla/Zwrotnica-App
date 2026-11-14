@@ -55,7 +55,7 @@ describe('api client', () => {
     )
 
     const error = await caught(
-      api.updateProfile({ fullName: 'Jan 😀', address: null, iban: null, preferredPayout: 'OriginalPayment' }),
+      api.updateProfile({ fullName: 'Jan 😀', address: null, iban: null, preferredPayout: 'OriginalPayment', emailReminders: true }),
     )
 
     expect(error.status).toBe(400)

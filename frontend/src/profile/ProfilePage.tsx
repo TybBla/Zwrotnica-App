@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError, api } from '../api/client'
 import type { PayoutPreference, ProfileDto, UpdateProfileRequest } from '../api/types'
 import { Button } from '../components/Button'
+import { Checkbox } from '../components/Checkbox'
 import { Field } from '../components/Field'
 import { AlertCircleIcon, CheckCircleIcon } from '../components/icons'
 import { TextInput } from '../components/TextInput'
@@ -20,6 +21,7 @@ interface Form {
   address: string
   iban: string
   preferredPayout: PayoutPreference
+  emailReminders: boolean
 }
 
 type FieldName = keyof Form
@@ -30,6 +32,7 @@ const toForm = (profile: ProfileDto): Form => ({
   address: profile.address ?? '',
   iban: profile.iban ?? '',
   preferredPayout: profile.preferredPayout,
+  emailReminders: profile.emailReminders,
 })
 
 const orNull = (value: string) => (value === '' ? null : value)
@@ -41,10 +44,11 @@ function toRequest(form: Form): UpdateProfileRequest {
     address: orNull(finalizeText('address', form.address)),
     iban: iban === '' ? null : normalizeIban(iban),
     preferredPayout: form.preferredPayout,
+    emailReminders: form.emailReminders,
   }
 }
 
-const fieldNames: FieldName[] = ['fullName', 'address', 'iban', 'preferredPayout']
+const fieldNames: FieldName[] = ['fullName', 'address', 'iban', 'preferredPayout', 'emailReminders']
 
 /** ProblemDetails field errors → one Polish message per field; anything else is a form-level message. */
 function toErrors(error: unknown): Errors {
@@ -64,7 +68,13 @@ type Load = { state: 'loading' } | { state: 'error'; message: string } | { state
 export function ProfilePage() {
   usePageTitle('Profil')
   const [load, setLoad] = useState<Load>({ state: 'loading' })
-  const [form, setForm] = useState<Form>({ fullName: '', address: '', iban: '', preferredPayout: 'OriginalPayment' })
+  const [form, setForm] = useState<Form>({
+    fullName: '',
+    address: '',
+    iban: '',
+    preferredPayout: 'OriginalPayment',
+    emailReminders: true,
+  })
   const [errors, setErrors] = useState<Errors>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -242,6 +252,15 @@ export function ProfilePage() {
               </p>
             )}
           </div>
+
+          <Checkbox
+            variant="switch"
+            label="Przypomnienia e-mail"
+            description="Miesiąc po wysłaniu pisma zapytamy na adres konta, czy przewoźnik odpowiedział, i podpowiemy, co zrobić dalej. Jedna wiadomość na sprawę."
+            checked={form.emailReminders}
+            onCheckedChange={(emailReminders) => update({ emailReminders })}
+            disabled={saving}
+          />
 
           {errors.form && (
             <div className="page-error" role="alert" tabIndex={-1} ref={formErrorRef}>

@@ -225,7 +225,7 @@ describe('result step state', () => {
   })
 
   it("takes the profile's payout and account number unless the user already chose", () => {
-    const profile = { email: 'a@b.pl', fullName: null, address: null, iban: 'PL61109010140000071219812874', preferredPayout: 'BankTransfer' as const }
+    const profile = { email: 'a@b.pl', fullName: null, address: null, iban: 'PL61109010140000071219812874', preferredPayout: 'BankTransfer' as const, emailReminders: true }
     const loaded = wizardReducer(atResult, { type: 'profileLoaded', profile })
     expect(loaded.payout).toMatchObject({ choice: 'BankTransfer', iban: 'PL61109010140000071219812874' })
 
@@ -245,7 +245,7 @@ describe('result step state', () => {
   })
 
   it('forgets the account number and the saved case when the account changes', () => {
-    const profile = { email: 'a@b.pl', fullName: null, address: null, iban: 'PL61109010140000071219812874', preferredPayout: 'BankTransfer' as const }
+    const profile = { email: 'a@b.pl', fullName: null, address: null, iban: 'PL61109010140000071219812874', preferredPayout: 'BankTransfer' as const, emailReminders: true }
     let filled = wizardReducer(atResult, { type: 'profileLoaded', profile })
     filled = wizardReducer(filled, { type: 'payout', patch: { remember: true } })
     filled = wizardReducer(filled, { type: 'saved', caseId: 7, key: 'k', owner: 'a@b.pl' })

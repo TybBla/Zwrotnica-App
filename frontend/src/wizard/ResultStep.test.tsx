@@ -107,6 +107,7 @@ const profile = (patch: Partial<ProfileDto> = {}): ProfileDto => ({
   address: null,
   iban: null,
   preferredPayout: 'OriginalPayment',
+  emailReminders: true,
   ...patch,
 })
 

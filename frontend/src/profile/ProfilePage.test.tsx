@@ -11,6 +11,7 @@ const profile: ProfileDto = {
   address: null,
   iban: null,
   preferredPayout: 'OriginalPayment',
+  emailReminders: true,
 }
 
 beforeEach(() => {
@@ -41,6 +42,7 @@ describe('ProfilePage', () => {
         address: 'ul. Długa 1, 00-001 Warszawa',
         iban: 'PL61109010140000071219812874',
         preferredPayout: 'BankTransfer',
+        emailReminders: true,
       }),
     )
     expect((await screen.findByRole('status')).textContent).toMatch(/Zapisano/)
@@ -75,5 +77,21 @@ describe('ProfilePage', () => {
     await user.click(screen.getByRole('button', { name: 'Zapisz zmiany' }))
     expect(await screen.findByText(/Sprawdź numer rachunku/)).toBeTruthy()
     expect(api.updateProfile).not.toHaveBeenCalled()
+  })
+
+  it('turns the reminder e-mails off and saves that choice', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'updateProfile').mockImplementation(async (request) => ({ email: profile.email, ...request }))
+    render(<ProfilePage />)
+
+    const reminders = (await screen.findByRole('switch', { name: 'Przypomnienia e-mail' })) as HTMLInputElement
+    expect(reminders.checked).toBe(true)
+    expect(screen.getByText(/Miesiąc po wysłaniu pisma/)).toBeTruthy()
+
+    await user.click(reminders)
+    await user.click(screen.getByRole('button', { name: 'Zapisz zmiany' }))
+
+    await waitFor(() => expect(api.updateProfile).toHaveBeenCalledWith(expect.objectContaining({ emailReminders: false })))
+    expect(reminders.checked).toBe(false)
   })
 })

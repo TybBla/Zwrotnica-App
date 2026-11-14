@@ -23,6 +23,8 @@ export interface ProfileDto {
   address: string | null
   iban: string | null
   preferredPayout: PayoutPreference
+  /** One e-mail per case once the carrier's month to answer has passed. */
+  emailReminders: boolean
 }
 
 export interface UpdateProfileRequest {
@@ -30,6 +32,7 @@ export interface UpdateProfileRequest {
   address: string | null
   iban: string | null
   preferredPayout: PayoutPreference
+  emailReminders: boolean
 }
 
 export interface CarrierOption {
