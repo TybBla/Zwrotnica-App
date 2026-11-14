@@ -48,6 +48,8 @@ public static class ComplaintTemplate
     public const string FromStation = "{{FROM_STATION}}";
     public const string ToStation = "{{TO_STATION}}";
     public const string Attachments = "{{ATTACHMENTS}}";
+    /// <summary>The passenger's own cost description: free text, so the AI only ever sees this token.</summary>
+    public const string ExpenseDescription = "{{EXPENSE_DESCRIPTION}}";
 
     public const string AttachmentsLine = "Do wniosku załączam: [kopie rachunków / paragonów potwierdzających poniesione koszty]";
     public const string ExpensePlaceholder = "[opis poniesionych kosztów]";
@@ -204,10 +206,12 @@ public static class ComplaintTemplate
     }
 
     /// <summary>The passenger's description on one line (lines joined with "; "), without a closing full stop.</summary>
-    private static string ExpensesText(string? description)
+    public static string ExpensesText(string? description)
     {
         if (string.IsNullOrWhiteSpace(description))
             return ExpensePlaceholder;
+        // Allowlisted on input already; braces are dropped anyway so the text can never form a token.
+        description = description.Replace("{", "").Replace("}", "");
         var lines = description.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(line => line.TrimEnd('.', ';', ','));
         return string.Join("; ", lines);

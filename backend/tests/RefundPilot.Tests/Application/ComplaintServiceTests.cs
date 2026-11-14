@@ -853,7 +853,7 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
 
     private const string ValidCostsBody =
         "{{FULL_NAME}}\n{{ADDRESS}}\n\nSzanowni Państwo,\nwnoszę o zwrot udokumentowanych kosztów w kwocie 85,00 zł, poniesionych " +
-        "w związku z opóźnieniem pociągu o 70 minut (bilet za 40,00 zł).\n\n{{PAYOUT}}\n\n{{ATTACHMENTS}}\n\nZ poważaniem\n{{FULL_NAME}}";
+        "w związku z opóźnieniem pociągu o 70 minut (bilet za 40,00 zł). Poniesione koszty: {{EXPENSE_DESCRIPTION}}.\n\n{{PAYOUT}}\n\n{{ATTACHMENTS}}\n\nZ poważaniem\n{{FULL_NAME}}";
 
     private static string CostsJson(string body = ValidCostsBody) =>
         JsonSerializer.Serialize(new { subject = "Wniosek o zwrot kosztów – opóźnienie pociągu Polregio", body });
@@ -903,11 +903,14 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     {
         await MakeAnnaCaseRegionalWithCostsAsync(description: null);
 
-        var letter = await GenerateAsync(new FakeAi(CostsJson()), Req());
+        var template = await GenerateAsync(Failing(), Req());
+        var ai = await GenerateAsync(new FakeAi(CostsJson()), Req());
 
-        Assert.False(letter.UsedAi);
-        Assert.Contains("następujące koszty: [opis poniesionych kosztów].", letter.Body);
-        Assert.Equal(["opis kosztów", "załączniki – rachunki"], letter.MissingFields);
+        Assert.Contains("następujące koszty: [opis poniesionych kosztów].", template.Body);
+        Assert.True(ai.UsedAi);
+        Assert.Contains("Poniesione koszty: [opis poniesionych kosztów].", ai.Body);
+        foreach (var letter in new[] { template, ai })
+            Assert.Equal(["opis kosztów", "załączniki – rachunki"], letter.MissingFields);
     }
 
     [Fact]
@@ -939,16 +942,41 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RegionalCaseWithCosts_AiPrompt_HasTheExactAmountAndNoPersonalData()
+    public async Task RegionalCaseWithCosts_AiPrompt_HasTheExactAmountButNoPersonalDataOrFreeText()
     {
         await MakeAnnaCaseRegionalWithCostsAsync();
         var ai = new FakeAi(CostsJson());
 
         await GenerateAsync(ai, Req(PayoutPreference.BankTransfer, "PL27114020040000300201355387"));
 
-        foreach (var expected in new[] { "Polregio", "85,00 zł", "40,00 zł", Taxi, "verbatim", "{{ATTACHMENTS}}", "Polish diacritics" })
+        foreach (var expected in new[]
+                 { "Polregio", "85,00 zł", "40,00 zł", "verbatim", "{{ATTACHMENTS}}", "{{EXPENSE_DESCRIPTION}}", "Polish diacritics" })
             Assert.Contains(expected, ai.Prompt);
-        foreach (var secret in new[] { "Anna", "Kowalska", "Lipowa", Iban, "PL27" })
+        // The passenger's own description is free text (it may hold personal data): only its token goes to the AI.
+        foreach (var secret in new[] { "Anna", "Kowalska", "Lipowa", Iban, "PL27", Taxi, "Taksówka", "Gdyni do Krakowa" })
+            Assert.DoesNotContain(secret, ai.Prompt);
+    }
+
+    [Theory]
+    [InlineData(Verdict.Eligible, 85)]
+    [InlineData(Verdict.NotCovered, 85)]
+    [InlineData(Verdict.NotCovered, null)]
+    [InlineData(Verdict.Unknown, null)]
+    public async Task NoPrompt_EverContainsTheCasesFreeText(Verdict verdict, int? amount)
+    {
+        if (verdict != Verdict.Eligible)
+            await MakeAnnaCaseRegionalWithCostsAsync(amount: amount);
+        var c = await _cases.GetAsync(_annaCaseId, Anna);
+        c!.Verdict = verdict;
+        c.Notes = "Notatka prywatna PESEL 90010112345";
+        c.ExpenseDescription = "Taksówka z Gdyni, opis prywatny";
+        await _cases.UpdateAsync(c);
+        var ai = new FakeAi(ValidAiJson());
+
+        await GenerateAsync(ai, Req());
+
+        Assert.NotNull(ai.Prompt);
+        foreach (var secret in new[] { "Notatka", "PESEL", "90010112345", "opis prywatny", "Taksówka z Gdyni" })
             Assert.DoesNotContain(secret, ai.Prompt);
     }
 
@@ -964,8 +992,20 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.Contains("Proszę o przekazanie zwrotu kosztów w formie bonu.", letter.Body);
         Assert.Contains(Attachments, letter.Body);
         Assert.Contains("Anna Kowalska", letter.Body);
+        Assert.Contains($"Poniesione koszty: {Taxi}.", letter.Body);
         Assert.DoesNotContain("{{", letter.Body);
         Assert.Equal(["załączniki – rachunki"], letter.MissingFields);
+    }
+
+    [Fact]
+    public async Task RegionalCaseWithCosts_AiOutputWithoutTheDescriptionToken_FallsBackToTheTemplate()
+    {
+        await MakeAnnaCaseRegionalWithCostsAsync();
+
+        var letter = await GenerateAsync(new FakeAi(CostsJson(ValidCostsBody.Replace(" Poniesione koszty: {{EXPENSE_DESCRIPTION}}.", ""))), Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.Contains($"następujące koszty: {Taxi}.", letter.Body);
     }
 
     [Theory]
@@ -985,6 +1025,8 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     public async Task RegionalCaseWithCosts_InvalidAiOutput_FallsBackToTheCostsTemplate(string body)
     {
         await MakeAnnaCaseRegionalWithCostsAsync();
+        // Each case breaks one rule; the description token itself is present.
+        body = body.Replace("{{ADDRESS}}", "{{ADDRESS}} {{EXPENSE_DESCRIPTION}}");
 
         var letter = await GenerateAsync(new FakeAi(CostsJson(body)), Req());
 
@@ -994,14 +1036,15 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RegionalCaseWithCosts_AiCopyingTheDescription_IsNotRejectedForItsSpelling()
+    public async Task RegionalCaseWithCosts_DescriptionIsSubstitutedAfterValidation()
     {
-        await MakeAnnaCaseRegionalWithCostsAsync(description: "Taxi do Krakowa, prosze o zwrot");
-        var body = ValidCostsBody.Replace("(bilet za 40,00 zł).", "(bilet za 40,00 zł). Koszty: Taxi do Krakowa, prosze o zwrot.");
+        // Typed without diacritics, with a sum: checks apply to the AI's own text, the passenger's words go in afterwards.
+        await MakeAnnaCaseRegionalWithCostsAsync(description: "Taxi do Krakowa 50 zl, prosze o zwrot\nHotel");
 
-        var letter = await GenerateAsync(new FakeAi(CostsJson(body)), Req());
+        var letter = await GenerateAsync(new FakeAi(CostsJson()), Req());
 
         Assert.True(letter.UsedAi);
+        Assert.Contains("Poniesione koszty: Taxi do Krakowa 50 zl, prosze o zwrot; Hotel.", letter.Body);
     }
 
     // ---------- Correct Polish: an AI letter without diacritics ("z tytulu", "prosze") falls back to the template ----------
