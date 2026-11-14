@@ -8,22 +8,23 @@ namespace RefundPilot.Infrastructure;
 /// </summary>
 public static class SchemaUpgrade
 {
-    private static readonly (string Table, string Column, string Definition)[] AddedColumns =
+    // Each ALTER is a complete constant statement (identifiers cannot be bound as parameters), never built from input.
+    private static readonly (string Table, string Column, string AlterSql)[] AddedColumns =
     [
-        ("Cases", "ReminderSentAt", "TEXT NULL"),
-        ("AspNetUsers", "EmailReminders", "INTEGER NOT NULL DEFAULT 1"),
+        ("Cases", "ReminderSentAt", "ALTER TABLE \"Cases\" ADD COLUMN \"ReminderSentAt\" TEXT NULL;"),
+        ("AspNetUsers", "EmailReminders", "ALTER TABLE \"AspNetUsers\" ADD COLUMN \"EmailReminders\" INTEGER NOT NULL DEFAULT 1;"),
     ];
 
     public static async Task ApplyAsync(AppDbContext db, CancellationToken ct = default)
     {
-        foreach (var (table, column, definition) in AddedColumns)
+        foreach (var (table, column, alterSql) in AddedColumns)
         {
-            // Table and column names are the constants above, never user input.
+            // SqlQuery turns the interpolated values into SQL parameters.
             var exists = await db.Database
-                .SqlQueryRaw<int>($"SELECT COUNT(*) AS Value FROM pragma_table_info('{table}') WHERE name = '{column}'")
+                .SqlQuery<int>($"SELECT COUNT(*) AS Value FROM pragma_table_info({table}) WHERE name = {column}")
                 .SingleAsync(ct) > 0;
             if (!exists)
-                await db.Database.ExecuteSqlRawAsync($"ALTER TABLE \"{table}\" ADD COLUMN \"{column}\" {definition};", ct);
+                await db.Database.ExecuteSqlRawAsync(alterSql, ct);
         }
     }
 }
