@@ -1,5 +1,7 @@
 # Refund Pilot Implementation Plan (v3 – accounts)
 
+> **Stan końcowy różni się od planu** (szczegóły: sekcja „Zmiany po specyfikacji (stan końcowy)” na początku `docs/superpowers/specs/2026-11-13-refund-pilot-design.md`): InterRegio → „Do sprawdzenia” (kategorie PKP IC to EIP/EIC/IC/TLK), port API 5080, redesign 2026-11-14 (bez glass, granat + żółty, IBM Plex zamiast Geist), prawdziwe konta zamiast profilu w przeglądarce, trzy formy wypłaty, allowlisty znaków per pole, pismo przy odwołaniu cytuje art. 18. Treść planu poniżej jest historyczna.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Full-stack MVP: a 3-step wizard turns a ticket (photo/file or manual entry) plus delay minutes into an honest verdict, a computed compensation and a ready complaint letter (text or PDF). Users have accounts (profile + their own cases with response-deadline tracking); the wizard also works for guests until saving.

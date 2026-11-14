@@ -1,5 +1,17 @@
 # Refund Pilot – dokument projektowy (v2, po researchu i wywiadzie)
 
+## Zmiany po specyfikacji (stan końcowy)
+
+Tekst poniżej to historyczna wersja specyfikacji. Stan końcowy aplikacji różni się w tych punktach:
+
+- **InterRegio** nie jest kategorią PKP Intercity (kategorie PKP IC: EIP/EIC/IC/TLK). Sama kategoria IR przy innym lub nieznanym przewoźniku daje „Do sprawdzenia”; Polregio (wszystkie jego pociągi, także InterRegio) daje „Nie należy się”.
+- **Port API 5080** zamiast 5000 (5000 koliduje z AirPlay na macOS i http.sys na Windows).
+- **Redesign wizualny 2026-11-14** (`docs/design-direction.md`): bez glassmorphismu, granat + sygnałowy żółty, IBM Plex Sans/Mono zamiast Geist.
+- **Prawdziwe konta** (ASP.NET Core Identity) zastąpiły profil przechowywany w przeglądarce.
+- **Trzy formy wypłaty:** zwrot na konto/kartę użyte do zakupu (domyślnie), przelew na inny rachunek, bon.
+- **Allowlisty znaków per pole** (frontend i backend, `TextRules`).
+- **Pismo przy odwołaniu pociągu** żąda zwrotu należności za bilet na podstawie **art. 18** rozporządzenia (UE) 2021/782; przy opóźnieniu bez zmian: odszkodowanie z art. 19.
+
 Data: 2026-11-13 · Status: **do akceptacji** · Termin oddania: 2026-11-15, 23:59
 Źródła: `docs/research.md` (prawo, Gemini), `docs/interview-decisions.md` (decyzje użytkownika).
 
