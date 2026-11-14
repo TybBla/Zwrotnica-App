@@ -50,7 +50,7 @@ W zasobie App Service: **Settings → Environment variables → App settings** �
 | `Seed__DemoEmail` | np. `demo@zwrotnica.test` | Login konta demo. |
 | `Seed__DemoPassword` | **wymyśl własne hasło** | Hasło konta demo. Min. 6 znaków, wielka i mała litera, cyfra i znak specjalny (np. `Pociag!` + kilka cyfr). Nie wpisuj go do repozytorium; podaj rekruterowi w mailu. |
 | `RateLimiting__ExtractionsPerMinute` | np. `5` | Opcjonalne. Limit odczytów biletu przez AI na adres IP na minutę (domyślnie 5). |
-| `PublicBaseUrl` | `https://<nazwa-aplikacji>.azurewebsites.net` | Adres aplikacji do linku „Sprawa w Zwrotnicy” w e-mailu z przypomnieniem. Bez niego link wskazuje `http://localhost:5173`. |
+| `PublicBaseUrl` | `https://<nazwa-aplikacji>.azurewebsites.net` | Adres aplikacji do linku „Sprawa w Zwrotnicy” w e-mailu z przypomnieniem. Wymagany, gdy przypomnienia są włączone: bez niego (albo z adresem innym niż pełny http/https) aplikacja nie wysyła przypomnień i zapisuje błąd w logu. |
 | `Email__Smtp__Host` | np. `smtp-relay.brevo.com` albo `smtp.gmail.com` | Opcjonalne. Serwer SMTP dla przypomnień e-mail. Bez niego wiadomości są tylko zapisywane jako pliki `.eml` w `/home/data/outbox`. |
 | `Email__Smtp__Port` | `587` | Port z STARTTLS (domyślnie 587; port 465 nie jest obsługiwany). |
 | `Email__Smtp__User`, `Email__Smtp__Password` | login i hasło SMTP | **Tylko w App settings**, nigdy w repozytorium. |
@@ -66,9 +66,11 @@ Przypomnienia e-mail (opcjonalnie):
 
 - **Brevo (darmowy plan):** załóż konto, zweryfikuj adres nadawcy, w **SMTP & API** wygeneruj klucz SMTP. Host `smtp-relay.brevo.com`, port `587`, użytkownik i hasło z tej strony.
 - **Gmail:** włącz weryfikację dwuetapową i utwórz **hasło aplikacji**. Host `smtp.gmail.com`, port `587`, użytkownik = adres Gmail, hasło = hasło aplikacji, `Email__From` = ten sam adres.
-- Przypomnienie idzie raz na sprawę, tylko na adres właściciela konta, gdy minie termin odpowiedzi przewoźnika (status „Wysłana”). Wysyłkę wyłączysz ustawieniem `Reminders__Enabled` = `false`.
+- Bez `Email__Smtp__Host` przypomnienia są w produkcji **wyłączone** (ostrzeżenie w logu). Ustawienie hosta SMTP i `PublicBaseUrl` je włącza. `Reminders__Enabled` = `false` wyłącza je mimo SMTP, a `Reminders__Enabled` = `true` bez SMTP tylko zapisuje pliki `.eml` w `/home/data/outbox`.
+- Przypomnienie idzie raz na sprawę, tylko na adres właściciela konta, dzień po upływie terminu odpowiedzi przewoźnika (status „Wysłana”).
+- **Pierwszy przebieg po włączeniu** wyśle przypomnienia dla wszystkich spraw „Wysłana”, których termin już minął, także starszych.
 - Na planie F1 aplikacja zasypia bez ruchu, więc przypomnienia wychodzą przy starcie i co godzinę, **gdy aplikacja działa**. W produkcji wysyłkę uruchamiałby harmonogram (np. timer Azure Functions albo WebJob) zamiast usługi w tle.
-- Konto demo ma adres `.test`, który nie istnieje: przypomnienie dla sprawy demo serwer SMTP odrzuci albo zwróci. To oczekiwane.
+- Adresy w zarezerwowanych domenach testowych (`.test`, `.example`, `.invalid`, `.localhost`, `example.com/.net/.org`), np. konto demo, nie są przekazywane do SMTP: sprawa jest oznaczana jako obsłużona bez wysyłki. Błędny adres i trwała odmowa skrzynki (550/551/553) też kończą sprawę bez ponawiania. Gdy serwer SMTP jest niedostępny, przebieg się zatrzymuje i próbuje ponownie za godzinę.
 
 Dalej w **Settings → Configuration → General settings**:
 

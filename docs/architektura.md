@@ -55,6 +55,7 @@ To główna zasada projektu i mój „creative twist”: AI robi tylko to, czego
 - **IBAN:** walidacja sumy kontrolnej mod-97 (FE i BE) i szyfrowanie w bazie przez Data Protection. Numer widzi tylko właściciel po zalogowaniu.
 - **Jedna sprawa na jedno przejście kreatora.** Ponowne „Zapisz” lub błąd w połowie nie tworzą duplikatów. Stan kreatora jest powiązany z kontem, więc po wylogowaniu nic nie przecieka do następnej osoby.
 - **Odliczanie terminu w strefie Europe/Warsaw.** Daty są liczone tak, jak czyta je pasażer w Polsce, niezależnie od strefy urządzenia i serwera (także „dzisiaj” przy walidacji daty podróży).
+- **Przypomnienie e-mail po terminie przewoźnika.** Usługa w tle (`ReminderBackgroundService`) przy starcie i co godzinę woła `ReminderService`. Jedno zapytanie zwraca sprawy „Wysłana”, których termin skończył się przed dzisiejszym dniem w Europe/Warsaw (przewoźnik ma cały ostatni dzień, art. 112 KC), bez przypomnienia i z włączoną zgodą właściciela, razem z jego adresem e-mail. Potem **claim-then-send**: jeden warunkowy `UPDATE ... SET ReminderSentAt = teraz WHERE ReminderSentAt IS NULL` rezerwuje partię, a wysyłane są tylko sprawy zarezerwowane przez ten przebieg. Dwie instancje nie wyślą więc tego samego e-maila (najwyżej raz); kosztem jest to, że awaria procesu między rezerwacją a wysyłką gubi to jedno przypomnienie. `ReminderSentAt` oznacza „obsłużone”: wysłane albo trwale niedostarczalne (zarezerwowana domena testowa, błędny adres, odmowa skrzynki 550/551/553). Błąd przejściowy zwalnia rezerwację na następny przebieg, a niedostępny serwer SMTP (połączenie, TLS, logowanie, 15 s timeout) przerywa przebieg. Logi zawierają tylko id sprawy i typ błędu, nigdy adres ani treść.
 - **Tryb bez AI.** Bez klucza rejestrowany jest `NullAiClient`: wgrywanie biletu zwraca 409, UI przełącza na ścieżkę ręczną, a pismo powstaje z szablonu. Limit (429) i błąd AI (502) kończą się tak samo, czytelnym komunikatem i trybem ręcznym. Aplikacja nigdy się nie wysypuje.
 
 
@@ -69,6 +70,7 @@ To główna zasada projektu i mój „creative twist”: AI robi tylko to, czego
 
 ## Konfiguracja
 
+| Klucz | Domyślnie | Znaczenie |
 |---|---|---|
 | `GEMINI_API_KEY` / `Gemini:ApiKey` | brak | Klucz Gemini. Bez niego aplikacja działa w trybie ręcznym. |
 | `Gemini:Model` | `gemini-3.5-flash-lite` | Model Gemini. |
@@ -77,11 +79,12 @@ To główna zasada projektu i mój „creative twist”: AI robi tylko to, czego
 | `Seed:Enabled` | `true` (produkcyjnie `false`) | Czy w ogóle tworzyć konto demo. |
 | `DataProtection:KeysPath` | domyślny katalog użytkownika (produkcyjnie `/home/data/keys`) | Gdzie trzymać klucze szyfrujące IBAN. |
 | `ConnectionStrings:Default` | `DataSource=refundpilot.db` (produkcyjnie `/home/data/zwrotnica.db`) | Plik bazy SQLite. |
-| `PublicBaseUrl` | brak (w Development `http://localhost:5173`) | Adres frontendu do linku w e-mailu z przypomnieniem. |
+| `PublicBaseUrl` | brak (w Development `http://localhost:5173`) | Adres frontendu do linku w e-mailu z przypomnieniem. Poza Development musi być pełnym adresem http(s), inaczej przypomnienia są wyłączone (błąd w logu). |
 | `Email:Smtp:Host`, `Port`, `User`, `Password`, `EnableSsl` | brak, `587`, brak, brak, `true` | Serwer SMTP (STARTTLS). Bez hosta e-maile są zapisywane jako `.eml` w `Email:OutboxPath`. |
 | `Email:From`, `Email:FromName` | `no-reply@zwrotnica.test`, `Zwrotnica` | Nadawca przypomnień. |
 | `Email:OutboxPath` | `data/outbox` (produkcyjnie `/home/data/outbox`) | Folder na pliki `.eml`, gdy SMTP nie jest ustawiony. |
-| `Reminders:Enabled`, `Reminders:IntervalMinutes` | `true`, `60` | Wysyłka przypomnień przy starcie i co podany czas. |
+| `Reminders:Enabled` | w Development włączone; poza nim tylko gdy ustawiono `Email:Smtp:Host` | Jawne `true`/`false` ma pierwszeństwo (np. `true` bez SMTP zapisuje `.eml` w outboxie). |
+| `Reminders:IntervalMinutes` | `60` | Wysyłka przypomnień przy starcie i co podany czas. |
 | `ForwardedHeaders:Enabled` | `false` (produkcyjnie `true`) | Czytanie IP klienta i schematu z `X-Forwarded-*` od proxy z adresu prywatnego (jeden przeskok). |
 
 Wartości produkcyjne są w `appsettings.Production.json`. Zmienne środowiskowe używają `__` zamiast `:` (np. `Seed__DemoEmail`). Katalog `/home/data` istnieje tylko na Azure App Service: uruchamiając wersję produkcyjną gdzie indziej, ustaw `ConnectionStrings__Default` (np. `DataSource=/var/lib/zwrotnica/zwrotnica.db`) i `DataProtection__KeysPath` na zapisywalne ścieżki.
