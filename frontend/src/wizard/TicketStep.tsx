@@ -357,6 +357,7 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
         required
         attention={carrierAttention}
         hint={carrierAttention ? MISSING_HINT : undefined}
+        liveNote
         note={
           regional
             ? `${carrier.name} to przewoźnik regionalny. Przepisy UE o odszkodowaniu 25% / 50% go nie obejmują, więc nie wyliczymy kwoty. Możesz kontynuować i przygotować reklamację – przewoźnik rozpatrzy ją według swojego regulaminu.`
@@ -386,6 +387,7 @@ function TicketForm({ ticket, missing, issues, reference, onChange }: TicketForm
           optional
           attention={attention('trainCategory', ticket.trainCategory)}
           hint={attention('trainCategory', ticket.trainCategory) ? MISSING_HINT : undefined}
+          liveNote
           note={
             isInterRegio(ticket.trainCategory)
               ? 'Do sprawdzenia: pociągi InterRegio prowadzi przewoźnik regionalny Polregio, więc przepisy UE o odszkodowaniu 25% / 50% mogą ich nie obejmować i kwoty nie wyliczymy. Możesz kontynuować i przygotować reklamację – przewoźnik rozpatrzy ją według swojego regulaminu.'

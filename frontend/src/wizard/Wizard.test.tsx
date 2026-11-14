@@ -312,6 +312,10 @@ describe('Wizard – ticket step', () => {
     )
     expect(carrier.getAttribute('aria-invalid')).not.toBe('true')
     expect(screen.queryByRole('alert')).toBeNull()
+    // Announced politely as it appears (the live region exists before the note is inserted).
+    const live = screen.getAllByRole('status').find((region) => region.textContent?.includes('przewoźnik regionalny'))
+    expect(live).toBeTruthy()
+    expect(live?.getAttribute('aria-live')).not.toBe('assertive')
 
     fireEvent.change(screen.getByLabelText('Data przejazdu'), { target: { value: '2025-06-01' } })
     await user.type(screen.getByLabelText('Cena biletu'), '19,90')

@@ -11,6 +11,8 @@ interface FieldProps {
   note?: ReactNode
   /** Shown instead of nothing below the control; marks the control aria-invalid. */
   error?: string | null
+  /** Announce the note politely when it appears (a live region that stays mounted, so the change is read out). */
+  liveNote?: boolean
   /** Optional ⓘ next to the label. */
   tooltip?: ReactNode
   /** Adds a quiet "opcjonalne" marker; most fields in this app are optional. */
@@ -23,7 +25,7 @@ interface FieldProps {
 }
 
 /** Label + control + hint + error. The child control (TextInput, TextArea, Select) picks up id and ARIA wiring. */
-export function Field({ label, hint, note, error, tooltip, optional, required = false, attention = false, id, children }: FieldProps) {
+export function Field({ label, hint, note, liveNote = false, error, tooltip, optional, required = false, attention = false, id, children }: FieldProps) {
   const generatedId = useId()
   const controlId = id ?? generatedId
   const hintId = hint ? `${controlId}-hint` : undefined
@@ -38,6 +40,13 @@ export function Field({ label, hint, note, error, tooltip, optional, required = 
       required,
     }),
     [controlId, errorId, hintId, noteId, error, required],
+  )
+
+  const noteContent = note && (
+    <p className="field__note" id={noteId}>
+      <InfoIcon size={16} />
+      <span>{note}</span>
+    </p>
   )
 
   return (
@@ -66,11 +75,12 @@ export function Field({ label, hint, note, error, tooltip, optional, required = 
           {hint}
         </p>
       )}
-      {note && (
-        <p className="field__note" id={noteId}>
-          <InfoIcon size={16} />
-          <span>{note}</span>
-        </p>
+      {liveNote ? (
+        <div className="field__live" role="status">
+          {noteContent}
+        </div>
+      ) : (
+        noteContent
       )}
     </div>
   )

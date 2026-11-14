@@ -28,6 +28,11 @@
   color: var(--text-tertiary);
 }
 
+.field__live:empty {
+  /* Mounted but empty until a note appears: take back the column gap it would otherwise add. */
+  margin-top: calc(-1 * var(--space-2));
+}
+
 .field__hint {
   font-size: var(--text-sm);
   line-height: var(--leading-snug);
