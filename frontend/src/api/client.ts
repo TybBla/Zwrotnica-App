@@ -120,7 +120,6 @@ const identityMessages: Record<string, { field: 'email' | 'password'; message: s
   PasswordRequiresUpper: { field: 'password', message: 'Hasło musi zawierać wielką literę (A–Z).' },
   PasswordRequiresNonAlphanumeric: { field: 'password', message: 'Hasło musi zawierać znak specjalny, np. ! lub #.' },
   PasswordRequiresUniqueChars: { field: 'password', message: 'Hasło musi zawierać więcej różnych znaków.' },
-  PasswordMismatch: { field: 'password', message: 'Nieprawidłowe hasło.' },
 }
 
 /** Field errors keyed by camelCase field name, as the client stores them ("passwordTooShort"). */
