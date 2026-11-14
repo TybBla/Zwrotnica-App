@@ -14,5 +14,4 @@ dist/
 .agents/
 .claude/
 .superpowers/
-skills-lock.json
 instrucions.md
