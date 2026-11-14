@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarPlus,
   Camera,
   Check,
   ChevronDown,
@@ -57,6 +58,7 @@ export const AlertCircleIcon = icon(CircleAlert)
 export const WarningIcon = icon(TriangleAlert)
 export const TicketIcon = icon(Ticket)
 export const ClockIcon = icon(Clock)
+export const CalendarIcon = icon(CalendarPlus)
 export const ShieldIcon = icon(ShieldCheck)
 export const CheckIcon = icon(Check)
 export const CloseIcon = icon(X)
