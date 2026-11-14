@@ -9,7 +9,7 @@ export function SiteFooter() {
       <div className="site-footer__about">
         <p className="site-footer__name">Refund Pilot</p>
         <p>
-          <strong>Narzędzie pomocnicze – nie stanowi porady prawnej.</strong> Przed wysłaniem reklamacji sprawdź regulamin
+          <strong>Narzędzie pomocnicze. Nie stanowi porady prawnej.</strong> Przed wysłaniem reklamacji sprawdź regulamin
           swojego przewoźnika.
         </p>
         <p>Projekt rekrutacyjny. Nie jest usługą PKP Intercity ani żadnego innego przewoźnika.</p>

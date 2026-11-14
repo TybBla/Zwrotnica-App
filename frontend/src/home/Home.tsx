@@ -16,8 +16,8 @@ export function Home({ onStart }: { onStart: (source: TicketSource) => void }) {
               Opóźniony pociąg? Sprawdź, ile Ci się należy
             </h1>
             <p className="home-intro__lead">
-              Za opóźnienie pociągu dalekobieżnego przewoźnik zwraca 25% albo 50% ceny biletu. Policzymy kwotę na podstawie
-              biletu i przygotujemy reklamację, którą wyślesz przewoźnikowi.
+              Za opóźnienie pociągu dalekobieżnego od 60 minut przewoźnik zwraca 25% albo 50% ceny biletu. Policzymy kwotę
+              na podstawie biletu i przygotujemy reklamację, którą wyślesz przewoźnikowi.
             </p>
           </div>
 
@@ -43,8 +43,8 @@ export function Home({ onStart }: { onStart: (source: TicketSource) => void }) {
       <HomeSection id="zasady" title="Ile możesz odzyskać" lead="Zasady z rozporządzenia (UE) 2021/782 w skrócie.">
         <RulesTable />
         <p className="home-note">
-          Procent liczy się od ceny faktycznie zapłaconej, czyli po uldze. Kwot poniżej progu przewoźnik może nie wypłacić –
-          w PKP Intercity próg wynosi 16 zł.
+          Procent liczy się od ceny faktycznie zapłaconej, czyli po uldze. Kwot poniżej progu przewoźnik może nie wypłacić.
+          W PKP Intercity próg wynosi 16 zł.
         </p>
       </HomeSection>
 
@@ -89,7 +89,7 @@ function StartPanel({ onStart }: { onStart: (source: TicketSource) => void }) {
       <TicketStartOptions onChoose={onStart} />
       <p className="start-panel__note">
         <ShieldIcon size={16} />
-        Zdjęć biletu nie zapisujemy – służą tylko do odczytania danych.
+        Zdjęć biletu nie zapisujemy. Służą tylko do odczytania danych.
       </p>
     </section>
   )
@@ -114,22 +114,28 @@ function HomeSection({ id, title, lead, children }: { id: string; title: string;
 function RulesTable() {
   return (
     <div className="rules">
-      <table className="rules__table">
+      {/* Explicit roles: on phones the rows are restyled as blocks (display: block), which makes Safari and older
+          Chrome drop the native table semantics; the roles keep "row 2 of 6, Sytuacja / Co przysługuje" for readers. */}
+      <table className="rules__table" role="table">
         <caption className="visually-hidden">Ile przysługuje za opóźnienie lub odwołanie pociągu</caption>
-        <thead>
-          <tr>
-            <th scope="col">Sytuacja</th>
-            <th scope="col">Co przysługuje</th>
+        <thead role="rowgroup">
+          <tr role="row">
+            <th scope="col" role="columnheader">
+              Sytuacja
+            </th>
+            <th scope="col" role="columnheader">
+              Co przysługuje
+            </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           {rules.map((rule) => (
-            <tr key={rule.situation} data-kind={rule.kind}>
-              <th scope="row">
+            <tr key={rule.situation} data-kind={rule.kind} role="row">
+              <th scope="row" role="rowheader">
                 <span className="rules__situation">{rule.situation}</span>
                 {rule.detail && <span className="rules__detail">{rule.detail}</span>}
               </th>
-              <td>
+              <td role="cell">
                 <span className="rules__outcome">{rule.outcome}</span>
               </td>
             </tr>
@@ -155,7 +161,7 @@ export function RulesSummary() {
           </div>
         ))}
       </dl>
-      <p className="rules-summary__note">Narzędzie pomocnicze – nie stanowi porady prawnej.</p>
+      <p className="rules-summary__note">Narzędzie pomocnicze. Nie stanowi porady prawnej.</p>
     </aside>
   )
 }

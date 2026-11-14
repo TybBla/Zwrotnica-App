@@ -21,8 +21,8 @@ export const rules: Rule[] = [
   { situation: 'Opóźnienie poniżej 60 min', outcome: 'Brak odszkodowania', kind: 'none' },
   {
     situation: 'Pociąg regionalny, podmiejski lub miejski w Polsce',
-    detail: 'np. Polregio, Koleje Mazowieckie, Koleje Śląskie, SKM',
-    outcome: 'Brak odszkodowania wg przepisów UE – obowiązuje regulamin przewoźnika',
+    detail: 'np. Polregio (także InterRegio), Koleje Mazowieckie, Koleje Śląskie, SKM',
+    outcome: 'Brak odszkodowania wg przepisów UE. Obowiązuje regulamin przewoźnika.',
     kind: 'none',
   },
 ]
@@ -65,9 +65,9 @@ export const faq: FaqItem[] = [
     answer: (
       <>
         <p>
-          Pasażerom pociągów dalekobieżnych – w PKP Intercity to kategorie EIP, EIC, IC i TLK, a także pociągi InterRegio
-          (IR) – oraz pasażerom połączeń międzynarodowych. Liczy się opóźnienie na stacji docelowej: od 60 minut należy się
-          25% ceny biletu, od 120 minut – 50%.
+          Unijne zasady 25% i 50% obejmują pociągi dalekobieżne, czyli w PKP Intercity pociągi EIP, EIC, IC i TLK, oraz
+          pociągi międzynarodowe. Liczy się opóźnienie na stacji docelowej: od 60 minut należy się 25% ceny biletu, od 120
+          minut 50%.
         </p>
         <p>Kwotę liczymy od ceny faktycznie zapłaconej, czyli po uwzględnieniu ulgi.</p>
       </>
@@ -78,8 +78,9 @@ export const faq: FaqItem[] = [
     answer: (
       <p>
         Nie. Polska wyłączyła pociągi miejskie, podmiejskie i regionalne z unijnego systemu 25%/50% (art. 3a ustawy o
-        transporcie kolejowym). Dotyczy to m.in. Polregio, Kolei Mazowieckich, Kolei Śląskich, Kolei Dolnośląskich, SKM
-        i WKD. Reklamację możesz złożyć na zasadach z regulaminu przewoźnika.
+        transporcie kolejowym). Dotyczy to polskich przewoźników regionalnych, m.in. Polregio (także jego pociągów
+        InterRegio), Kolei Mazowieckich, Kolei Śląskich, Kolei Dolnośląskich, SKM i WKD. Reklamację możesz złożyć na
+        zasadach z regulaminu przewoźnika. Sprawdź w nim, czy i ile zwraca za opóźnienie.
       </p>
     ),
   },
@@ -88,7 +89,7 @@ export const faq: FaqItem[] = [
     answer: (
       <>
         <p>
-          Przewoźnik nie musi płacić, jeśli opóźnienie wynikło z siły wyższej – np. ekstremalnej pogody, osób na torach,
+          Przewoźnik nie musi płacić, jeśli opóźnienie wynikło z siły wyższej, np. ekstremalnej pogody, osób na torach,
           kradzieży kabli lub sabotażu. Strajk personelu kolejowego nie jest siłą wyższą, więc odszkodowanie wtedy
           przysługuje.
         </p>
@@ -101,7 +102,7 @@ export const faq: FaqItem[] = [
     answer: (
       <p>
         Domyślnie wybieramy zwrot na konto lub kartę, którymi zapłaciłeś za bilet. Możesz też wskazać przelew na inny
-        rachunek albo bon na kolejne przejazdy. Przewoźnicy często proponują bon – jeśli wolisz pieniądze, pismo wprost
+        rachunek albo bon na kolejne przejazdy. Przewoźnicy często proponują bon. Jeśli wolisz pieniądze, pismo wprost
         prosi o wypłatę.
       </p>
     ),
@@ -120,7 +121,7 @@ export const faq: FaqItem[] = [
     answer: (
       <>
         <p>
-          Złóż ją jak najszybciej – źródła podają różne terminy, dlatego nie zwlekaj dłużej niż 3 miesiące i sprawdź
+          Złóż ją jak najszybciej. Źródła podają różne terminy, dlatego nie zwlekaj dłużej niż 3 miesiące i sprawdź
           regulamin swojego przewoźnika. Przewoźnik powinien wypłacić odszkodowanie w ciągu miesiąca od złożenia wniosku.
         </p>
         <p>
@@ -134,8 +135,8 @@ export const faq: FaqItem[] = [
     question: 'Czy muszę zakładać konto?',
     answer: (
       <p>
-        Nie, żeby sprawdzić, ile Ci się należy. Konto jest potrzebne dopiero do zapisania sprawy i przygotowania pisma –
-        wtedy to, co wpisałeś, nie przepada.
+        Nie, żeby sprawdzić, ile Ci się należy. Konto jest potrzebne dopiero do zapisania sprawy i przygotowania pisma.
+        Wtedy to, co wpisałeś, nie przepada.
       </p>
     ),
   },
@@ -144,7 +145,7 @@ export const faq: FaqItem[] = [
     answer: (
       <>
         <p>
-          Zdjęć i plików biletu nie zapisujemy – służą tylko do odczytania danych. Numer rachunku jest szyfrowany w bazie,
+          Zdjęć i plików biletu nie zapisujemy. Służą tylko do odczytania danych. Numer rachunku jest szyfrowany w bazie,
           widzisz go tylko Ty i nigdy nie trafia do AI.
         </p>
         <p>
@@ -164,7 +165,9 @@ export interface Source {
 export const sources: Source[] = [
   {
     label: 'Rozporządzenie (UE) 2021/782 w sprawie praw i obowiązków pasażerów w ruchu kolejowym (EUR-Lex)',
-    href: 'https://eur-lex.europa.eu/legal-content/PL/TXT/?uri=CELEX:32021R0782',
+    // ELI, the EU's persistent identifier for the act (survives EUR-Lex URL changes; on 2026-11-14 EUR-Lex sent both
+    // this and the old CELEX deep link to its home page, a site-side redirect).
+    href: 'https://eur-lex.europa.eu/eli/reg/2021/782/oj',
   },
   {
     label: 'Prawa pasażerów w ruchu kolejowym (Your Europe)',
