@@ -742,4 +742,76 @@ public sealed class ComplaintServiceTests : IAsyncLifetime
         Assert.StartsWith("Wniosek o wypłatę odszkodowania", letter.Subject);
         Assert.Contains("art. 19", letter.Body);
     }
+
+    // ---------- Correct Polish: an AI letter without diacritics ("z tytulu", "prosze") falls back to the template ----------
+
+    private const string LongAsciiCompensationBody =
+        "{{FULL_NAME}}\n{{ADDRESS}}\n\nSzanowni Panstwo,\nna podstawie art. 19 rozporzadzenia (UE) 2021/782 wnosze o wyplacenie " +
+        "odszkodowania w kwocie 10,00 zł za opozniony przejazd pociagiem IC na trasie Gdynia Główna - Kraków Główny " +
+        "w dniu 01.11.2026. Opoznienie na stacji docelowej wynioslo 70 minut.\n\n{{PAYOUT}}\n\nZ powazaniem\n{{FULL_NAME}}";
+
+    private const string LongPolishCompensationBody =
+        "{{FULL_NAME}}\n{{ADDRESS}}\n\nSzanowni Państwo,\nna podstawie art. 19 rozporządzenia (UE) 2021/782 wnoszę o wypłacenie " +
+        "odszkodowania w kwocie 10,00 zł za opóźniony przejazd pociągiem IC na trasie Gdynia Główna - Kraków Główny " +
+        "w dniu 01.11.2026. Opóźnienie na stacji docelowej wyniosło 70 minut.\n\n{{PAYOUT}}\n\nZ poważaniem\n{{FULL_NAME}}";
+
+    [Theory]
+    [InlineData("Wniosek o odszkodowanie z tytulu opoznienia", null)]                // subject without diacritics
+    [InlineData("Wniosek o odszkodowanie", "{{FULL_NAME}}\n{{ADDRESS}}\nOdszkodowanie 10,00 zł, art. 19 rozporządzenia (UE) 2021/782. Prosze o wypłatę.\n{{PAYOUT}}")]
+    [InlineData("Wniosek o odszkodowanie", "{{FULL_NAME}}\n{{ADDRESS}}\nZwracam sie o odszkodowanie 10,00 zł, art. 19 rozporządzenia (UE) 2021/782.\n{{PAYOUT}}")]
+    [InlineData("Wniosek o odszkodowanie", "{{FULL_NAME}}\n{{ADDRESS}}\nNalezy mi się 10,00 zł, art. 19 rozporządzenia (UE) 2021/782 za opóźnienie pociagu.\n{{PAYOUT}}")]
+    [InlineData("Wniosek o odszkodowanie", LongAsciiCompensationBody)]               // long body, no diacritics beyond the facts
+    public async Task AiOutput_WithoutPolishDiacritics_FallsBackToTemplate(string subject, string? body)
+    {
+        var json = JsonSerializer.Serialize(new { subject, body = body ?? JsonDocument.Parse(ValidAiJson()).RootElement.GetProperty("body").GetString() });
+
+        var letter = await GenerateAsync(new FakeAi(json), Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.StartsWith("Wniosek o wypłatę odszkodowania", letter.Subject);
+    }
+
+    [Fact]
+    public async Task AiOutput_LongLetterInCorrectPolish_IsUsed()
+    {
+        var letter = await GenerateAsync(new FakeAi(ValidAiJson(LongPolishCompensationBody)), Req());
+
+        Assert.True(letter.UsedAi);
+    }
+
+    [Theory]
+    [InlineData("Reklamacja z tytulu opoznienia pociagu", null)]
+    [InlineData("Reklamacja – opóźnienie pociągu", "{{FULL_NAME}}\n{{ADDRESS}}\nBilet 40,00 zł. Prosze o rozpatrzenie według regulaminu przewozu.\n{{PAYOUT}}")]
+    [InlineData("Reklamacja – opóźnienie pociągu",
+        "{{FULL_NAME}}\n{{ADDRESS}}\n\nSzanowni Panstwo,\nskladam reklamacje dotyczaca przejazdu pociagiem Polregio na trasie Gdynia Główna - " +
+        "Kraków Główny w dniu 01.11.2026. Pociag przyjechal z opoznieniem 70 minut, bilet kosztowal 40,00 zł. Wnosze o rozpatrzenie " +
+        "reklamacji wedlug regulaminu przewozu i pisemna odpowiedz.\n\n{{PAYOUT}}\n\nZ powazaniem\n{{FULL_NAME}}")]
+    public async Task UncoveredCase_AiOutputWithoutPolishDiacritics_FallsBackToTemplate(string subject, string? body)
+    {
+        await MakeAnnaCaseUncoveredAsync(Verdict.NotCovered);
+        var json = JsonSerializer.Serialize(new
+        {
+            subject,
+            body = body ?? JsonDocument.Parse(ValidCarrierRulesJson()).RootElement.GetProperty("body").GetString(),
+        });
+
+        var letter = await GenerateAsync(new FakeAi(json), Req());
+
+        Assert.False(letter.UsedAi);
+        Assert.Equal("Reklamacja – opóźnienie pociągu Polregio z dnia 01.11.2026", letter.Subject);
+    }
+
+    [Theory]
+    [InlineData(Verdict.Eligible)]
+    [InlineData(Verdict.NotCovered)]
+    public async Task AiPrompts_AskForCorrectPolishWithDiacritics(Verdict verdict)
+    {
+        if (verdict != Verdict.Eligible)
+            await MakeAnnaCaseUncoveredAsync(verdict);
+        var ai = new FakeAi(ValidAiJson());
+
+        await GenerateAsync(ai, Req());
+
+        Assert.Contains("Polish diacritics", ai.Prompt);
+    }
 }

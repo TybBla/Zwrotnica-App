@@ -42,6 +42,10 @@ public sealed partial class ComplaintService(
         }
         """;
 
+    private const string CorrectPolishRule =
+        "Write the subject and the body in correct Polish with all Polish diacritics (ą, ć, ę, ł, ń, ó, ś, ź, ż), " +
+        "e.g. \"z tytułu\", \"proszę\", \"pociągu\"; never replace them with plain ASCII letters.";
+
     private const int MaxName = 200, MaxAddress = 300, MaxIban = 34, MaxSubject = 200, MaxBody = 6000;
 
     public async Task<byte[]?> RenderPdfAsync(int caseId, ComplaintPdfRequest request) =>
@@ -157,6 +161,7 @@ public sealed partial class ComplaintService(
 
             Rules:
             - Output JSON with "subject" and "body". Write in formal Polish, 150-250 words in the body.
+            - {CorrectPolishRule}
             - Quote the requested amount exactly as "{f.AmountText}". Do not compute or change any numbers.
             - Cite {article} rozporządzenia (UE) 2021/782 and no other article.
             - Use these literal tokens, each at least once, and do not invent any other tokens:
@@ -192,6 +197,7 @@ public sealed partial class ComplaintService(
 
             Rules:
             - Output JSON with "subject" and "body". Write in formal Polish, 120-220 words in the body.
+            - {CorrectPolishRule}
             - Ask the carrier to consider the complaint under its "regulamin przewozu" and to reply in writing.
             - Do not demand any amount. The only sum you may mention is the ticket price "{f.PriceText}", as a fact.
             - Do not cite any article of Regulation (EU) 2021/782 and do not claim a legal entitlement to compensation.
@@ -209,6 +215,8 @@ public sealed partial class ComplaintService(
         if (ParseDraft(raw) is not { } draft)
             return null;
         var (subject, body) = draft;
+        if (!IsCorrectPolish(subject, body, facts))
+            return null;
 
         if (!body.Contains(facts.AmountText, StringComparison.Ordinal) || !body.Contains("2021/782", StringComparison.Ordinal))
             return null;
@@ -231,6 +239,8 @@ public sealed partial class ComplaintService(
         if (ParseDraft(raw) is not { } draft)
             return null;
         var (subject, body) = draft;
+        if (!IsCorrectPolish(subject, body, facts))
+            return null;
 
         var cited = CitedArticles(body);
         if (cited.Contains("18") || cited.Contains("19") || !body.Contains("regulamin", StringComparison.OrdinalIgnoreCase))
@@ -254,6 +264,24 @@ public sealed partial class ComplaintService(
         if (subject.Length is 0 or > MaxSubject || body.Length is 0 or > MaxBody || subject.Contains("{{"))
             return null;
         return (subject, body);
+    }
+
+    /// <summary>
+    /// Rejects a letter written without Polish diacritics (e.g. a subject "z tytulu"): a known stripped word anywhere,
+    /// or a longer body whose own text has no diacritic at all. Sums ("zł") and the case's own names do not count,
+    /// because they are copied from the facts.
+    /// </summary>
+    private static bool IsCorrectPolish(string subject, string body, ComplaintFacts facts)
+    {
+        if (DeDiacritizedPattern().IsMatch(subject) || DeDiacritizedPattern().IsMatch(body))
+            return false;
+        if (body.Length < 200)
+            return true;
+
+        var ownText = MoneyPattern().Replace(body, " ");
+        foreach (var copied in new[] { facts.Carrier, facts.From, facts.To }.Where(v => !string.IsNullOrEmpty(v)))
+            ownText = ownText.Replace(copied!, " ", StringComparison.OrdinalIgnoreCase);
+        return PolishDiacritic().IsMatch(ownText);
     }
 
     private static HashSet<string> CitedArticles(string body) =>
@@ -366,6 +394,13 @@ public sealed partial class ComplaintService(
 
     [GeneratedRegex(@"\bart(?:\.|ykuł\p{L}*)\s*(\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex ArticlePattern();
+
+    [GeneratedRegex(@"[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]")]
+    private static partial Regex PolishDiacritic();
+
+    // Common words with their diacritics stripped ("z tytulu", "prosze"); none of them is correct Polish on its own.
+    [GeneratedRegex(@"\b(?:tytulu|prosze|zwracam\s+sie|wyplate|nalezy|pociagu)\b", RegexOptions.IgnoreCase)]
+    private static partial Regex DeDiacritizedPattern();
 
     [GeneratedRegex(@"\{\{[A-Z_]+\}\}")]
     private static partial Regex TokenPattern();

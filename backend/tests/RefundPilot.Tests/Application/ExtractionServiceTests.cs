@@ -86,6 +86,18 @@ public sealed class ExtractionServiceTests
     }
 
     [Fact]
+    public async Task Prompt_AsksForStationAndCarrierNamesWithPolishDiacritics()
+    {
+        var ai = new FakeAi("{}");
+
+        await RunAsync("{}", ai);
+
+        Assert.Contains("Polish diacritics", ai.Prompt);
+        Assert.Contains("Kraków Główny", ai.Prompt);
+        Assert.Contains("never strip", ai.Prompt);
+    }
+
+    [Fact]
     public async Task HugeNumber_DoesNotThrowAndBecomesMissing()
     {
         var result = await RunAsync("""{"carrier":"X","ticketPrice":1e400,"travelDate":"2026-11-01"}""");
