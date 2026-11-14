@@ -63,8 +63,9 @@ public static class ReminderEmail
         ];
         (string Text, string? Url)[] steps =
         [
-            ($"wysłać przewoźnikowi ponaglenie – krótkie pismo z prośbą o odpowiedź, które powołuje się na {document} i datę wysłania,", null),
-            ("złożyć skargę do Prezesa Urzędu Transportu Kolejowego:", UtkUrl),
+            ($"wysłać przewoźnikowi ponaglenie – krótkie pismo z prośbą o odpowiedź, które powołuje się na {document} i datę wysłania " +
+             "(gotowe pismo przygotują Państwo w sprawie w Zwrotnicy, w sekcji „Kolejne kroki”, przyciskiem „Przygotuj ponaglenie”),", null),
+            ("złożyć skargę do Prezesa Urzędu Transportu Kolejowego (w tej samej sekcji przyciskiem „Przygotuj skargę do UTK”):", UtkUrl),
             ("zwrócić się do Rzecznika Praw Pasażera Kolei z prośbą o mediację.", null),
         ];
         const string signature = "Z wyrazami szacunku\nZespół Zwrotnicy";

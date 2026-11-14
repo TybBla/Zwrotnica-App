@@ -50,6 +50,19 @@ public sealed class ReminderEmailTests
         }
     }
 
+    [Fact]
+    public void NamesTheButtonsThatPrepareTheFollowUpLetters()
+    {
+        var message = ReminderEmail.Build(Case(), BaseUrl);
+
+        foreach (var part in new[] { message.Text, message.Html })
+        {
+            Assert.Contains("„Przygotuj ponaglenie”", part);
+            Assert.Contains("„Przygotuj skargę do UTK”", part);
+            Assert.Contains("Kolejne kroki", part);
+        }
+    }
+
     [Theory]
     [InlineData(Verdict.NotCovered, 0)]
     [InlineData(Verdict.Unknown, 0)]
