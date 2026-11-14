@@ -77,7 +77,7 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Update_WithDetachedCopy_PersistsChangedFieldsOnly()
+    public async Task Update_WithDetachedCopy_PersistsWholeEntity()
     {
         var created = NewCase();
         await _repository.AddAsync(created);
@@ -115,6 +115,7 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
         Assert.Equal(5, cases.Count);
         Assert.Contains(cases, c => c.Status == CaseStatus.Paid);
         Assert.Contains(cases, c => c.Verdict == Verdict.NotCovered && c.CompensationAmount == 0m);
+        Assert.Null(Assert.Single(cases, c => c.Carrier == "Polregio").TrainCategory);
     }
 
     [Fact]
@@ -138,6 +139,15 @@ public sealed class CaseRepositoryTests : IAsyncLifetime
         Assert.Null(await _repository.GetAsync(created.Id, UserB));
         Assert.NotNull(await _repository.GetAsync(created.Id, UserA));
     }
+
+    [Theory]
+    [InlineData(nameof(RefundCase.Carrier), 200)]
+    [InlineData(nameof(RefundCase.TrainCategory), 50)]
+    [InlineData(nameof(RefundCase.FromStation), 200)]
+    [InlineData(nameof(RefundCase.ToStation), 200)]
+    [InlineData(nameof(RefundCase.TicketNumber), 100)]
+    public void ColumnLengths_MatchRequestDtoLimits(string property, int expected) =>
+        Assert.Equal(expected, _db.Model.FindEntityType(typeof(RefundCase))!.FindProperty(property)!.GetMaxLength());
 
     [Fact]
     public async Task Delete_WithWrongUser_ReturnsFalse_AndKeepsCase()

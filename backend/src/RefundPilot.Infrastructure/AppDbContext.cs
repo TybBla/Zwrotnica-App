@@ -34,11 +34,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         entity.HasIndex(c => c.UserId);
         entity.HasOne<AppUser>().WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
 
-        entity.Property(c => c.Carrier).IsRequired().HasMaxLength(100);
-        entity.Property(c => c.TrainCategory).HasMaxLength(20);
-        entity.Property(c => c.FromStation).HasMaxLength(100);
-        entity.Property(c => c.ToStation).HasMaxLength(100);
-        entity.Property(c => c.TicketNumber).HasMaxLength(50);
+        entity.Property(c => c.Carrier).IsRequired().HasMaxLength(200);
+        entity.Property(c => c.TrainCategory).HasMaxLength(50);
+        entity.Property(c => c.FromStation).HasMaxLength(200);
+        entity.Property(c => c.ToStation).HasMaxLength(200);
+        entity.Property(c => c.TicketNumber).HasMaxLength(100);
         entity.Property(c => c.Notes).HasMaxLength(2000);
 
         entity.Property(c => c.TicketPrice).HasPrecision(10, 2);
