@@ -19,8 +19,11 @@ let lastClosedAt = 0
 const recentlyClosed = () => Date.now() - lastClosedAt < 400
 
 /**
- * ⓘ hint that works with every input: hover (mouse, short delay), keyboard focus, and tap (toggles).
- * A tap or click pins it open until a tap outside, blur, or Escape.
+ * ⓘ hint that works with every input: hover (mouse, short delay), keyboard focus, and tap.
+ * A click or tap pins it open; the next click or tap on the trigger closes it, as do a press outside, blur and Escape.
+ *
+ * The bubble is always in the DOM (`hidden` while closed), so the trigger's aria-describedby never changes:
+ * a screen reader announces the hint with the button whether or not it is shown.
  */
 export function Tooltip({ label, content, children }: TooltipProps) {
   const id = useId()
@@ -54,16 +57,21 @@ export function Tooltip({ label, content, children }: TooltipProps) {
 
   useEffect(() => {
     if (!open) return
+    // Capture phase on the document runs before React's own listeners: inside a dialog, Escape closes only the
+    // hint (WCAG 1.4.13 "dismissible"), not the dialog around it. preventDefault also stops the native <dialog> cancel.
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') hide()
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      event.preventDefault()
+      hide()
     }
     const onPointerDown = (event: PointerEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) hide()
     }
-    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('keydown', onKeyDown, true)
     document.addEventListener('pointerdown', onPointerDown)
     return () => {
-      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('keydown', onKeyDown, true)
       document.removeEventListener('pointerdown', onPointerDown)
     }
   }, [open])
@@ -87,6 +95,7 @@ export function Tooltip({ label, content, children }: TooltipProps) {
     <span
       className="tooltip"
       ref={rootRef}
+      data-open={open || undefined}
       onPointerEnter={(event) => {
         if (event.pointerType !== 'mouse') return
         clearTimer()
@@ -104,7 +113,7 @@ export function Tooltip({ label, content, children }: TooltipProps) {
         type="button"
         className="tooltip__trigger"
         aria-label={label}
-        aria-describedby={open ? id : undefined}
+        aria-describedby={id}
         onPointerDown={(event) => {
           lastPointerType.current = event.pointerType
         }}
@@ -117,19 +126,25 @@ export function Tooltip({ label, content, children }: TooltipProps) {
           hide()
         }}
         onClick={() => {
-          const isTouch = lastPointerType.current === 'touch' || lastPointerType.current === 'pen'
           lastPointerType.current = null
-          if (isTouch && open) hide()
+          // Mouse, touch and Enter/Space alike: the first press pins the hint open (a hover-opened one too),
+          // the next press on the trigger unpins and closes it.
+          if (open && pinned.current) hide()
           else show(true)
         }}
       >
         {children ?? <InfoIcon size={18} />}
       </button>
-      {open && (
-        <span ref={bubbleRef} id={id} role="tooltip" className="tooltip__bubble" data-instant={instant || undefined}>
-          {content}
-        </span>
-      )}
+      <span
+        ref={bubbleRef}
+        id={id}
+        role="tooltip"
+        className="tooltip__bubble"
+        hidden={!open}
+        data-instant={instant || undefined}
+      >
+        {content}
+      </span>
     </span>
   )
 }

@@ -152,6 +152,7 @@ html.theme-transition *::after {
 @media (prefers-reduced-motion: reduce) {
   :root {
     --press-scale: 1;
+    --press-scale-icon: 1;
     --enter-scale: 1;
     --enter-shift: 0px;
   }

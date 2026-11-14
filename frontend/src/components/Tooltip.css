@@ -28,13 +28,13 @@
   inset: -8px;
 }
 
-.tooltip__trigger[aria-describedby] {
+.tooltip[data-open] .tooltip__trigger {
   color: var(--brand-tint-text);
   background: var(--brand-tint);
 }
 
 .tooltip__trigger:active {
-  transform: scale(0.92);
+  transform: scale(var(--press-scale-icon));
 }
 
 @media (hover: hover) and (pointer: fine) {

@@ -76,6 +76,7 @@
   --duration-fast: 150ms;
   --duration-base: 200ms;
   --press-scale: 0.98;
+  --press-scale-icon: 0.92; /* small icon buttons (28 px): 0.98 would not be visible */
   --enter-scale: 0.98;
   --enter-shift: -4px;
 }
