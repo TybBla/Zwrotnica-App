@@ -40,6 +40,7 @@ Nazwy projektów i przestrzeni nazw w kodzie (`RefundPilot.*`, `RefundPilot.sln`
 - **Pismo reklamacyjne** w dwóch formach: jako tekst (temat e-maila i treść, przyciski „Kopiuj”) albo jako PDF do pobrania. Po wygenerowaniu aplikacja pokazuje listę danych do ręcznego uzupełnienia, np. „Uzupełnij w piśmie: numer rachunku, adres”. Te miejsca są oznaczone w treści nawiasami `[ ]`.
 - **Konta użytkowników:** rejestracja e-mailem i hasłem. Profil (imię i nazwisko, adres, rachunek, preferowana forma wypłaty) jest opcjonalny, a **numer rachunku jest szyfrowany w bazie**. Rachunek można też podać jednorazowo w kreatorze, z opcją zapamiętania go na koncie.
 - **Lista spraw** ze statusami Nowa → Wysłana → Wypłacona / Odrzucona i licznikiem kwot odzyskanych i oczekujących. Po oznaczeniu sprawy jako wysłanej startuje **odliczanie miesiąca na odpowiedź przewoźnika**. Po terminie aplikacja podpowiada skargę do UTK.
+- **Termin i przypomnienie e-mail.** Pierwsze pismo do nowej sprawy oznacza ją jako wysłaną (zakładamy wysyłkę tego samego dnia) i startuje miesiąc na odpowiedź. Po terminie aplikacja wysyła na adres konta jedno przypomnienie z podpowiedzią, co dalej (ponaglenie, skarga do Prezesa UTK, mediacja Rzecznika Praw Pasażera Kolei). Bez SMTP wiadomość trafia jako plik `.eml` do `backend/src/RefundPilot.Api/data/outbox`; przypomnienia można wyłączyć w profilu.
 - **Tryb gościa:** odczyt biletu, werdykt i kwota działają bez logowania. Zapis sprawy i pismo wymagają konta. Logowanie pojawia się w miejscu, bez utraty wpisanych danych.
 - **Jasny i ciemny motyw** (jeden styl, dwie palety, przełącznik). Projekt **mobile-first**: duże cele dotykowe i przyklejony przycisk akcji na telefonie.
 
@@ -173,14 +174,14 @@ Aplikacja: **http://localhost:5173**. Vite przekazuje `/api` do backendu na porc
 |---|---|
 | `demo@zwrotnica.test` | `Demo!2026pass` |
 
-To lokalne dane testowe z `appsettings.Development.json` (fikcyjna osoba, 5 fikcyjnych spraw), nie prawdziwe konto. Możesz też założyć własne konto albo korzystać z kreatora jako gość.
+To lokalne dane testowe z `appsettings.Development.json` (fikcyjna osoba, 6 fikcyjnych spraw), nie prawdziwe konto. Możesz też założyć własne konto albo korzystać z kreatora jako gość.
 
 ### 7. Testy
 
 ```bash
-dotnet test backend/RefundPilot.sln     # 363 testy: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
+dotnet test backend/RefundPilot.sln     # 383 testy: reguły, serwisy, walidacja, API (WebApplicationFactory), bez realnych wywołań AI
 cd frontend
-npm run test                             # 170 testów (Vitest + Testing Library)
+npm run test                             # 173 testy (Vitest + Testing Library)
 npm run build                            # tsc + build produkcyjny
 npm run lint                             # oxlint
 ```
@@ -198,6 +199,11 @@ Testy backendu i frontendu uruchamia też GitHub Actions (`.github/workflows/ci.
 | `Seed:Enabled` | `true` (produkcyjnie `false`) | Czy w ogóle tworzyć konto demo. |
 | `DataProtection:KeysPath` | domyślny katalog użytkownika (produkcyjnie `/home/data/keys`) | Gdzie trzymać klucze szyfrujące IBAN. |
 | `ConnectionStrings:Default` | `DataSource=refundpilot.db` (produkcyjnie `/home/data/zwrotnica.db`) | Plik bazy SQLite. |
+| `PublicBaseUrl` | brak (w Development `http://localhost:5173`) | Adres frontendu do linku w e-mailu z przypomnieniem. |
+| `Email:Smtp:Host`, `Port`, `User`, `Password`, `EnableSsl` | brak, `587`, brak, brak, `true` | Serwer SMTP (STARTTLS). Bez hosta e-maile są zapisywane jako `.eml` w `Email:OutboxPath`. |
+| `Email:From`, `Email:FromName` | `no-reply@zwrotnica.test`, `Zwrotnica` | Nadawca przypomnień. |
+| `Email:OutboxPath` | `data/outbox` (produkcyjnie `/home/data/outbox`) | Folder na pliki `.eml`, gdy SMTP nie jest ustawiony. |
+| `Reminders:Enabled`, `Reminders:IntervalMinutes` | `true`, `60` | Wysyłka przypomnień przy starcie i co podany czas. |
 | `ForwardedHeaders:Enabled` | `false` (produkcyjnie `true`) | Czytanie IP klienta i schematu z `X-Forwarded-*` od proxy z adresu prywatnego (jeden przeskok). |
 
 Wartości produkcyjne są w `appsettings.Production.json`. Zmienne środowiskowe używają `__` zamiast `:` (np. `Seed__DemoEmail`). Katalog `/home/data` istnieje tylko na Azure App Service: uruchamiając wersję produkcyjną gdzie indziej, ustaw `ConnectionStrings__Default` (np. `DataSource=/var/lib/zwrotnica/zwrotnica.db`) i `DataProtection__KeysPath` na zapisywalne ścieżki.
