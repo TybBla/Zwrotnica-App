@@ -75,6 +75,18 @@ describe('routing', () => {
     await waitFor(() => expect(document.activeElement?.tagName === 'H1').toBe(true))
   })
 
+  it('names the product Zwrotnica and keeps privacy facts without mentioning a free or demo AI model', async () => {
+    const user = userEvent.setup()
+    renderAt('/')
+    expect((await screen.findByRole('link', { name: 'Zwrotnica' })).getAttribute('href')).toBe('/')
+    expect(document.body.textContent).toContain('Zdjęć i plików biletu nie zapisujemy')
+    expect(document.body.textContent).not.toMatch(/darmow|wersj\w* demo/i)
+
+    await user.click(screen.getByRole('button', { name: /Wgraj bilet/ }))
+    expect(await screen.findByText(/Nie zapisujemy plików/)).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/darmow|wersj\w* demo/i)
+  })
+
   it('offers "Moje sprawy" and "Profil" in the account menu', async () => {
     signedIn = true
     const user = userEvent.setup()

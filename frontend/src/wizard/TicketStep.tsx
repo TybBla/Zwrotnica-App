@@ -3,7 +3,7 @@ import { ApiError, api } from '../api/client'
 import type { CarrierOption, ReferenceDataDto } from '../api/types'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
-import { AlertCircleIcon, ArrowRightIcon, CloseIcon, InfoIcon, PencilIcon, ShieldIcon, ScanIcon, UploadIcon } from '../components/icons'
+import { AlertCircleIcon, ArrowRightIcon, CloseIcon, PencilIcon, ShieldIcon, ScanIcon, UploadIcon } from '../components/icons'
 import { Select, type SelectOption } from '../components/Select'
 import { TextInput } from '../components/TextInput'
 import { STATIONS } from '../lib/stations'
@@ -218,10 +218,6 @@ export function TicketStep({ state, dispatch, reference }: TicketStepProps) {
             </p>
           )}
           <div className="wizard-notes">
-            <p>
-              <InfoIcon size={16} />
-              Wersja demo korzysta z darmowego modelu AI – odczyt może potrwać kilka sekund i bywa niedokładny.
-            </p>
             <p>
               <ShieldIcon size={16} />
               Nie zapisujemy plików – służą tylko do odczytania danych z biletu.

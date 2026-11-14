@@ -146,16 +146,10 @@ export const faq: FaqItem[] = [
   {
     question: 'Co dzieje się z moimi danymi?',
     answer: (
-      <>
-        <p>
-          Zdjęć i plików biletu nie zapisujemy. Służą tylko do odczytania danych. Numer rachunku jest szyfrowany w bazie,
-          widzisz go tylko Ty i nigdy nie trafia do AI.
-        </p>
-        <p>
-          Wersja demonstracyjna odczytuje bilety darmowym modelem AI Google (Gemini). W darmowym planie przesłane treści
-          mogą służyć Google do ulepszania usług, dlatego zasłoń na zdjęciu dane osobowe albo wpisz dane ręcznie.
-        </p>
-      </>
+      <p>
+        Zdjęć i plików biletu nie zapisujemy. Służą tylko do odczytania danych. Numer rachunku jest szyfrowany w bazie,
+        widzisz go tylko Ty i nigdy nie trafia do AI.
+      </p>
     ),
   },
 ]
