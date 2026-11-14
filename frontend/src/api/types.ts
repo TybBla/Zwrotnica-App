@@ -47,6 +47,8 @@ export interface CategoryOption {
 export interface ReferenceDataDto {
   carriers: CarrierOption[]
   categories: CategoryOption[]
+  /** Carrier's minimum payout in PLN; smaller amounts are flagged as possibly not paid out. */
+  minimumPayout: number
 }
 
 export interface ExtractionDto {

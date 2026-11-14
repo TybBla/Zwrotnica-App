@@ -68,10 +68,12 @@ interface ResultStepProps {
   onOpenCases?: () => void
   /** Owned by Wizard, so a save sent before leaving the step is joined, not repeated, after coming back. */
   pendingCase?: RefObject<PendingCase | null>
+  /** Carrier's minimum payout from the reference data (VerdictCard falls back to its default while it loads). */
+  minimumPayout?: number
 }
 
 /** Wynik: the verdict, and for money due – payout, save (signing in inline if needed) and the letter. */
-export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPending }: ResultStepProps) {
+export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPending, minimumPayout }: ResultStepProps) {
   const { assessment, payout } = state
   const { user, loading, logout } = useAuth()
   const [rawPhase, setPhase] = useState<Phase>('idle')
@@ -300,7 +302,12 @@ export function ResultStep({ state, dispatch, onOpenCases, pendingCase: sharedPe
       </header>
 
       {assessment ? (
-        <VerdictCard assessment={assessment} details={details} />
+        <VerdictCard
+          assessment={assessment}
+          details={details}
+          minimumPayout={minimumPayout}
+          cancelled={state.delay.incidentType === 'Cancellation'}
+        />
       ) : (
         <p className="wizard-step__lead">Brak wyniku – wróć i sprawdź dane.</p>
       )}

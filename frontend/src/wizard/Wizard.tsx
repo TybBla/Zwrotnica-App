@@ -64,7 +64,15 @@ export function Wizard({ onOpenCases, initialSource }: WizardProps = {}) {
         {state.step === 'start' && <StartChoice onChoose={(source) => dispatch({ type: 'start', source })} />}
         {state.step === 'ticket' && <TicketStep state={state} dispatch={dispatch} reference={reference} />}
         {state.step === 'delay' && <DelayStep state={state} dispatch={dispatch} />}
-        {state.step === 'result' && <ResultStep state={state} dispatch={dispatch} onOpenCases={onOpenCases} pendingCase={pendingCase} />}
+        {state.step === 'result' && (
+          <ResultStep
+            state={state}
+            dispatch={dispatch}
+            onOpenCases={onOpenCases}
+            pendingCase={pendingCase}
+            minimumPayout={reference?.minimumPayout}
+          />
+        )}
       </div>
     </section>
   )

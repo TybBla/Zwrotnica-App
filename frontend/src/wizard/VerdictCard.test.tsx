@@ -44,6 +44,20 @@ describe('VerdictCard', () => {
     expect(screen.getByText(/poniżej progu/i).textContent).toMatch(/16 zł/)
   })
 
+  it('uses the minimum payout from the reference data when given', () => {
+    render(<VerdictCard assessment={{ ...base, compensationAmount: 12.48, belowMinimum: true }} minimumPayout={18.5} />)
+    expect(screen.getByText(/poniżej progu/i).textContent).toMatch(/18,5 zł/)
+  })
+
+  it('labels a cancellation amount as a ticket refund', () => {
+    const { rerender } = render(<VerdictCard assessment={base} />)
+    expect(screen.getByText('Kwota odszkodowania')).toBeTruthy()
+
+    rerender(<VerdictCard assessment={{ ...base, percent: 100 }} cancelled />)
+    expect(screen.getByText('Kwota zwrotu ceny biletu')).toBeTruthy()
+    expect(screen.queryByText('Kwota odszkodowania')).toBeNull()
+  })
+
   it('asks for the price when it is required', () => {
     render(<VerdictCard assessment={{ ...base, compensationAmount: 0, priceRequired: true }} />)
     expect(screen.getByText(/podaj cenę/i)).toBeTruthy()

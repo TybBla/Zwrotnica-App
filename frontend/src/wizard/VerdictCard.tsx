@@ -4,8 +4,10 @@ import { AlertCircleIcon, CheckCircleIcon, MinusCircleIcon, WarningIcon } from '
 import { formatAmount } from '../lib/format'
 import { shownVerdict, verdictStyle } from '../lib/verdict'
 
-/** Carrier's minimum payout (backend CompensationOptions.MinimumPayout). */
-export const MINIMUM_PAYOUT = 16
+/** Shown until /api/reference answers; the server value comes from CompensationOptions.MinimumPayout. */
+export const DEFAULT_MINIMUM_PAYOUT = 16
+
+const threshold = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 2 })
 
 const verdictIcon = {
   Eligible: CheckCircleIcon,
@@ -27,10 +29,14 @@ interface VerdictCardProps {
   assessment: AssessmentDto
   /** The trip the verdict is about, shown under a perforation like the stub of a ticket. */
   details?: VerdictDetail[]
+  /** Carrier's minimum payout in PLN (from the reference data). */
+  minimumPayout?: number
+  /** A cancelled train: the amount is a refund of the ticket price, not compensation for a delay. */
+  cancelled?: boolean
 }
 
 /** The answer, laid out like a receipt: verdict, amount, why, what may stand in the way – and the trip it is about. */
-export function VerdictCard({ assessment, details = [] }: VerdictCardProps) {
+export function VerdictCard({ assessment, details = [], minimumPayout = DEFAULT_MINIMUM_PAYOUT, cancelled = false }: VerdictCardProps) {
   const id = useId()
   const verdict = shownVerdict(assessment)
   const style = verdictStyle[verdict]
@@ -51,7 +57,7 @@ export function VerdictCard({ assessment, details = [] }: VerdictCardProps) {
       <div className="verdict__body">
         {showAmount && (
           <div className="verdict__amount-block">
-            <p className="verdict__amount-label">Kwota odszkodowania</p>
+            <p className="verdict__amount-label">{cancelled ? 'Kwota zwrotu ceny biletu' : 'Kwota odszkodowania'}</p>
             <p className="verdict__amount tabular">
               {formatAmount(assessment.compensationAmount)}
               <span className="verdict__currency"> zł</span>
@@ -67,7 +73,7 @@ export function VerdictCard({ assessment, details = [] }: VerdictCardProps) {
               <li className="verdict__note">
                 <WarningIcon size={18} />
                 <span>
-                  Poniżej progu – kwota jest niższa niż minimalna wypłata przewoźnika ({MINIMUM_PAYOUT} zł), więc przewoźnik może
+                  Poniżej progu – kwota jest niższa niż minimalna wypłata przewoźnika ({threshold.format(minimumPayout)} zł), więc przewoźnik może
                   jej nie wypłacić. Reklamację możesz złożyć mimo to.
                 </span>
               </li>

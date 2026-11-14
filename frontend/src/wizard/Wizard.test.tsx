@@ -24,6 +24,7 @@ const reference: ReferenceDataDto = {
     { code: 'IC', label: 'InterCity' },
     { code: 'TLK', label: 'Twoje Linie Kolejowe' },
   ],
+  minimumPayout: 16,
 }
 
 const eligible = (request: AssessmentRequest): AssessmentDto => {
