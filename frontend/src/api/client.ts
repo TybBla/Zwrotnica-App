@@ -107,28 +107,47 @@ async function noContent(path: string, method: string, body?: unknown): Promise<
   await send(path, jsonInit(method, body))
 }
 
-// Identity API error codes → Polish (register returns them as validation-problem keys).
-const identityMessages: Record<string, string> = {
-  DuplicateUserName: 'Konto z tym adresem e-mail już istnieje.',
-  DuplicateEmail: 'Konto z tym adresem e-mail już istnieje.',
-  InvalidEmail: 'Podaj poprawny adres e-mail.',
-  InvalidUserName: 'Podaj poprawny adres e-mail.',
-  PasswordTooShort: 'Hasło musi mieć co najmniej 6 znaków.',
-  PasswordRequiresDigit: 'Hasło musi zawierać cyfrę.',
-  PasswordRequiresLower: 'Hasło musi zawierać małą literę.',
-  PasswordRequiresUpper: 'Hasło musi zawierać wielką literę.',
-  PasswordRequiresNonAlphanumeric: 'Hasło musi zawierać znak specjalny (np. !).',
-  PasswordRequiresUniqueChars: 'Hasło musi zawierać więcej różnych znaków.',
+// ASP.NET Identity error codes → the form field they belong to and a Polish message. /register returns them as
+// validation-problem keys ({"errors": {"PasswordTooShort": ["Passwords must be at least 6 characters."]}}).
+const identityMessages: Record<string, { field: 'email' | 'password'; message: string }> = {
+  DuplicateUserName: { field: 'email', message: 'Konto z tym adresem e-mail już istnieje. Zaloguj się.' },
+  DuplicateEmail: { field: 'email', message: 'Konto z tym adresem e-mail już istnieje. Zaloguj się.' },
+  InvalidEmail: { field: 'email', message: 'Podaj poprawny adres e-mail, np. jan@example.com.' },
+  InvalidUserName: { field: 'email', message: 'Podaj poprawny adres e-mail, np. jan@example.com.' },
+  PasswordTooShort: { field: 'password', message: 'Hasło musi mieć co najmniej 6 znaków.' },
+  PasswordRequiresDigit: { field: 'password', message: 'Hasło musi zawierać cyfrę (0–9).' },
+  PasswordRequiresLower: { field: 'password', message: 'Hasło musi zawierać małą literę (a–z).' },
+  PasswordRequiresUpper: { field: 'password', message: 'Hasło musi zawierać wielką literę (A–Z).' },
+  PasswordRequiresNonAlphanumeric: { field: 'password', message: 'Hasło musi zawierać znak specjalny, np. ! lub #.' },
+  PasswordRequiresUniqueChars: { field: 'password', message: 'Hasło musi zawierać więcej różnych znaków.' },
+  PasswordMismatch: { field: 'password', message: 'Nieprawidłowe hasło.' },
 }
 
+/** Field errors keyed by camelCase field name, as the client stores them ("passwordTooShort"). */
+const identityCode = (key: string) => key.charAt(0).toUpperCase() + key.slice(1)
+
+/**
+ * Identity's English messages never reach the user: known codes become Polish messages on their own field
+ * (e-mail problems under E-mail, password rules under Hasło); an unknown code becomes a general Polish message.
+ */
 function translateIdentityError(error: ApiError): ApiError {
-  const messages = Object.keys(error.fieldErrors)
-    .map((key) => identityMessages[key.charAt(0).toUpperCase() + key.slice(1)])
-    .filter((message): message is string => Boolean(message))
-  if (messages.length === 0) return error
-  const unique = [...new Set(messages)]
-  const field = unique.some((m) => m.startsWith('Hasło')) ? 'password' : 'email'
-  return new ApiError(error.status, unique.join(' '), { [field]: unique })
+  const keys = Object.keys(error.fieldErrors)
+  if (keys.length === 0) return error
+  const fieldErrors: FieldErrors = {}
+  let unknown = false
+  for (const key of keys) {
+    const known = identityMessages[identityCode(key)]
+    if (!known) {
+      unknown = true
+      continue
+    }
+    const list = (fieldErrors[known.field] ??= [])
+    if (!list.includes(known.message)) list.push(known.message)
+  }
+  const messages = Object.values(fieldErrors).flat()
+  if (messages.length === 0 && unknown)
+    return new ApiError(error.status, 'Nie udało się założyć konta. Sprawdź adres e-mail i hasło.')
+  return new ApiError(error.status, messages.join(' '), fieldErrors)
 }
 
 async function withTranslatedErrors<T>(call: Promise<T>, translate: (error: ApiError) => ApiError): Promise<T> {

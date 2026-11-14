@@ -94,3 +94,69 @@ describe('api client', () => {
     expect(error.detail).toMatch(/połączenia/)
   })
 })
+
+describe('register: ASP.NET Identity errors in Polish', () => {
+  // The exact shape /api/auth/register returned for a weak password and a bad e-mail (checked against the API).
+  const identityProblem = (errors: Record<string, string[]>) =>
+    problem(400, { title: 'One or more validation errors occurred.', status: 400, errors })
+
+  it('puts every broken password rule on the password field, in Polish', async () => {
+    stubFetch(
+      identityProblem({
+        PasswordTooShort: ['Passwords must be at least 6 characters.'],
+        PasswordRequiresNonAlphanumeric: ['Passwords must have at least one non alphanumeric character.'],
+        PasswordRequiresDigit: ["Passwords must have at least one digit ('0'-'9')."],
+        PasswordRequiresUpper: ["Passwords must have at least one uppercase ('A'-'Z')."],
+        PasswordRequiresLower: ["Passwords must have at least one lowercase ('a'-'z')."],
+      }),
+    )
+
+    const error = await caught(api.register('jan@example.com', 'abc'))
+
+    expect(error.fieldErrors).toEqual({
+      password: [
+        'Hasło musi mieć co najmniej 6 znaków.',
+        'Hasło musi zawierać znak specjalny, np. ! lub #.',
+        'Hasło musi zawierać cyfrę (0–9).',
+        'Hasło musi zawierać wielką literę (A–Z).',
+        'Hasło musi zawierać małą literę (a–z).',
+      ],
+    })
+    expect(error.detail).not.toMatch(/Passwords/)
+  })
+
+  it('puts a taken or invalid e-mail on the e-mail field, once', async () => {
+    stubFetch(
+      identityProblem({
+        DuplicateUserName: ["Username 'jan@example.com' is already taken."],
+        DuplicateEmail: ["Email 'jan@example.com' is already taken."],
+      }),
+    )
+    const taken = await caught(api.register('jan@example.com', 'Haslo1!'))
+    expect(taken.fieldErrors).toEqual({ email: ['Konto z tym adresem e-mail już istnieje. Zaloguj się.'] })
+
+    stubFetch(identityProblem({ InvalidEmail: ["Email 'jan' is invalid."] }))
+    const invalid = await caught(api.register('jan', 'Haslo1!'))
+    expect(invalid.fieldErrors).toEqual({ email: ['Podaj poprawny adres e-mail, np. jan@example.com.'] })
+  })
+
+  it('splits mixed e-mail and password errors between the two fields', async () => {
+    stubFetch(identityProblem({ InvalidEmail: ['x'], PasswordTooShort: ['y'] }))
+
+    const error = await caught(api.register('jan', 'a'))
+
+    expect(error.fieldErrors).toEqual({
+      email: ['Podaj poprawny adres e-mail, np. jan@example.com.'],
+      password: ['Hasło musi mieć co najmniej 6 znaków.'],
+    })
+  })
+
+  it('never shows an unknown Identity code in English', async () => {
+    stubFetch(identityProblem({ SomeFutureIdentityCode: ['Something went wrong in English.'] }))
+
+    const error = await caught(api.register('jan@example.com', 'Haslo1!'))
+
+    expect(error.detail).toBe('Nie udało się założyć konta. Sprawdź adres e-mail i hasło.')
+    expect(error.fieldErrors).toEqual({})
+  })
+})
