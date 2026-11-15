@@ -13,6 +13,8 @@ const easeOut = (p: number) => 1 - (1 - p) ** 4
 interface Slide {
   key: string
   title: string
+  /** Visible tab label on narrow screens when the title would not fit; the title stays the accessible name. */
+  short?: string
   lead: string
   body: ReactNode
 }
@@ -41,6 +43,7 @@ const slides: Slide[] = [
   {
     key: 'bezpieczenstwo',
     title: 'Bezpieczeństwo i oszustwa',
+    short: 'Bezpieczeństwo',
     lead: 'Krążą fałszywe wiadomości o odszkodowaniach za opóźnione pociągi. Oto, jak je rozpoznać.',
     body: <PrepList items={safety} />,
   },
@@ -48,15 +51,22 @@ const slides: Slide[] = [
 
 const last = slides.length - 1
 
+/** Distance between two slide starts (slide width + the gap that keeps a neighbour from peeking in). */
+function stride(track: HTMLElement, slides: (HTMLElement | null)[]) {
+  const [first, second] = slides
+  return first && second ? second.offsetLeft - first.offsetLeft || track.clientWidth : track.clientWidth
+}
+
 /**
  * "Zanim zaczniesz": the rules, what to prepare and the safety notes as one tabbed carousel (WAI-ARIA Tabs).
  *
  * - The track is a native horizontal scroller with mandatory snapping, so a phone swipe is the browser's own physics.
  *   Tabs, arrows, dots and autoplay move it with a short scrollLeft tween (snapping is switched off for those 280 ms,
  *   instantly under reduced motion); any touch, pointer or horizontal wheel on the track cancels the tween.
- * - Height: the slides sit in one flex row, so the track always has the tallest slide's height. Shorter slides leave
- *   space below, but nothing under the carousel moves while swiping (animating the height would make the page jump
- *   right after every snap).
+ * - Height: the track follows the active slide's measured height (ResizeObserver, 250 ms ease-out, instant under
+ *   reduced motion), so short slides leave no gap. Tabs, arrows, dots and autoplay change it together with the slide;
+ *   during a touch swipe the height of the slide being left is kept until the snap settles (scrollend, or a short
+ *   quiet period where scrollend is missing), so the content below never jitters under the finger.
  * - Manual navigation has ends (arrows disabled on the first and last slide, arrow keys do not wrap); only autoplay
  *   loops back to the first slide.
  * - Autoplay (12 s) has no pause button by product decision: it pauses on hover, on focus inside, while the tab is
@@ -76,6 +86,12 @@ export function StartGuide() {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const tween = useRef<number | null>(null)
   const sliding = useRef(false)
+  const slideRefs = useRef<(HTMLDivElement | null)[]>([])
+  const touching = useRef(false)
+  const settleTimer = useRef<number | undefined>(undefined)
+  /** Which slide the track's height follows; lags behind `active` during a swipe. */
+  const [heightIndex, setHeightIndex] = useState(0)
+  const [heights, setHeights] = useState<number[]>([])
 
   const autoplay = !reducedMotion && !interacted
   const running = autoplay && !hovered && !focusedInside && !pageHidden
@@ -93,7 +109,7 @@ export function StartGuide() {
       if (!track) return
       stopTween()
       const from = track.scrollLeft
-      const to = index * track.clientWidth
+      const to = index * stride(track, slideRefs.current)
       if (reducedMotion || typeof requestAnimationFrame !== 'function' || from === to) {
         track.scrollLeft = to
         return
@@ -118,6 +134,7 @@ export function StartGuide() {
       const next = Math.max(0, Math.min(last, index))
       if (byUser) setInteracted(true)
       setActive(next)
+      setHeightIndex(next)
       scrollToSlide(next)
     },
     [scrollToSlide],
@@ -137,12 +154,45 @@ export function StartGuide() {
 
   useEffect(() => stopTween, [stopTween])
 
+  // Measure every slide (content reflows with width and font size); jsdom and old browsers keep the natural height.
+  useEffect(() => {
+    if (typeof ResizeObserver !== 'function') return
+    const observer = new ResizeObserver(() => {
+      const next = slideRefs.current.map((slide) => slide?.offsetHeight ?? 0)
+      setHeights((prev) => (prev.length === next.length && prev.every((h, i) => h === next[i]) ? prev : next))
+    })
+    slideRefs.current.forEach((slide) => slide && observer.observe(slide))
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => () => window.clearTimeout(settleTimer.current), [])
+
+  const indexFromScroll = () => {
+    const track = trackRef.current
+    if (!track || track.clientWidth === 0) return null
+    return Math.max(0, Math.min(last, Math.round(track.scrollLeft / stride(track, slideRefs.current))))
+  }
+
+  // The swipe has come to rest: now the height may follow the slide that snapped into place.
+  function settle() {
+    window.clearTimeout(settleTimer.current)
+    if (touching.current || sliding.current) return
+    const index = indexFromScroll()
+    if (index !== null) setHeightIndex(index)
+  }
+
+  function settleSoon() {
+    window.clearTimeout(settleTimer.current)
+    settleTimer.current = window.setTimeout(settle, 150)
+  }
+
   // A swipe moves the track itself: follow it to keep the tab bar in sync (ignored while our own tween runs).
   function onScroll() {
-    const track = trackRef.current
-    if (!track || sliding.current || track.clientWidth === 0) return
-    const index = Math.max(0, Math.min(last, Math.round(track.scrollLeft / track.clientWidth)))
+    if (sliding.current) return
+    const index = indexFromScroll()
+    if (index === null) return
     if (index !== active) setActive(index)
+    settleSoon()
   }
 
   // The user takes over the track: drop our tween so the browser's snapping (and the finger) win.
@@ -200,12 +250,22 @@ export function StartGuide() {
                 id={`${id}-tab-${slide.key}`}
                 aria-selected={index === active}
                 aria-controls={`${id}-panel-${slide.key}`}
+                aria-label={slide.short ? slide.title : undefined}
                 tabIndex={index === active ? 0 : -1}
                 className="guide__tab"
                 onClick={() => go(index, true)}
                 onKeyDown={onTabKeyDown}
               >
-                {slide.title}
+                {slide.short ? (
+                  <>
+                    <span className="guide__tab-full">{slide.title}</span>
+                    <span className="guide__tab-short" aria-hidden="true">
+                      {slide.short}
+                    </span>
+                  </>
+                ) : (
+                  slide.title
+                )}
               </button>
             ))}
           </div>
@@ -215,9 +275,22 @@ export function StartGuide() {
             id={trackId}
             className="guide__track"
             aria-live={autoplay ? 'off' : 'polite'}
+            style={heights[heightIndex] ? { height: heights[heightIndex] } : undefined}
             onScroll={onScroll}
+            onScrollEnd={settle}
             onPointerDown={takeOver}
-            onTouchStart={takeOver}
+            onTouchStart={() => {
+              touching.current = true
+              takeOver()
+            }}
+            onTouchEnd={() => {
+              touching.current = false
+              settleSoon()
+            }}
+            onTouchCancel={() => {
+              touching.current = false
+              settleSoon()
+            }}
             onWheel={(event) => {
               if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) takeOver()
             }}
@@ -225,6 +298,9 @@ export function StartGuide() {
             {slides.map((slide, index) => (
               <div
                 key={slide.key}
+                ref={(node) => {
+                  slideRefs.current[index] = node
+                }}
                 role="tabpanel"
                 id={`${id}-panel-${slide.key}`}
                 aria-labelledby={`${id}-tab-${slide.key}`}

@@ -239,21 +239,55 @@
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
+/* Phones: tabs size to their words (flex, never below the longest word) and long titles use their short label;
+   overflow-wrap is the last guard so no label ever leaves its pill (break-word, unlike anywhere, keeps whole words
+   in the min-content width, so flex never splits a word that fits). */
+.guide__tab {
+  overflow-wrap: break-word;
+}
+
+.guide__tab-short {
+  display: none;
+}
+
+@media (max-width: 39.99rem) {
+  .guide__tabs {
+    display: flex;
+  }
+
+  .guide__tab {
+    flex: 1 1 auto;
+    padding-inline: var(--space-2);
+  }
+
+  .guide__tab-full {
+    display: none;
+  }
+
+  .guide__tab-short {
+    display: inline;
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
   .guide__tab:hover:not([aria-selected='true']) {
     color: var(--text);
   }
 }
 
-/* One slide per width; the row is as tall as the tallest slide, so nothing below moves while swiping. */
+/* One slide per width. Slides keep their natural height; the track's height (set inline from measurements) follows
+   the active slide and clips the taller neighbours. */
 .guide__track {
   display: flex;
+  align-items: flex-start;
+  column-gap: var(--space-6); /* sub-pixel snap offsets never let the neighbour's edge peek in */
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
   scrollbar-width: none;
+  transition: height calc(var(--duration-base) * 1.25) var(--ease-out); /* 250 ms */
 }
 
 .guide__track::-webkit-scrollbar {
@@ -374,6 +408,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .guide__tab,
+  .guide__track,
   .guide__dot::before,
   .guide__arrow {
     transition: none;

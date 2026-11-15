@@ -37,7 +37,7 @@ describe('StartGuide – tabs', () => {
     const { tabs, panels } = setup()
 
     expect(screen.getByRole('heading', { level: 2, name: 'Zanim zaczniesz' })).toBeTruthy()
-    expect(tabs.map((tab) => tab.textContent)).toEqual(titles)
+    expect(titles.map((name) => screen.getByRole('tab', { name }))).toEqual(tabs)
     tabs.forEach((tab, index) => {
       expect(tab.getAttribute('aria-controls')).toBe(panels[index].id)
       expect(panels[index].getAttribute('aria-labelledby')).toBe(tab.id)
@@ -46,6 +46,41 @@ describe('StartGuide – tabs', () => {
     expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1', '-1'])
     expect(panels.map((panel) => panel.hasAttribute('inert'))).toEqual([false, true, true])
     expect(panels[0].getAttribute('tabindex')).toBe('0')
+  })
+
+  it('keeps the full title as the name of a tab with a short label', () => {
+    const { tabs } = setup()
+    expect(tabs[2].getAttribute('aria-label')).toBe('Bezpieczeństwo i oszustwa')
+    expect(tabs[2].querySelector('.guide__tab-short')?.textContent).toBe('Bezpieczeństwo')
+    expect(tabs[2].querySelector('.guide__tab-short')?.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('sizes the track to the active slide', () => {
+    const slideHeights: Record<string, number> = { zasady: 600, 'co-przygotowac': 300, bezpieczenstwo: 450 }
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      const key = Object.keys(slideHeights).find((k) => this.id.endsWith(`-panel-${k}`))
+      return key ? slideHeights[key] : 0
+    })
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        callback: () => void
+        constructor(callback: () => void) {
+          this.callback = callback
+        }
+        observe() {
+          this.callback()
+        }
+        disconnect() {}
+      },
+    )
+    const { tabs, track } = setup()
+
+    expect(track.style.height).toBe('600px')
+    fireEvent.click(tabs[1])
+    expect(track.style.height).toBe('300px')
+    fireEvent.click(tabs[2])
+    expect(track.style.height).toBe('450px')
   })
 
   it('keeps the rules as a table with its headers', () => {
