@@ -69,11 +69,10 @@ public sealed class FollowUpRulesTests
     [Theory]
     [InlineData("reminder", FollowUpKind.Reminder)]
     [InlineData("utk-complaint", FollowUpKind.UtkComplaint)]
-    public void Slugs_RoundTrip(string slug, FollowUpKind kind)
+    public void Slugs_Parse(string slug, FollowUpKind kind)
     {
         Assert.True(FollowUpRules.TryParseKind(slug, out var parsed));
         Assert.Equal(kind, parsed);
-        Assert.Equal(slug, FollowUpRules.Slug(kind));
     }
 
     [Theory]

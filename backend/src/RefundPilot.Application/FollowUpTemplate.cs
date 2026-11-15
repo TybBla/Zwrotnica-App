@@ -54,6 +54,9 @@ public static class FollowUpTemplate
         };
     }
 
+    /// <summary>", bilet nr IC-1" for the "Dotyczy" line, or nothing when the number is unknown.</summary>
+    private static string TicketPart(ComplaintFacts c) => string.IsNullOrWhiteSpace(c.TicketNumber) ? "" : $", bilet{c.TicketRef}";
+
     public static (string Subject, string Body) BuildReminder(FollowUpFacts f)
     {
         var c = f.Case;
@@ -61,12 +64,17 @@ public static class FollowUpTemplate
         var subject = $"Ponaglenie – {document.Nominative} z dnia {f.FiledText}";
 
         var claim = ClaimOf(f) is { } asked
-            ? $"We wniosku wniosłem(-am) o {asked}."
+            ? $"Wniosłem(-am) o {asked}."
             : "W reklamacji wniosłem(-am) o jej rozpatrzenie na zasadach określonych w Państwa regulaminie przewozu.";
         // Only a deadline that really passed is stated; before it the passenger only says no answer has come yet.
         var noReply = f.PastDeadline
             ? "Termin na udzielenie odpowiedzi upłynął, a do dnia dzisiejszego nie otrzymałem(-am) odpowiedzi."
             : "Informuję, że do dnia dzisiejszego nie otrzymałem(-am) odpowiedzi.";
+
+        // A shorter deadline is asked for only once the carrier's own time is up.
+        var replyBy = f.PastDeadline
+            ? "w terminie 14 dni od dnia otrzymania niniejszego ponaglenia"
+            : "w terminie przewidzianym przepisami";
 
         var body = $"""
             {ComplaintTemplate.FullName}
@@ -74,7 +82,7 @@ public static class FollowUpTemplate
 
             {c.Carrier}
 
-            Dotyczy: {document.Nominative} z dnia {f.FiledText}, bilet{c.TicketRef}, przejazd relacją {c.FromText} – {c.ToText} w dniu {c.DateText}
+            Dotyczy: {document.Nominative} z dnia {f.FiledText}{TicketPart(c)}, przejazd relacją {c.FromText} – {c.ToText} w dniu {c.DateText}
 
             Szanowni Państwo,
 
@@ -82,7 +90,7 @@ public static class FollowUpTemplate
 
             {claim} {noReply}
 
-            Uprzejmie proszę o rozpatrzenie {document.Genitive} i udzielenie pisemnej odpowiedzi w terminie 14 dni od dnia otrzymania niniejszego ponaglenia.
+            Uprzejmie proszę o rozpatrzenie {document.Genitive} i udzielenie pisemnej odpowiedzi {replyBy}.
 
             {ComplaintTemplate.Payout}
 
@@ -123,7 +131,7 @@ public static class FollowUpTemplate
             {ComplaintChannels.UtkName}
             {ComplaintChannels.UtkPostalAddress.Replace(", ", "\n")}
 
-            Dotyczy: skarga na przewoźnika {c.Carrier}, bilet{c.TicketRef}, przejazd relacją {c.FromText} – {c.ToText} w dniu {c.DateText}
+            Dotyczy: skarga na przewoźnika {c.Carrier}{TicketPart(c)}, przejazd relacją {c.FromText} – {c.ToText} w dniu {c.DateText}
 
             Szanowni Państwo,
 

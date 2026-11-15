@@ -34,6 +34,8 @@ public sealed class FollowUpTemplateTests
         Assert.Contains("do dnia dzisiejszego nie otrzymałem(-am) odpowiedzi", body);
         Assert.Contains("upłynął", body);
         Assert.Contains("w terminie 14 dni", body);
+        Assert.DoesNotContain("We wniosku wniosłem", body);
+        Assert.Contains("Wniosłem(-am) o wypłatę odszkodowania", body);
         Assert.Contains(ComplaintTemplate.FullName, body);
         Assert.Contains(ComplaintTemplate.Address, body);
         Assert.Contains(ComplaintTemplate.Payout, body);
@@ -46,6 +48,22 @@ public sealed class FollowUpTemplateTests
 
         Assert.DoesNotContain("upłynął", body);
         Assert.Contains("do dnia dzisiejszego nie otrzymałem(-am) odpowiedzi", body);
+        // The carrier still has its own time: no shorter deadline is demanded.
+        Assert.DoesNotContain("14 dni", body);
+        Assert.Contains("w terminie przewidzianym przepisami", body);
+    }
+
+    [Fact]
+    public void Reminder_WithoutTicketNumber_DoesNotMentionABareTicket()
+    {
+        var facts = Facts() with { TicketNumber = null };
+
+        var (_, reminder) = FollowUpTemplate.BuildReminder(FollowUp(facts, LetterKind.Compensation));
+        var (_, utk) = FollowUpTemplate.BuildUtkComplaint(FollowUp(facts, LetterKind.Compensation));
+
+        Assert.DoesNotContain(", bilet,", reminder);
+        Assert.DoesNotContain(", bilet,", utk);
+        Assert.Contains("Dotyczy:", reminder);
     }
 
     [Fact]

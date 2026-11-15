@@ -39,6 +39,4 @@ public static class FollowUpRules
 
     /// <summary>The URL segment ("reminder", "utk-complaint"); anything else is not a letter we write.</summary>
     public static bool TryParseKind(string slug, out FollowUpKind kind) => Slugs.TryGetValue(slug, out kind);
-
-    public static string Slug(FollowUpKind kind) => Slugs.Single(pair => pair.Value == kind).Key;
 }
