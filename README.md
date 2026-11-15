@@ -120,6 +120,15 @@ Konfiguracja agenta: [`instructions.md`](instructions.md) to regulamin (wymagani
 - Brak weryfikacji e-maila i resetu hasła; klucze Data Protection są per maszyna.
 - Poza zakresem: pozostałe prawa pasażera z rozporządzenia, autobusy i loty.
 
+## Pomysły na rozwój
+
+Z researchu rynku: aplikacje przewoźników pokazują opóźnienia, ale nie składają wniosków, PKP PLK nie udostępnia otwartego API z opóźnieniami, a fałszywe SMS-y „o odszkodowaniu” podkopują zaufanie do tej kategorii usług.
+
+- **Najbliżej:** faktycznie otrzymana kwota przy statusie „Wypłacona” (realnie odzyskane vs wyliczone), zapisywanie wygenerowanego pisma w sprawie, dołączanie zdjęcia biletu do PDF.
+- **Funkcje:** podróże z przesiadkami na jednym bilecie, pozostałe prawa pasażera (posiłki, nocleg, przekierowanie), PWA z powiadomieniami push, wersja angielska dla podróżnych zagranicznych.
+- **Z partnerami:** automatyczna weryfikacja opóźnienia z danych PKP PLK („Twój pociąg spóźnił się 95 min – złóż wniosek”), moduł B2B / API dla aplikacji biletowych i banków, statystyki punktualności przewoźników z danych UTK.
+- **Produkcyjnie:** migracje EF Core i PostgreSQL, klucze Data Protection w Key Vault, Application Insights, testy E2E Playwright i audyt dostępności w CI, weryfikacja e-maila i reset hasła, limit odczytów AI per konto.
+
 ## Dokumentacja
 
 - [`docs/architektura.md`](docs/architektura.md): architektura, konfiguracja, API, struktura repo
