@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { Home } from './Home'
@@ -12,7 +12,9 @@ describe('Home – safety', () => {
       </MemoryRouter>,
     )
 
-    const section = screen.getByRole('region', { name: 'Bezpieczeństwo i oszustwa' })
+    fireEvent.click(screen.getByRole('tab', { name: 'Bezpieczeństwo i oszustwa' }))
+    const section = screen.getByRole('tabpanel', { name: 'Bezpieczeństwo i oszustwa' })
+    expect(section.hasAttribute('inert')).toBe(false)
     const text = section.textContent ?? ''
     expect(text).toContain('Zwrotnica nie jest przewoźnikiem')
     expect(text).toContain('nie wypłaca odszkodowań')

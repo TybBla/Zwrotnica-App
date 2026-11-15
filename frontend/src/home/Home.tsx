@@ -2,10 +2,11 @@ import { useId, type ReactNode } from 'react'
 import { CheckIcon, ShieldIcon } from '../components/icons'
 import type { TicketSource } from '../hooks/useWizard'
 import { TicketStartOptions } from '../wizard/StartChoice'
-import { faq, preparation, rules, safety, type PrepItem } from './content'
+import { faq, rules } from './content'
+import { StartGuide } from './StartGuide'
 import './Home.css'
 
-/** The home page is the tool: it opens on the start panel, then gives the rules, what to prepare and real answers. */
+/** The home page is the tool: the start panel, then rules, preparation and safety in one carousel, then real answers. */
 export function Home({ onStart }: { onStart: (source: TicketSource) => void }) {
   return (
     <>
@@ -40,25 +41,7 @@ export function Home({ onStart }: { onStart: (source: TicketSource) => void }) {
         </div>
       </section>
 
-      <HomeSection id="zasady" title="Ile możesz odzyskać" lead="Zasady z rozporządzenia (UE) 2021/782 w skrócie.">
-        <RulesTable />
-        <p className="home-note">
-          Procent liczy się od ceny faktycznie zapłaconej, czyli po uldze. Kwot poniżej progu przewoźnik może nie wypłacić.
-          W PKP Intercity próg wynosi 16 zł.
-        </p>
-      </HomeSection>
-
-      <HomeSection
-        id="bezpieczenstwo"
-        title="Bezpieczeństwo i oszustwa"
-        lead="Krążą fałszywe wiadomości o odszkodowaniach za opóźnione pociągi. Oto, jak je rozpoznać."
-      >
-        <PrepList items={safety} />
-      </HomeSection>
-
-      <HomeSection id="co-przygotowac" title="Co przygotować" lead="Zanim zaczniesz, miej pod ręką:">
-        <PrepList items={preparation} />
-      </HomeSection>
+      <StartGuide />
 
       <HomeSection id="pytania" title="Najczęstsze pytania">
         <div className="faq">
@@ -71,22 +54,6 @@ export function Home({ onStart }: { onStart: (source: TicketSource) => void }) {
         </div>
       </HomeSection>
     </>
-  )
-}
-
-function PrepList({ items }: { items: PrepItem[] }) {
-  return (
-    <dl className="prep-list">
-      {items.map((item) => (
-        <div key={item.title} className="prep-list__item">
-          <dt className="prep-list__title">
-            {item.title}
-            {item.optional && <span className="prep-list__optional">opcjonalnie</span>}
-          </dt>
-          <dd className="prep-list__text">{item.text}</dd>
-        </div>
-      ))}
-    </dl>
   )
 }
 
@@ -122,41 +89,6 @@ function HomeSection({ id, title, lead, children }: { id: string; title: string;
         <div className="home-section__body">{children}</div>
       </div>
     </section>
-  )
-}
-
-function RulesTable() {
-  return (
-    <div className="rules">
-      {/* Explicit roles: on phones the rows are restyled as blocks (display: block), which makes Safari and older
-          Chrome drop the native table semantics; the roles keep "row 2 of 6, Sytuacja / Co przysługuje" for readers. */}
-      <table className="rules__table" role="table">
-        <caption className="visually-hidden">Ile przysługuje za opóźnienie lub odwołanie pociągu</caption>
-        <thead role="rowgroup">
-          <tr role="row">
-            <th scope="col" role="columnheader">
-              Sytuacja
-            </th>
-            <th scope="col" role="columnheader">
-              Co przysługuje
-            </th>
-          </tr>
-        </thead>
-        <tbody role="rowgroup">
-          {rules.map((rule) => (
-            <tr key={rule.situation} data-kind={rule.kind} role="row">
-              <th scope="row" role="rowheader">
-                <span className="rules__situation">{rule.situation}</span>
-                {rule.detail && <span className="rules__detail">{rule.detail}</span>}
-              </th>
-              <td role="cell">
-                <span className="rules__outcome">{rule.outcome}</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   )
 }
 

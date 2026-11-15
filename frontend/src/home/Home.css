@@ -1,4 +1,5 @@
-/* Home: the start panel first, then the rules table, what to prepare and the FAQ. Left-aligned, no decoration. */
+/* Home: the start panel first, then the "Zanim zaczniesz" carousel (rules, what to prepare, safety) and the FAQ.
+   Left-aligned, no decoration. */
 
 /* ---------- Intro + start panel ---------- */
 .home-intro {
@@ -197,6 +198,186 @@
   font-size: var(--text-sm);
   line-height: var(--leading-snug);
   color: var(--text-secondary);
+}
+
+/* ---------- "Zanim zaczniesz": tabs + a native snapping track ---------- */
+.guide {
+  gap: var(--space-5);
+}
+
+.guide__tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.guide__tab {
+  min-height: 2.75rem;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  text-wrap: balance;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.guide__tab[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guide__tab:hover:not([aria-selected='true']) {
+    color: var(--text);
+  }
+}
+
+/* One slide per width; the row is as tall as the tallest slide, so nothing below moves while swiping. */
+.guide__track {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  scrollbar-width: none;
+}
+
+.guide__track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Our own 280 ms tween drives scrollLeft; mandatory snapping would fight every frame. */
+.guide__track[data-sliding] {
+  scroll-snap-type: none;
+}
+
+/* position: relative keeps the visually hidden heading and caption inside the scroller (absolutely positioned
+   descendants of an unpositioned slide would escape its clipping and widen the page). */
+.guide__slide {
+  position: relative;
+  display: flex;
+  flex: 0 0 100%;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* The track clips overflow, so the panel's focus ring sits inside its edge. */
+.guide__slide:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-width));
+  box-shadow: none;
+}
+
+.guide__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+@media (min-width: 40rem) {
+  .guide__controls {
+    justify-content: space-between;
+  }
+}
+
+.guide__dots {
+  display: flex;
+}
+
+/* 44 px hit area, small visual dot; the active one stretches into a short bar. */
+.guide__dot {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.guide__dot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  transition:
+    width var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
+}
+
+.guide__dot[data-active]::before {
+  width: 20px;
+  background: var(--text);
+}
+
+.guide__arrows {
+  display: none;
+  gap: var(--space-2);
+}
+
+@media (min-width: 40rem) {
+  .guide__arrows {
+    display: flex;
+  }
+}
+
+.guide__arrow {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    opacity var(--duration-fast) ease;
+}
+
+.guide__arrow:active:not([aria-disabled='true']) {
+  transform: scale(var(--press-scale-icon));
+}
+
+.guide__arrow[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guide__arrow:hover:not([aria-disabled='true']) {
+    background: var(--surface-sunken);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide__tab,
+  .guide__dot::before,
+  .guide__arrow {
+    transition: none;
+  }
 }
 
 /* ---------- Rules table ---------- */

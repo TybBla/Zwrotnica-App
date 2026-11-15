@@ -5,6 +5,7 @@ import {
   Camera,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   CircleAlert,
   CircleCheck,
@@ -72,3 +73,4 @@ export const ScanIcon = icon(ScanText)
 export const ExternalLinkIcon = icon(ExternalLink)
 export const TrashIcon = icon(Trash2)
 export const ChevronRightIcon = icon(ChevronRight)
+export const ChevronLeftIcon = icon(ChevronLeft)
