@@ -104,11 +104,14 @@ describe('StartGuide – tabs', () => {
     expect(screen.getByRole('tabpanel', { name: 'Bezpieczeństwo i oszustwa' })).toBe(panels[2])
   })
 
-  it('moves with ArrowLeft/Right, Home and End without wrapping', () => {
+  it('moves with ArrowLeft/Right, Home and End, wrapping at the ends', () => {
     const { tabs } = setup()
     act(() => tabs[0].focus())
 
     fireEvent.keyDown(tabs[0], { key: 'ArrowLeft' })
+    expect(selected(tabs)).toBe(2)
+    expect(document.activeElement).toBe(tabs[2])
+    fireEvent.keyDown(tabs[2], { key: 'Home' })
     expect(selected(tabs)).toBe(0)
 
     fireEvent.keyDown(tabs[0], { key: 'ArrowRight' })
@@ -122,29 +125,58 @@ describe('StartGuide – tabs', () => {
     expect(document.activeElement).toBe(tabs[2])
 
     fireEvent.keyDown(tabs[2], { key: 'ArrowRight' })
-    expect(selected(tabs)).toBe(2)
-
-    fireEvent.keyDown(tabs[2], { key: 'Home' })
     expect(selected(tabs)).toBe(0)
     expect(document.activeElement).toBe(tabs[0])
   })
 
-  it('disables the arrows at the ends', () => {
+  it('loops the arrows at the ends', () => {
     const { tabs, prev, next } = setup()
 
-    expect(prev.getAttribute('aria-disabled')).toBe('true')
-    expect(next.getAttribute('aria-disabled')).toBe('false')
+    expect(prev.hasAttribute('aria-disabled')).toBe(false)
+    expect(next.hasAttribute('aria-disabled')).toBe(false)
 
     fireEvent.click(prev)
-    expect(selected(tabs)).toBe(0)
+    expect(selected(tabs)).toBe(2)
 
+    fireEvent.click(next)
+    expect(selected(tabs)).toBe(0)
     fireEvent.click(next)
     fireEvent.click(next)
     expect(selected(tabs)).toBe(2)
-    expect(prev.getAttribute('aria-disabled')).toBe('false')
-    expect(next.getAttribute('aria-disabled')).toBe('true')
 
     fireEvent.click(next)
+    expect(selected(tabs)).toBe(0)
+  })
+
+  it('wraps a swipe past the last slide to the first, and before the first to the last', () => {
+    const { tabs, track } = setup()
+    // jsdom has no layout: give the track a width and a scroll position so it can tell which slide is showing.
+    let scrollLeft = 0
+    Object.defineProperty(track, 'clientWidth', { configurable: true, value: 300 })
+    Object.defineProperty(track, 'scrollLeft', {
+      configurable: true,
+      get: () => scrollLeft,
+      set: (value: number) => {
+        scrollLeft = value
+      },
+    })
+    const swipe = (fromX: number, toX: number, toY = 100) => {
+      fireEvent.touchStart(track, { touches: [{ clientX: fromX, clientY: 100 }] })
+      fireEvent.touchEnd(track, { changedTouches: [{ clientX: toX, clientY: toY }] })
+    }
+
+    scrollLeft = 600
+    swipe(250, 120)
+    expect(selected(tabs)).toBe(0)
+
+    scrollLeft = 0
+    swipe(50, 200)
+    expect(selected(tabs)).toBe(2)
+
+    // A short or mostly vertical move is not a wrap.
+    scrollLeft = 600
+    swipe(250, 220)
+    swipe(250, 180, 400)
     expect(selected(tabs)).toBe(2)
   })
 })

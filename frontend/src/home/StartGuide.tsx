@@ -50,6 +50,10 @@ const slides: Slide[] = [
 ]
 
 const last = slides.length - 1
+/** Wraps an index into 0..last, so stepping past either end continues from the other one. */
+const wrap = (index: number) => (index + slides.length) % slides.length
+/** A touch has to travel this far (and mostly sideways) on the first or last slide to wrap around. */
+const WRAP_SWIPE_PX = 50
 
 /** Distance between two slide starts (slide width + the gap that keeps a neighbour from peeking in). */
 function stride(track: HTMLElement, slides: (HTMLElement | null)[]) {
@@ -67,8 +71,8 @@ function stride(track: HTMLElement, slides: (HTMLElement | null)[]) {
  *   reduced motion), so short slides leave no gap. Tabs, arrows, dots and autoplay change it together with the slide;
  *   during a touch swipe the height of the slide being left is kept until the snap settles (scrollend, or a short
  *   quiet period where scrollend is missing), so the content below never jitters under the finger.
- * - Manual navigation has ends (arrows disabled on the first and last slide, arrow keys do not wrap); only autoplay
- *   loops back to the first slide.
+ * - Navigation loops: the arrows, arrow keys and autoplay continue from the other end, and a swipe past the last
+ *   slide (or before the first) jumps to the other end, since a native scroller cannot overscroll into a loop.
  * - Autoplay (6 s) has no pause button by product decision: it pauses on hover, on focus inside, while the tab is
  *   hidden, stops for good after any user navigation, and never runs under prefers-reduced-motion. This is a known
  *   trade-off against WCAG 2.2.2 accepted by the product owner.
@@ -89,6 +93,8 @@ export function StartGuide() {
   const slideRefs = useRef<(HTMLDivElement | null)[]>([])
   const touching = useRef(false)
   const settleTimer = useRef<number | undefined>(undefined)
+  /** Where the current touch started and on which slide, to spot a swipe past either end. */
+  const touchStart = useRef<{ x: number; y: number; index: number | null } | null>(null)
   /** Which slide the track's height follows; lags behind `active` during a swipe. */
   const [heightIndex, setHeightIndex] = useState(0)
   const [heights, setHeights] = useState<number[]>([])
@@ -142,7 +148,7 @@ export function StartGuide() {
 
   useEffect(() => {
     if (!running) return
-    const timer = window.setTimeout(() => go(active === last ? 0 : active + 1, false), AUTOPLAY_MS)
+    const timer = window.setTimeout(() => go(wrap(active + 1), false), AUTOPLAY_MS)
     return () => window.clearTimeout(timer)
   }, [running, active, go])
 
@@ -204,9 +210,9 @@ export function StartGuide() {
   function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     const target =
       event.key === 'ArrowRight'
-        ? Math.min(last, active + 1)
+        ? wrap(active + 1)
         : event.key === 'ArrowLeft'
-          ? Math.max(0, active - 1)
+          ? wrap(active - 1)
           : event.key === 'Home'
             ? 0
             : event.key === 'End'
@@ -279,16 +285,29 @@ export function StartGuide() {
             onScroll={onScroll}
             onScrollEnd={settle}
             onPointerDown={takeOver}
-            onTouchStart={() => {
+            onTouchStart={(event) => {
               touching.current = true
+              const touch = event.touches[0]
+              touchStart.current = touch ? { x: touch.clientX, y: touch.clientY, index: indexFromScroll() } : null
               takeOver()
             }}
-            onTouchEnd={() => {
+            onTouchEnd={(event) => {
               touching.current = false
+              const start = touchStart.current
+              const touch = event.changedTouches[0]
+              touchStart.current = null
+              if (start && touch) {
+                const dx = touch.clientX - start.x
+                const sideways = Math.abs(dx) > WRAP_SWIPE_PX && Math.abs(dx) > Math.abs(touch.clientY - start.y)
+                // Finger to the left means "next"; on the last slide the scroller is already at its end, so loop.
+                if (sideways && dx < 0 && start.index === last) return go(0, true)
+                if (sideways && dx > 0 && start.index === 0) return go(last, true)
+              }
               settleSoon()
             }}
             onTouchCancel={() => {
               touching.current = false
+              touchStart.current = null
               settleSoon()
             }}
             onWheel={(event) => {
@@ -335,8 +354,7 @@ export function StartGuide() {
                 className="guide__arrow"
                 aria-label="Poprzedni temat"
                 aria-controls={trackId}
-                aria-disabled={active === 0}
-                onClick={() => active > 0 && go(active - 1, true)}
+                onClick={() => go(wrap(active - 1), true)}
               >
                 <ChevronLeftIcon />
               </button>
@@ -345,8 +363,7 @@ export function StartGuide() {
                 className="guide__arrow"
                 aria-label="Następny temat"
                 aria-controls={trackId}
-                aria-disabled={active === last}
-                onClick={() => active < last && go(active + 1, true)}
+                onClick={() => go(wrap(active + 1), true)}
               >
                 <ChevronRightIcon />
               </button>

@@ -391,17 +391,12 @@
     opacity var(--duration-fast) ease;
 }
 
-.guide__arrow:active:not([aria-disabled='true']) {
+.guide__arrow:active {
   transform: scale(var(--press-scale-icon));
 }
 
-.guide__arrow[aria-disabled='true'] {
-  opacity: 0.4;
-  cursor: default;
-}
-
 @media (hover: hover) and (pointer: fine) {
-  .guide__arrow:hover:not([aria-disabled='true']) {
+  .guide__arrow:hover {
     background: var(--surface-sunken);
   }
 }
