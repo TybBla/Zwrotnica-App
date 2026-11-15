@@ -4,7 +4,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery'
 import { preparation, rules, safety, type PrepItem } from './content'
 
 /** How long a slide stays before autoplay moves on. */
-export const AUTOPLAY_MS = 12_000
+export const AUTOPLAY_MS = 6_000
 /** Programmatic slide (tab, arrow, dot, autoplay): short ease-out, in the 250–300 ms range. */
 const SLIDE_MS = 280
 /** Ease-out quart: close to the --ease-out token (fast start, gentle settle). */
@@ -69,7 +69,7 @@ function stride(track: HTMLElement, slides: (HTMLElement | null)[]) {
  *   quiet period where scrollend is missing), so the content below never jitters under the finger.
  * - Manual navigation has ends (arrows disabled on the first and last slide, arrow keys do not wrap); only autoplay
  *   loops back to the first slide.
- * - Autoplay (12 s) has no pause button by product decision: it pauses on hover, on focus inside, while the tab is
+ * - Autoplay (6 s) has no pause button by product decision: it pauses on hover, on focus inside, while the tab is
  *   hidden, stops for good after any user navigation, and never runs under prefers-reduced-motion. This is a known
  *   trade-off against WCAG 2.2.2 accepted by the product owner.
  */

@@ -150,7 +150,7 @@ describe('StartGuide – tabs', () => {
 })
 
 describe('StartGuide – autoplay', () => {
-  it('advances every 12 s and loops back to the first slide', () => {
+  it('advances every 6 s and loops back to the first slide', () => {
     vi.useFakeTimers()
     const { tabs, track } = setup()
     expect(track.getAttribute('aria-live')).toBe('off')
