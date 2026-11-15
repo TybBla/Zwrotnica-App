@@ -70,7 +70,7 @@ export const safety: PrepItem[] = [
   },
   {
     title: 'Uważaj na SMS-y z linkiem',
-    text: 'Odszkodowanie wypłaca się na wniosek pasażera. Przewoźnicy nie wysyłają SMS-ów z linkiem, pod którym trzeba podać dane, żeby je otrzymać. Jeśli dostaniesz taką wiadomość, nie podawaj danych i sprawdź adres strony w przeglądarce.',
+    text: 'Odszkodowanie wypłaca się na wniosek pasażera – nie trzeba podawać danych pod linkiem z SMS-a, żeby je dostać. Jeśli dostaniesz taką wiadomość, nie podawaj danych i sprawdź adres strony w przeglądarce.',
   },
   {
     title: 'W razie wątpliwości',

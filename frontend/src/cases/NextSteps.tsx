@@ -19,7 +19,7 @@ function hint(item: CaseDto, due: string | null): string {
   if (item.followUps.pastDeadline)
     return `Termin odpowiedzi przewoźnika minął${due ? ` (${due})` : ''}. Jeśli odpowiedź nie nadeszła, wyślij ponaglenie albo złóż skargę do Prezesa Urzędu Transportu Kolejowego.`
   if (item.status === 'Rejected')
-    return 'Przewoźnik odrzucił pismo? Możesz złożyć skargę do Prezesa Urzędu Transportu Kolejowego – przygotujemy ją z danych tej sprawy.'
+    return 'Przewoźnik odrzucił pismo. Możesz złożyć skargę do Prezesa Urzędu Transportu Kolejowego – przygotujemy ją z danych tej sprawy.'
   return `Przewoźnik ma czas na odpowiedź${due ? ` do ${due}` : ''}. Jeśli nie odpowie w terminie, przygotujesz tu ponaglenie, a później skargę do UTK.`
 }
 

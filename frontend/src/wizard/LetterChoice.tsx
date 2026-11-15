@@ -143,7 +143,10 @@ export function LetterChoice({ caseId, letter, trip, kind = 'complaint' }: Lette
               Zakładamy, że wyślesz pismo dziś, więc termin odpowiedzi przewoźnika (do {formatDate(warsawDate(new Date(letter.responseDueDate)))})
               liczymy od dzisiaj. Status możesz zmienić w Moich sprawach.
             </p>
-            <AddToCalendarButton caseId={caseId} responseDueDate={letter.responseDueDate} {...trip} />
+            {/* Without the carrier and date the event would have an empty title and description. */}
+            {trip.carrier && trip.travelDate && (
+              <AddToCalendarButton caseId={caseId} responseDueDate={letter.responseDueDate} {...trip} />
+            )}
           </div>
         )}
         <p className="letter__safety">

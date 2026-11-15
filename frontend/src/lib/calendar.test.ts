@@ -53,6 +53,7 @@ describe('deadlineCalendar', () => {
     expect(all).toContain('DTEND;VALUE=DATE:20261215')
     expect(all).toContain('DTSTAMP:20261114T090507Z')
     expect(all).toContain('UID:sprawa-7-termin-odpowiedzi@zwrotnica')
+    expect(all).toContain('SEQUENCE:0')
     expect(all).toContain('SUMMARY:Termin odpowiedzi przewoźnika – PKP Intercity')
     expect(all).toContain('URL:https://zwrotnica.example/sprawy/7')
   })

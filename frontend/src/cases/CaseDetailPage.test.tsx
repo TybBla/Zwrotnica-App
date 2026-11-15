@@ -305,7 +305,7 @@ describe('CaseDetailPage – next steps', () => {
     vi.spyOn(api, 'generateFollowUp').mockRejectedValue(new ApiError(409, 'Skargę do UTK przygotujemy później.'))
     renderAt('/sprawy/7')
 
-    expect(await screen.findByText(/Przewoźnik odrzucił pismo/)).toBeTruthy()
+    expect(await screen.findByText(/Przewoźnik odrzucił pismo\. Możesz złożyć skargę/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Przygotuj ponaglenie' })).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Przygotuj skargę do UTK' }))
     expect(await screen.findByText('Skargę do UTK przygotujemy później.')).toBeTruthy()

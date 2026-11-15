@@ -62,7 +62,10 @@ function nextDay(isoDate: string): string {
 /** "20261114T090507Z". */
 const utcStamp = (instant: Date) => instant.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 
-/** The carrier's response deadline as a calendar file: same UID per case, so importing it again updates the event. */
+/**
+ * The carrier's response deadline as a calendar file. The UID is the same for every download of one case, so a
+ * calendar that tracks UIDs can recognise the event as the same one; whether it replaces or duplicates it is up to the app.
+ */
 export function deadlineCalendar(input: DeadlineEventInput): { content: string; fileName: string } {
   const due = warsawDate(new Date(input.responseDueDate))
   const trip = input.route ? `${input.route}, przejazd ${formatShortDate(input.travelDate)}` : `Przejazd ${formatShortDate(input.travelDate)}`
@@ -80,6 +83,7 @@ export function deadlineCalendar(input: DeadlineEventInput): { content: string; 
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
     `UID:sprawa-${input.caseId}-termin-odpowiedzi@zwrotnica`,
+    'SEQUENCE:0',
     `DTSTAMP:${utcStamp(input.now ?? new Date())}`,
     `DTSTART;VALUE=DATE:${compact(due)}`,
     `DTEND;VALUE=DATE:${compact(nextDay(due))}`,
