@@ -14,8 +14,7 @@
         try {
           theme = localStorage.getItem('refund-pilot-theme')
         } catch (e) {}
-        if (theme !== 'light' && theme !== 'dark')
-          theme = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        if (theme !== 'light' && theme !== 'dark') theme = 'light'
         document.documentElement.dataset.theme = theme
         if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#141415')
       })()

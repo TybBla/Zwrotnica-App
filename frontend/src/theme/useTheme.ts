@@ -1,24 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { applyTheme, currentTheme, onSystemThemeChange, storedTheme, storeTheme, type Theme } from './theme'
+import { applyTheme, currentTheme, storeTheme, type Theme } from './theme'
 
-/** Light/dark scheme: starts from the stored choice or the OS setting and follows the OS until the user picks one. */
+/** Light/dark scheme: starts from the stored choice, defaulting to light. */
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(currentTheme)
 
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
-
-  useEffect(
-    () =>
-      onSystemThemeChange((system) => {
-        if (storedTheme() === null) {
-          applyTheme(system, { animate: true })
-          setTheme(system)
-        }
-      }),
-    [],
-  )
 
   const toggle = useCallback(() => {
     const next: Theme = theme === 'dark' ? 'light' : 'dark'

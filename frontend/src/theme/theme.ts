@@ -32,7 +32,7 @@ export function storeTheme(theme: Theme): void {
 
 export function currentTheme(): Theme {
   const attribute = document.documentElement.dataset.theme
-  return attribute === 'light' || attribute === 'dark' ? attribute : storedTheme() ?? systemTheme()
+  return attribute === 'light' || attribute === 'dark' ? attribute : storedTheme() ?? 'light'
 }
 
 export function applyTheme(theme: Theme, { animate = false } = {}): void {
